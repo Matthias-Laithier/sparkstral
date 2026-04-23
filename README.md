@@ -9,6 +9,8 @@ cp .env.example .env
 make up
 ```
 
+`make up` starts the stack in the background. Use `make logs` to follow container output.
+
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 - API docs: http://localhost:8000/docs

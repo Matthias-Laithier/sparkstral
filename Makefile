@@ -1,7 +1,7 @@
 .PHONY: up down logs build ps restart clean format lint typecheck test check
 
 up:
-	docker compose up --build
+	docker compose up --build -d
 
 down:
 	docker compose down
