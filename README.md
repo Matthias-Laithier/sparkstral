@@ -1,6 +1,6 @@
 # Sparkstral
 
-A simple fullstack application with a React frontend and FastAPI backend.
+A fullstack application with a React frontend, FastAPI backend, and a Mistral Workflows worker.
 
 ## Quick start
 
@@ -59,7 +59,41 @@ make check      # run all of the above
 
 ## Environment variables
 
-No variables are required for the base setup. See `.env.example` for the template.
+| Variable | Required | Description |
+|---|---|---|
+| `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
+| `DEPLOYMENT_NAME` | Yes | Stable identifier for this worker deployment (e.g. `sparkstral`) |
+
+## Company description workflow
+
+A Mistral Workflows worker that, given a company name, searches the web and returns a short description of what the company does.
+
+**Run everything** (worker + backend + frontend) with one command:
+
+```bash
+make up
+```
+
+The workflow worker, FastAPI backend, and React frontend all start together via Docker Compose.
+
+**Trigger an execution** from the frontend at http://localhost:5173, or from [console.mistral.ai](https://console.mistral.ai) → Workflows → `company-description` → Start Workflow with input:
+
+```json
+{"company_name": "Mistral AI"}
+```
+
+Or programmatically:
+
+```python
+from mistralai.client import Mistral
+
+client = Mistral(api_key="your_key")
+execution = client.workflows.execute_workflow(
+    workflow_identifier="company-description",
+    input={"company_name": "Mistral AI"},
+)
+print(execution.model_dump_json(indent=2))
+```
 
 ## Project structure
 
@@ -69,11 +103,13 @@ No variables are required for the base setup. See `.env.example` for the templat
 │   └── src/
 │       ├── api/       Typed API client
 │       └── App.tsx    Main component
-├── backend/           FastAPI app
+├── backend/           FastAPI app + Mistral Workflows worker
 │   └── src/
-│       ├── api/       Route handlers
-│       ├── schemas/   Pydantic models
-│       └── main.py    App entry point
+│       ├── api/         Route handlers
+│       ├── core/        Config (settings)
+│       ├── schemas/     Pydantic models
+│       ├── workflows/   Mistral Workflows definitions
+│       └── main.py      App entry point
 ├── compose.yaml
 ├── Makefile
 └── .env.example

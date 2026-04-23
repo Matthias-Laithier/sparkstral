@@ -12,8 +12,16 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    env_file: .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+  workflow-worker:
+    build: ./backend
+    env_file: .env
+    command: ["uv", "run", "python", "-m", "src.workflows.company"]
+    depends_on:
+      - backend

@@ -5,6 +5,8 @@ description = "Sparkstral backend"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.136.1",
+    "mistralai>=1.33",
+    "mistralai-workflows>=3.3.0",
     "pydantic-settings>=2.14.0",
 ]
 
