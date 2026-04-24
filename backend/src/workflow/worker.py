@@ -20,12 +20,12 @@ class CompanyInput(BaseModel):
 
 
 @workflows.workflow.define(
-    name="company-description",
-    workflow_display_name="Company Description",
+    name="sparkstral",
+    workflow_display_name="Sparkstral",
     workflow_description="Research a company and return a structured profile",
     execution_timeout=timedelta(minutes=10),
 )
-class CompanyDescriptionWorkflow:
+class SparkstralWorkflow:
     @workflows.workflow.entrypoint
     async def run(self, params: CompanyInput) -> dict[str, Any]:
         profile = await profile_company(
@@ -40,7 +40,7 @@ class CompanyDescriptionWorkflow:
 
 
 async def main() -> None:
-    await workflows.run_worker([CompanyDescriptionWorkflow])
+    await workflows.run_worker([SparkstralWorkflow])
 
 
 if __name__ == "__main__":

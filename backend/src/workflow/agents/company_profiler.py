@@ -43,7 +43,10 @@ class CompanyProfilerAgent(BaseAgent):
     async def _research(self, company_query: str) -> str:
         response = await self.client.beta.conversations.start_async(
             model=settings.COMPANY_PROFILER_SEARCH_MODEL,
-            inputs=f"Research this company thoroughly: {company_query}\nYou have to include the full URL of the source associated with each thing you say.",
+            inputs=(
+                f"Research this company thoroughly: {company_query}\n"
+                "Include the full URL of the source for each factual point you cite."
+            ),
             tools=[WebSearchTool()],  # type: ignore[arg-type]
         )
         return _extract_text(response)

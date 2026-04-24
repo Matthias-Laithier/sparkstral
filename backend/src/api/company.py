@@ -13,7 +13,7 @@ _client = Mistral(api_key=settings.MISTRAL_API_KEY)
 @router.post("", response_model=TriggerResponse)
 def trigger_company_description(body: CompanyRequest) -> TriggerResponse:
     execution = _client.workflows.execute_workflow(
-        workflow_identifier="company-description",
+        workflow_identifier="sparkstral",
         input={"company_name": body.company_name},
     )
     if isinstance(execution, WorkflowExecutionResponse):

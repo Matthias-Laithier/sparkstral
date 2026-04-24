@@ -22,6 +22,6 @@ services:
   workflow-worker:
     build: ./backend
     env_file: .env
-    command: ["uv", "run", "python", "-m", "src.workflow.company"]
+    command: ["uv", "run", "python", "-m", "src.workflow.worker"]
     depends_on:
       - backend

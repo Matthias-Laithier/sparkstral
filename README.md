@@ -78,7 +78,7 @@ make up
 
 The workflow worker, FastAPI backend, and React frontend all start together via Docker Compose.
 
-**Trigger an execution** from the frontend at http://localhost:5173, or from [console.mistral.ai](https://console.mistral.ai) → Workflows → `company-description` → Start Workflow with input:
+**Trigger an execution** from the frontend at http://localhost:5173, or from [console.mistral.ai](https://console.mistral.ai) → Workflows → `sparkstral` → Start Workflow with input:
 
 ```json
 {"company_name": "Mistral AI"}
@@ -91,7 +91,7 @@ from mistralai.client import Mistral
 
 client = Mistral(api_key="your_key")
 execution = client.workflows.execute_workflow(
-    workflow_identifier="company-description",
+    workflow_identifier="sparkstral",
     input={"company_name": "Mistral AI"},
 )
 print(execution.model_dump_json(indent=2))
@@ -110,7 +110,7 @@ print(execution.model_dump_json(indent=2))
 │       ├── api/         Route handlers
 │       ├── core/        Config (settings)
 │       ├── schemas/     Pydantic models
-│       ├── workflow/    Mistral Workflows definitions (worker: `src.workflow.company`)
+│       ├── workflow/    Mistral Workflows definitions (worker: `src.workflow.worker`)
 │       └── main.py      App entry point
 ├── compose.yaml
 ├── Makefile
