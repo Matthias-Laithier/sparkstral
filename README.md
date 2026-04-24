@@ -66,11 +66,13 @@ make check      # run all of the above
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes | Model for the structured `CompanyProfileOutput` parse phase |
 | `PAIN_POINT_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of pain-point analysis |
 | `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes | Model for the structured `PainPointProfilerOutput` parse phase |
+| `GENAI_USE_CASES_MODEL` | Yes | Model for the structured `GenAIUseCasesOutput` (no web search) |
+| `GENAI_USE_CASES_TEMPERATURE` | No (default `0.88`) | Sampling temperature for use-case ideation (higher = more diverse) |
 | `DEPLOYMENT_NAME` | Yes | Stable identifier for this worker deployment (e.g. `sparkstral`) |
 
 ## Company description workflow
 
-A Mistral Workflows worker that, given a company name, runs company research and profiling, then (when the company is found) a pain-point pass with ordered steps shown in the UI.
+A Mistral Workflows worker that, given a company name, runs company research and profiling, a pain-point pass, then a GenAI use-case ideation step—ordered steps in the UI.
 
 **Run everything** (worker + backend + frontend) with one command:
 

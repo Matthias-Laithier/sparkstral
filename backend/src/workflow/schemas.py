@@ -60,6 +60,49 @@ class PainPointProfilerResult(BaseModel):
     output: PainPointProfilerOutput
 
 
+class GenAIUseCaseItem(BaseModel):
+    title: str
+    target_users: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Clients, teams, or user groups the use case serves.",
+    )
+    business_problem: str = Field(..., description="Problem the use case addresses.")
+    why_this_company: str = Field(
+        ...,
+        description="Why this use case fits this company and context.",
+    )
+    genai_solution: str = Field(
+        ...,
+        description="What the GenAI solution does (concretely, not a product pitch).",
+    )
+    required_data: str = Field(
+        ...,
+        description="Data and systems needed to build and run it.",
+    )
+    expected_impact: str = Field(
+        ...,
+        description="Expected business or operational impact.",
+    )
+    risks: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Main risks (technical, compliance, org, model).",
+    )
+
+
+class GenAIUseCasesOutput(BaseModel):
+    use_cases: list[GenAIUseCaseItem] = Field(
+        default_factory=list,
+        description="Between 8 and 12 use cases (ideally 10).",
+    )
+
+
+class GenAIUseCasesInput(BaseModel):
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+
+
 class SparkstralStep(BaseModel):
     id: int
     label: str

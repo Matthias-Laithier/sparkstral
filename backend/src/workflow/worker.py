@@ -9,9 +9,14 @@ from pydantic import BaseModel, ConfigDict
 # Activity and schema modules pull in mistralai.client / httpx. The Temporal
 # workflow sandbox blocks those imports unless they run under pass-through.
 with workflow.unsafe.imports_passed_through():
-    from src.workflow.activities import profile_company, profile_pain_points
+    from src.workflow.activities import (
+        generate_genai_use_cases,
+        profile_company,
+        profile_pain_points,
+    )
     from src.workflow.schemas import (
         CompanyProfileInput,
+        GenAIUseCasesInput,
         PainPointProfilerInput,
         SparkstralStep,
         SparkstralWorkflowResult,
@@ -34,10 +39,10 @@ class CompanyInput(BaseModel):
 class SparkstralWorkflow:
     @workflows.workflow.entrypoint
     async def run(self, params: CompanyInput) -> dict[str, Any]:
+        steps: list[SparkstralStep] = []
         company = await profile_company(
             CompanyProfileInput(company_query=params.company_name)
         )
-        steps: list[SparkstralStep] = []
         append_sparkstral_step(
             steps,
             label="Company research (web search)",
@@ -64,6 +69,18 @@ class SparkstralWorkflow:
             label="Pain points (structured)",
             phase="structure",
             data=pain.output.model_dump(mode="json"),
+        )
+        use_cases = await generate_genai_use_cases(
+            GenAIUseCasesInput(
+                company_profile=company.profile,
+                pain_points=pain.output,
+            )
+        )
+        append_sparkstral_step(
+            steps,
+            label="GenAI use cases (structured)",
+            phase="structure",
+            data=use_cases.model_dump(mode="json"),
         )
         return SparkstralWorkflowResult(steps=steps).model_dump(mode="json")
 

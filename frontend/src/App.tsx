@@ -6,6 +6,8 @@ import {
 } from "./api/company";
 import type {
 	CompanyProfileData,
+	GenAIUseCaseItem,
+	GenAIUseCasesData,
 	PainPointBundleData,
 	PainPointItem,
 	SparkstralStep,
@@ -117,6 +119,66 @@ function PainPointCard({ item }: { item: PainPointItem }) {
 	);
 }
 
+function UseCaseCard({ item }: { item: GenAIUseCaseItem }) {
+	return (
+		<article className="rounded-lg border border-violet-200/80 bg-violet-50/40 p-4 space-y-2.5 text-sm text-slate-800">
+			<h3 className="font-semibold text-slate-900 leading-snug">
+				{item.title}
+			</h3>
+			<div>
+				<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+					Target users
+				</p>
+				<p className="text-slate-700">{item.target_users.join(", ")}</p>
+			</div>
+			<Detail label="Business problem" text={item.business_problem} />
+			<Detail label="Why this company" text={item.why_this_company} />
+			<Detail label="GenAI solution" text={item.genai_solution} />
+			<Detail label="Required data" text={item.required_data} />
+			<Detail label="Expected impact" text={item.expected_impact} />
+			<div>
+				<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+					Risks
+				</p>
+				<ul className="list-disc list-inside text-slate-700 space-y-0.5">
+					{item.risks.map((r) => (
+						<li key={`${item.title}::${r}`}>{r}</li>
+					))}
+				</ul>
+			</div>
+		</article>
+	);
+}
+
+function Detail({ label, text }: { label: string; text: string }) {
+	return (
+		<div>
+			<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+				{label}
+			</p>
+			<p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+				{text}
+			</p>
+		</div>
+	);
+}
+
+function UseCasesView({ data }: { data: GenAIUseCasesData }) {
+	const items = data.use_cases ?? [];
+	if (items.length === 0) {
+		return (
+			<p className="text-sm text-slate-500">No GenAI use cases returned.</p>
+		);
+	}
+	return (
+		<div className="space-y-4">
+			{items.map((uc) => (
+				<UseCaseCard key={`${uc.title}::${uc.genai_solution}`} item={uc} />
+			))}
+		</div>
+	);
+}
+
 function PainPointsView({ data }: { data: PainPointBundleData }) {
 	const items = data.pain_points ?? [];
 	if (items.length === 0) {
@@ -141,6 +203,12 @@ function renderStructureBody(step: SparkstralStep) {
 	}
 	if (step.id === 4) {
 		return <PainPointsView data={data as PainPointBundleData} />;
+	}
+	if (step.id === 5) {
+		return <UseCasesView data={data as GenAIUseCasesData} />;
+	}
+	if ("use_cases" in data) {
+		return <UseCasesView data={data as GenAIUseCasesData} />;
 	}
 	if ("pain_points" in data) {
 		return <PainPointsView data={data as PainPointBundleData} />;

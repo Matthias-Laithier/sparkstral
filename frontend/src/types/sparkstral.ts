@@ -31,6 +31,21 @@ export type PainPointBundleData = {
 	pain_points?: PainPointItem[];
 };
 
+export type GenAIUseCaseItem = {
+	title: string;
+	target_users: string[];
+	business_problem: string;
+	why_this_company: string;
+	genai_solution: string;
+	required_data: string;
+	expected_impact: string;
+	risks: string[];
+};
+
+export type GenAIUseCasesData = {
+	use_cases?: GenAIUseCaseItem[];
+};
+
 export function isSparkstralResult(
 	value: unknown,
 ): value is SparkstralWorkflowResult {

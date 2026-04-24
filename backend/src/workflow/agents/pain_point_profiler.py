@@ -1,20 +1,17 @@
 import json
-
-from mistralai.client.models import (
-    ConversationResponse,
-    MessageOutputEntry,
-    TextChunk,
-    WebSearchTool,
-)
+import logging
 
 from src.core.config import settings
 from src.workflow.agents.base import BaseAgent
+from src.workflow.agents.web_search import WebSearchAgent, WebSearchInput
 from src.workflow.schemas import (
     CompanyProfileOutput,
     PainPointProfilerInput,
     PainPointProfilerOutput,
     PainPointProfilerResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PainPointProfilerAgent(BaseAgent):
@@ -34,6 +31,7 @@ class PainPointProfilerAgent(BaseAgent):
         try:
             research_text = await self._research(ctx)
         except Exception:
+            logger.exception("Pain point research phase failed")
             return PainPointProfilerResult(
                 research_text="",
                 output=PainPointProfilerOutput(pain_points=[]),
@@ -45,26 +43,27 @@ class PainPointProfilerAgent(BaseAgent):
                 output=out,
             )
         except Exception:
+            logger.exception("Pain point structuring phase failed")
             return PainPointProfilerResult(
                 research_text=research_text,
                 output=PainPointProfilerOutput(pain_points=[]),
             )
 
     async def _research(self, company_context: str) -> str:
-        response = await self.client.beta.conversations.start_async(
-            model=settings.PAIN_POINT_PROFILER_SEARCH_MODEL,
-            inputs=(
-                "Search the web for major pain points, unmet needs, and structural"
-                f" challenges in the company's field.\n\n{company_context}\n\n"
-                "Web search scope: do not use many different websites. Prefer a"
-                " relevant Wikipedia article (industry, technology, or market) when it"
-                " exists, and add at most one or two other reputable sources. Keep"
-                " searches minimal.\n"
-                "Include the full URL of the source for each relevant finding you cite."
-            ),
-            tools=[WebSearchTool()],  # type: ignore[arg-type]
+        agent = WebSearchAgent(client=self.client)
+        result = await agent.run(
+            WebSearchInput(
+                prompt=(
+                    "Search the web for major pain points, unmet needs, and structural"
+                    f" challenges in the company's field.\n\n{company_context}\n\n"
+                    "Use few sources: prefer a relevant Wikipedia article when it"
+                    " exists,"
+                    " plus at most one or two other reputable sources.\n"
+                    "Include the full URL for each finding you cite."
+                )
+            )
         )
-        return _extract_text(response)
+        return result.text
 
     async def _structure(
         self, company_context: str, research_text: str
@@ -94,22 +93,6 @@ class PainPointProfilerAgent(BaseAgent):
 
 
 def _company_context(profile: CompanyProfileOutput) -> str:
-    return (
-        "Known company profile (from prior step):\n"
-        + json.dumps(profile.model_dump(mode="json"), indent=2, ensure_ascii=False)
+    return "Known company profile (from prior step):\n" + json.dumps(
+        profile.model_dump(mode="json"), indent=2, ensure_ascii=False
     )
-
-
-def _extract_text(response: ConversationResponse) -> str:
-    parts: list[str] = []
-    for entry in response.outputs:
-        if not isinstance(entry, MessageOutputEntry):
-            continue
-        content = entry.content
-        if isinstance(content, str):
-            parts.append(content)
-            continue
-        for chunk in content:
-            if isinstance(chunk, TextChunk):
-                parts.append(chunk.text)
-    return "".join(parts)

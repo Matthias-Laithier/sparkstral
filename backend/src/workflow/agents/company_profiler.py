@@ -1,17 +1,15 @@
-from mistralai.client.models import (
-    ConversationResponse,
-    MessageOutputEntry,
-    TextChunk,
-    WebSearchTool,
-)
+import logging
 
 from src.core.config import settings
 from src.workflow.agents.base import BaseAgent
+from src.workflow.agents.web_search import WebSearchAgent, WebSearchInput
 from src.workflow.schemas import (
     CompanyProfileInput,
     CompanyProfileOutput,
     CompanyProfilerResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyProfilerAgent(BaseAgent):
@@ -28,6 +26,7 @@ class CompanyProfilerAgent(BaseAgent):
         try:
             research_text = await self._research(input.company_query)
         except Exception as exc:
+            logger.exception("Company research phase failed")
             return CompanyProfilerResult(
                 research_text="",
                 profile=CompanyProfileOutput(notes=f"Research failed: {exc}"),
@@ -35,6 +34,7 @@ class CompanyProfilerAgent(BaseAgent):
         try:
             profile = await self._structure(input.company_query, research_text)
         except Exception as exc:
+            logger.exception("Company structuring phase failed")
             return CompanyProfilerResult(
                 research_text=research_text,
                 profile=CompanyProfileOutput(
@@ -47,19 +47,21 @@ class CompanyProfilerAgent(BaseAgent):
         )
 
     async def _research(self, company_query: str) -> str:
-        response = await self.client.beta.conversations.start_async(
-            model=settings.COMPANY_PROFILER_SEARCH_MODEL,
-            inputs=(
-                f"Research this company: {company_query}\n\n"
-                "Gather: official or common company name; primary industry; 2-5"
-                " business lines; key customers or segments if public; 2-5 strategic"
-                " priorities; and do not forget to include the source URL next to each fact.\n"
-                "Use few sources: prefer English Wikipedia, plus at most one or two"
-                " other reliable pages."
-            ),
-            tools=[WebSearchTool()],  # type: ignore[arg-type]
+        agent = WebSearchAgent(client=self.client)
+        result = await agent.run(
+            WebSearchInput(
+                prompt=(
+                    f"Research this company: {company_query}\n\n"
+                    "Gather: official or common company name; primary industry; 2-5"
+                    " business lines; key customers or segments if public;"
+                    " 2-5 strategic"
+                    " priorities; include the source URL next to each fact.\n"
+                    "Use few sources: prefer Wikipedia, plus at most one or two other"
+                    " reliable pages."
+                )
+            )
         )
-        return _extract_text(response)
+        return result.text
 
     async def _structure(
         self, company_query: str, research_text: str
@@ -89,18 +91,3 @@ class CompanyProfilerAgent(BaseAgent):
         ):
             return parsed.choices[0].message.parsed
         raise ValueError("Structuring phase returned no parsed output")
-
-
-def _extract_text(response: ConversationResponse) -> str:
-    parts: list[str] = []
-    for entry in response.outputs:
-        if not isinstance(entry, MessageOutputEntry):
-            continue
-        content = entry.content
-        if isinstance(content, str):
-            parts.append(content)
-            continue
-        for chunk in content:
-            if isinstance(chunk, TextChunk):
-                parts.append(chunk.text)
-    return "".join(parts)

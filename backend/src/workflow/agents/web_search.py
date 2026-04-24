@@ -1,0 +1,82 @@
+import json
+from typing import Any, cast
+
+from mistralai.client.models import AssistantMessage, ToolMessage
+from pydantic import BaseModel
+
+from src.core.config import settings
+from src.workflow.agents.base import BaseAgent
+from src.workflow.tools.serper import SERPER_TOOL, serper_search
+
+
+class WebSearchInput(BaseModel):
+    prompt: str
+
+
+class WebSearchOutput(BaseModel):
+    text: str
+
+
+class WebSearchAgent(BaseAgent):
+    name = "web-search"
+    system_prompt = (
+        "You are a research assistant. Use web_search to find accurate,"
+        " up-to-date information. Cite the source URL for every fact you report."
+    )
+
+    async def run(self, input: WebSearchInput) -> WebSearchOutput:  # type: ignore[override]
+        messages: list[Any] = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": input.prompt},
+        ]
+
+        for _ in range(settings.WEB_SEARCH_MAX_ROUNDS):
+            response = await self.client.chat.complete_async(
+                model=settings.WEB_SEARCH_MODEL,
+                messages=messages,
+                tools=[cast(Any, SERPER_TOOL)],
+                tool_choice="auto",
+            )
+            if not response.choices:
+                break
+
+            msg = response.choices[0].message
+            if msg is None:
+                break
+
+            messages.append(msg)
+
+            if not msg.tool_calls:
+                return WebSearchOutput(text=_text(msg))
+
+            for tc in msg.tool_calls:
+                if tc.function.name == "web_search":
+                    args = json.loads(cast(str, tc.function.arguments))
+                    result = serper_search(
+                        args.get("query", ""), settings.SERPER_API_KEY
+                    )
+                else:
+                    result = f"Unknown tool: {tc.function.name}"
+
+                messages.append(
+                    ToolMessage(
+                        role="tool",
+                        tool_call_id=tc.id or "",
+                        content=result,
+                    )
+                )
+
+        # Fallback: concatenate any assistant text collected so far
+        texts: list[str] = [
+            _text(m) for m in messages if isinstance(m, AssistantMessage) and m.content
+        ]
+        return WebSearchOutput(text="\n".join(texts))
+
+
+def _text(msg: AssistantMessage) -> str:
+    content = msg.content
+    if content is None or content == "":
+        return ""
+    if isinstance(content, list):
+        return "".join(c.text if hasattr(c, "text") else str(c) for c in content)
+    return str(content)
