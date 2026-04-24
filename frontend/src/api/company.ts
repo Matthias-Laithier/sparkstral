@@ -1,3 +1,5 @@
+import type { SparkstralWorkflowResult } from "../types/sparkstral";
+
 export type TriggerResponse = {
 	execution_id: string;
 	status: string;
@@ -6,7 +8,7 @@ export type TriggerResponse = {
 export type StatusResponse = {
 	execution_id: string;
 	status: string;
-	result: string | null;
+	result: unknown;
 };
 
 export async function triggerCompanyDescription(
@@ -35,4 +37,39 @@ export async function getExecutionStatus(
 	}
 
 	return (await response.json()) as StatusResponse;
+}
+
+/** Unwrap common Mistral or proxy nesting: `{ steps: [...] }` or `{ result: { ... } }`. */
+function extractSparkstralPayload(value: unknown): unknown {
+	if (value === null || value === undefined) return value;
+	if (typeof value === "string") {
+		try {
+			return extractSparkstralPayload(JSON.parse(value) as unknown);
+		} catch {
+			return value;
+		}
+	}
+	if (typeof value === "object" && value !== null && "steps" in value) {
+		return value;
+	}
+	if (typeof value === "object" && value !== null && "result" in value) {
+		return extractSparkstralPayload((value as { result: unknown }).result);
+	}
+	return value;
+}
+
+/** When status is COMPLETED, `result` may be a Sparkstral payload with ordered steps. */
+export function asSparkstralResult(
+	result: unknown,
+): SparkstralWorkflowResult | null {
+	const payload = extractSparkstralPayload(result);
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"steps" in payload &&
+		Array.isArray((payload as { steps: unknown }).steps)
+	) {
+		return payload as SparkstralWorkflowResult;
+	}
+	return null;
 }

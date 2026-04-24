@@ -9,8 +9,14 @@ from pydantic import BaseModel, ConfigDict
 # Activity and schema modules pull in mistralai.client / httpx. The Temporal
 # workflow sandbox blocks those imports unless they run under pass-through.
 with workflow.unsafe.imports_passed_through():
-    from src.workflow.activities import profile_company
-    from src.workflow.schemas import CompanyProfileInput, CompanyResolutionStatus
+    from src.workflow.activities import profile_company, profile_pain_points
+    from src.workflow.schemas import (
+        CompanyProfileInput,
+        PainPointProfilerInput,
+        SparkstralStep,
+        SparkstralWorkflowResult,
+    )
+    from src.workflow.utils import append_sparkstral_step
 
 
 class CompanyInput(BaseModel):
@@ -28,15 +34,38 @@ class CompanyInput(BaseModel):
 class SparkstralWorkflow:
     @workflows.workflow.entrypoint
     async def run(self, params: CompanyInput) -> dict[str, Any]:
-        profile = await profile_company(
+        company = await profile_company(
             CompanyProfileInput(company_query=params.company_name)
         )
-
-        if profile.status != CompanyResolutionStatus.FOUND:
-            return profile.model_dump(mode="json")
-
-        # Future: generate use cases here.
-        return profile.model_dump(mode="json")
+        steps: list[SparkstralStep] = []
+        append_sparkstral_step(
+            steps,
+            label="Company research (web search)",
+            phase="research",
+            content=company.research_text,
+        )
+        append_sparkstral_step(
+            steps,
+            label="Company profile (structured)",
+            phase="structure",
+            data=company.profile.model_dump(mode="json"),
+        )
+        pain = await profile_pain_points(
+            PainPointProfilerInput(company_profile=company.profile)
+        )
+        append_sparkstral_step(
+            steps,
+            label="Pain point research (web search)",
+            phase="research",
+            content=pain.research_text,
+        )
+        append_sparkstral_step(
+            steps,
+            label="Pain points (structured)",
+            phase="structure",
+            data=pain.output.model_dump(mode="json"),
+        )
+        return SparkstralWorkflowResult(steps=steps).model_dump(mode="json")
 
 
 async def main() -> None:

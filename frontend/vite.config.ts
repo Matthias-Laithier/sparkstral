@@ -8,8 +8,7 @@ export default defineConfig({
 	server: {
 		proxy: {
 			"/api": {
-				target:
-					process.env.VITE_BACKEND_URL,
+				target: process.env.VITE_BACKEND_URL,
 				changeOrigin: true,
 			},
 		},

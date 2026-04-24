@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("App", () => {
-	it("renders the input and send button", () => {
+	it("renders the company input and run button", () => {
 		render(<App />);
-		expect(screen.getByPlaceholderText("Type something…")).toBeDefined();
-		expect(screen.getByRole("button", { name: "Send" })).toBeDefined();
+		expect(
+			screen.getByPlaceholderText("e.g. Stripe, Mistral AI, Notion…"),
+		).toBeDefined();
+		expect(screen.getByRole("button", { name: "Run analysis" })).toBeDefined();
 	});
 });

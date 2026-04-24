@@ -64,11 +64,13 @@ make check      # run all of the above
 | `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
 | `COMPANY_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of company profiling |
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes | Model for the structured `CompanyProfileOutput` parse phase |
+| `PAIN_POINT_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of pain-point analysis |
+| `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes | Model for the structured `PainPointProfilerOutput` parse phase |
 | `DEPLOYMENT_NAME` | Yes | Stable identifier for this worker deployment (e.g. `sparkstral`) |
 
 ## Company description workflow
 
-A Mistral Workflows worker that, given a company name, searches the web and returns a short description of what the company does.
+A Mistral Workflows worker that, given a company name, runs company research and profiling, then (when the company is found) a pain-point pass with ordered steps shown in the UI.
 
 **Run everything** (worker + backend + frontend) with one command:
 

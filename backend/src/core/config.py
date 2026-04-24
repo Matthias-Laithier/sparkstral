@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     MISTRAL_API_KEY: str
     COMPANY_PROFILER_SEARCH_MODEL: str
     COMPANY_PROFILER_AGENT_MODEL: str
+    PAIN_POINT_PROFILER_SEARCH_MODEL: str
+    PAIN_POINT_PROFILER_AGENT_MODEL: str
 
 
 settings = Settings()  # type: ignore[call-arg]

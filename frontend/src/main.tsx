@@ -20,7 +20,9 @@ class ErrorBoundary extends React.Component<
 			return (
 				<div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
 					<div className="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-red-200 p-8 space-y-3">
-						<p className="text-sm font-medium text-red-700">Something went wrong</p>
+						<p className="text-sm font-medium text-red-700">
+							Something went wrong
+						</p>
 						<p className="text-sm text-gray-500">{this.state.error.message}</p>
 						<button
 							type="button"

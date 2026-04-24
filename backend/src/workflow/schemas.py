@@ -1,12 +1,6 @@
-from enum import Enum
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
-
-class CompanyResolutionStatus(str, Enum):
-    FOUND = "found"
-    NOT_FOUND = "not_found"
-    AMBIGUOUS = "ambiguous"
 
 
 class CompanyProfileInput(BaseModel):
@@ -24,8 +18,6 @@ class EvidenceItem(BaseModel):
 
 
 class CompanyProfileOutput(BaseModel):
-    status: CompanyResolutionStatus
-    confidence: float = Field(..., ge=0, le=1)
     company_name: str = ""
     industry: str = ""
     business_lines: list[str] = Field(default_factory=list)
@@ -34,5 +26,47 @@ class CompanyProfileOutput(BaseModel):
     evidence: list[EvidenceItem] = Field(default_factory=list)
     notes: str = Field(
         default="",
-        description="Explanation for ambiguity, failure, or important caveats.",
+        description="Optional caveats or extraction errors.",
     )
+
+
+class CompanyProfilerResult(BaseModel):
+    research_text: str
+    profile: CompanyProfileOutput
+
+
+class PainPointItem(BaseModel):
+    title: str = Field(..., description="Short name for the pain point or gap.")
+    description: str = Field(..., description="What is going on and why it matters.")
+    prominence: int = Field(
+        ..., ge=1, le=10, description="Importance 1 (low) to 10 (high) from research."
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="URL strings for facts behind this point.",
+    )
+
+
+class PainPointProfilerOutput(BaseModel):
+    pain_points: list[PainPointItem] = Field(default_factory=list)
+
+
+class PainPointProfilerInput(BaseModel):
+    company_profile: CompanyProfileOutput
+
+
+class PainPointProfilerResult(BaseModel):
+    research_text: str
+    output: PainPointProfilerOutput
+
+
+class SparkstralStep(BaseModel):
+    id: int
+    label: str
+    phase: Literal["research", "structure"]
+    content: str | None = None
+    data: dict[str, Any] | None = None
+
+
+class SparkstralWorkflowResult(BaseModel):
+    steps: list[SparkstralStep]
