@@ -43,7 +43,7 @@ class CompanyProfilerAgent(BaseAgent):
     async def _research(self, company_query: str) -> str:
         response = await self.client.beta.conversations.start_async(
             model=settings.COMPANY_PROFILER_SEARCH_MODEL,
-            inputs=f"Research this company thoroughly: {company_query}",
+            inputs=f"Research this company thoroughly: {company_query}\nYou have to include the full URL of the source associated with each thing you say.",
             tools=[WebSearchTool()],  # type: ignore[arg-type]
         )
         return _extract_text(response)
@@ -61,7 +61,8 @@ class CompanyProfilerAgent(BaseAgent):
                     "content": (
                         f"Company query: {company_query}\n\n"
                         f"Research notes:\n{research_text}\n\n"
-                        "Return the structured profile, with only the most relevant information."
+                        "Return the structured profile with only the most relevant"
+                        " information. "
                         "Be concise: 2-5 items each for business_lines, key_customers,"
                         " and strategic_priorities."
                     ),

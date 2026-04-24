@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class CompanyResolutionStatus(str, Enum):
@@ -17,8 +17,9 @@ class EvidenceItem(BaseModel):
     claim: str = Field(
         ..., description="Short factual claim used to build the profile."
     )
-    source: HttpUrl = Field(
-        ..., description="HTTPS (or http) URL supporting the claim."
+    source: str = Field(
+        ...,
+        description="URL string (https recommended) supporting the claim.",
     )
 
 
