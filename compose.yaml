@@ -23,9 +23,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sparkstral -d sparkstral"]
-      interval: 5s
-      timeout: 5s
+      interval: 30s
+      start_interval: 1s
+      timeout: 2s
       retries: 5
+      start_period: 30s
 
   backend:
     build: ./backend
@@ -44,8 +46,9 @@ services:
           "-c",
           "import urllib.request as u; r=u.urlopen('http://127.0.0.1:8000/api/health', timeout=5); assert r.status==200",
         ]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      start_interval: 1s
+      timeout: 2s
       retries: 5
       start_period: 30s
 

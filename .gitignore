@@ -68,6 +68,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+.codex
 
 # --- Postgres & databases ---
 *.sql.backup

@@ -9,4 +9,4 @@ RUN uv sync --no-dev
 
 COPY src ./src
 
-CMD ["uv", "run", "python", "-m", "src.worker"]
+CMD ["uv", "run", "--no-dev", "python", "-m", "src.worker"]
