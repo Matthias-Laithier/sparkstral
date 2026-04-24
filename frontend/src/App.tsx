@@ -54,6 +54,30 @@ function CompanyProfileView({ data }: { data: CompanyProfileData }) {
 					</ul>
 				</div>
 			)}
+			{data.key_customers && data.key_customers.length > 0 && (
+				<div>
+					<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+						Key customers
+					</p>
+					<ul className="list-disc list-inside text-slate-700">
+						{data.key_customers.map((x) => (
+							<li key={x}>{x}</li>
+						))}
+					</ul>
+				</div>
+			)}
+			{data.strategic_priorities && data.strategic_priorities.length > 0 && (
+				<div>
+					<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+						Strategic priorities
+					</p>
+					<ul className="list-disc list-inside text-slate-700">
+						{data.strategic_priorities.map((x) => (
+							<li key={x}>{x}</li>
+						))}
+					</ul>
+				</div>
+			)}
 			{data.evidence && data.evidence.length > 0 && (
 				<div>
 					<p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
