@@ -14,6 +14,7 @@ make up
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 - API docs: http://localhost:8000/docs
+- PostgreSQL runs in Docker for the **web search cache** (the backend must have `DATABASE_URL` set, as in [`.env.example`](.env.example))
 
 Stop the stack:
 
@@ -41,6 +42,14 @@ npm run dev
 
 ## Quality checks
 
+Backend tests require **PostgreSQL** (same credentials as in [`.env.example`](.env.example), port `5432` on the host). For example:
+
+```bash
+docker compose up -d postgres
+```
+
+Then run `make test` (or `cd backend && uv run pytest`).
+
 ```bash
 make format     # format backend + frontend
 make lint       # lint backend + frontend
@@ -62,8 +71,10 @@ make check      # run all of the above
 | Variable | Required | Description |
 |---|---|---|
 | `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
+| `DATABASE_URL` | Yes (backend) | SQLAlchemy URL for PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/db` |
+| `BACKEND_BASE_URL` | Yes (worker) | Base URL of the FastAPI backend; web search cache calls use this. Compose sets `http://backend:8000`. |
 | `DEPLOYMENT_NAME` | Yes | Workflow id: must match the worker registration and API `execute_workflow` |
-| `SERPER_API_KEY` | Yes (worker) | Serper API key for web search in research activities |
+| `SERPER_API_KEY` | Yes (worker) | Serper API key for web search on cache miss (stored rows come from the backend) |
 | `WEB_SEARCH_MODEL` | Yes (worker) | Model for the web-search tool loop |
 | `WEB_SEARCH_MAX_ROUNDS` | Yes (worker) | Max tool-call rounds per research step |
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured company profile (`parse`) |

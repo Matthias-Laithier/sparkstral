@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     MISTRAL_API_KEY: str
     DEPLOYMENT_NAME: str
+    BACKEND_BASE_URL: str
     SERPER_API_KEY: str
     WEB_SEARCH_MODEL: str
     WEB_SEARCH_MAX_ROUNDS: int

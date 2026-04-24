@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     MISTRAL_API_KEY: str
     DEPLOYMENT_NAME: str
+    DATABASE_URL: str
 
 
 settings = Settings()  # type: ignore[call-arg]

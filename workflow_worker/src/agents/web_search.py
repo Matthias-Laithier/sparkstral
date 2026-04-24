@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from src.agents.base import BaseAgent
 from src.config import settings
-from src.tools.serper import SERPER_TOOL, serper_search
+from src.tools.cached_web_search import CACHED_WEB_SEARCH_TOOL, cached_web_search
 
 
 class WebSearchInput(BaseModel):
@@ -21,14 +21,17 @@ class WebSearchOutput(BaseModel):
 class WebSearchAgent(BaseAgent):
     name = "web-search"
     system_prompt = (
-        "You are a research assistant. Use web_search to find accurate,"
+        "You are a research assistant. Use cached_web_search to find accurate,"
         " up-to-date information. Cite the source URL for every fact you report. "
         "You have to be concise and to the point."
     )
 
     async def run(self, input: WebSearchInput) -> WebSearchOutput:  # type: ignore[override]
         today = date.today().strftime("%Y-%m-%d")
-        system = f"{self.system_prompt} The current date is {today}."
+        system = (
+            f"{self.system_prompt} The current date is {today}. "
+            "Use that date for you web searches as it will give you the most up to date information."
+        )
         messages: list[Any] = [
             {"role": "system", "content": system},
             {"role": "user", "content": input.prompt},
@@ -38,7 +41,7 @@ class WebSearchAgent(BaseAgent):
             response = await self.client.chat.complete_async(
                 model=settings.WEB_SEARCH_MODEL,
                 messages=messages,
-                tools=[cast(Any, SERPER_TOOL)],
+                tools=[cast(Any, CACHED_WEB_SEARCH_TOOL)],
                 tool_choice="auto",
                 max_tokens=settings.LLM_MAX_TOKENS,
                 temperature=settings.LLM_TEMPERATURE,
@@ -56,11 +59,9 @@ class WebSearchAgent(BaseAgent):
                 return WebSearchOutput(text=_text(msg))
 
             for tc in msg.tool_calls:
-                if tc.function.name == "web_search":
+                if tc.function.name == "cached_web_search":
                     args = json.loads(cast(str, tc.function.arguments))
-                    result = serper_search(
-                        args.get("query", ""), settings.SERPER_API_KEY
-                    )
+                    result = await cached_web_search(args.get("query", ""))
                 else:
                     result = f"Unknown tool: {tc.function.name}"
 
