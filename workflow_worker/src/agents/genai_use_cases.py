@@ -1,9 +1,9 @@
 import json
 import logging
 
-from src.core.config import settings
-from src.workflow.agents.base import BaseAgent
-from src.workflow.schemas import (
+from src.agents.base import BaseAgent
+from src.config import settings
+from src.schemas import (
     GenAIUseCasesInput,
     GenAIUseCasesOutput,
 )
@@ -42,7 +42,8 @@ class GenAIUseCasesAgent(BaseAgent):
             parsed = await self.client.chat.parse_async(
                 GenAIUseCasesOutput,
                 model=settings.GENAI_USE_CASES_MODEL,
-                temperature=settings.GENAI_USE_CASES_TEMPERATURE,
+                max_tokens=settings.LLM_MAX_TOKENS,
+                temperature=settings.GENAI_USE_CASES_LLM_TEMPERATURE,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {

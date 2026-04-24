@@ -1,18 +1,17 @@
 [project]
-name = "backend"
+name = "workflow-worker"
 version = "0.1.0"
-description = "Sparkstral backend"
+description = "Sparkstral workflow worker"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi[standard]>=0.136.1",
     "mistralai>=2.4.2",
+    "mistralai-workflows>=3.3.0",
     "pydantic-settings>=2.14.0",
 ]
 
 [dependency-groups]
 dev = [
     "mypy>=1.20.2",
-    "pytest>=9.0.3",
     "ruff>=0.15.11",
 ]
 
@@ -25,6 +24,3 @@ select = ["E", "F", "I"]
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

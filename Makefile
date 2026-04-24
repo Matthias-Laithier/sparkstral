@@ -23,14 +23,17 @@ clean:
 
 format:
 	cd backend && uv run ruff format .
+	cd workflow_worker && uv run ruff format .
 	cd frontend && npm run format
 
 lint:
 	cd backend && uv run ruff check .
+	cd workflow_worker && uv run ruff check .
 	cd frontend && npm run lint
 
 typecheck:
 	cd backend && uv run mypy src
+	cd workflow_worker && uv run mypy src
 	cd frontend && npm run typecheck
 
 test:

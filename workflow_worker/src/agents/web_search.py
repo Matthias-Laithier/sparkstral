@@ -4,9 +4,9 @@ from typing import Any, cast
 from mistralai.client.models import AssistantMessage, ToolMessage
 from pydantic import BaseModel
 
-from src.core.config import settings
-from src.workflow.agents.base import BaseAgent
-from src.workflow.tools.serper import SERPER_TOOL, serper_search
+from src.agents.base import BaseAgent
+from src.config import settings
+from src.tools.serper import SERPER_TOOL, serper_search
 
 
 class WebSearchInput(BaseModel):
@@ -21,7 +21,8 @@ class WebSearchAgent(BaseAgent):
     name = "web-search"
     system_prompt = (
         "You are a research assistant. Use web_search to find accurate,"
-        " up-to-date information. Cite the source URL for every fact you report."
+        " up-to-date information. Cite the source URL for every fact you report. "
+        "You have to be concise and to the point."
     )
 
     async def run(self, input: WebSearchInput) -> WebSearchOutput:  # type: ignore[override]
@@ -36,6 +37,8 @@ class WebSearchAgent(BaseAgent):
                 messages=messages,
                 tools=[cast(Any, SERPER_TOOL)],
                 tool_choice="auto",
+                max_tokens=settings.LLM_MAX_TOKENS,
+                temperature=settings.LLM_TEMPERATURE,
             )
             if not response.choices:
                 break

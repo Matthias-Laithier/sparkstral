@@ -5,15 +5,15 @@ from mistralai.client.models import WorkflowExecutionResponse
 from src.core.config import settings
 from src.schemas.company import CompanyRequest, StatusResponse, TriggerResponse
 
-router = APIRouter(prefix="/company", tags=["company"])
+router = APIRouter(prefix="/company", tags=["workflows"])
 
 _client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
 
 @router.post("", response_model=TriggerResponse)
-def trigger_company_description(body: CompanyRequest) -> TriggerResponse:
+def trigger_workflow(body: CompanyRequest) -> TriggerResponse:
     execution = _client.workflows.execute_workflow(
-        workflow_identifier="sparkstral",
+        workflow_identifier=settings.DEPLOYMENT_NAME,
         input={"company_name": body.company_name},
     )
     if isinstance(execution, WorkflowExecutionResponse):

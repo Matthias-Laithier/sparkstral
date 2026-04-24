@@ -1,9 +1,9 @@
 import logging
 
-from src.core.config import settings
-from src.workflow.agents.base import BaseAgent
-from src.workflow.agents.web_search import WebSearchAgent, WebSearchInput
-from src.workflow.schemas import (
+from src.agents.base import BaseAgent
+from src.agents.web_search import WebSearchAgent, WebSearchInput
+from src.config import settings
+from src.schemas import (
     CompanyProfileInput,
     CompanyProfileOutput,
     CompanyProfilerResult,
@@ -69,6 +69,8 @@ class CompanyProfilerAgent(BaseAgent):
         parsed = await self.client.chat.parse_async(
             CompanyProfileOutput,
             model=settings.COMPANY_PROFILER_AGENT_MODEL,
+            max_tokens=settings.LLM_MAX_TOKENS,
+            temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": self.system_prompt},
                 {

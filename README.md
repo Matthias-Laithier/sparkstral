@@ -62,13 +62,16 @@ make check      # run all of the above
 | Variable | Required | Description |
 |---|---|---|
 | `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
-| `COMPANY_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of company profiling |
-| `COMPANY_PROFILER_AGENT_MODEL` | Yes | Model for the structured `CompanyProfileOutput` parse phase |
-| `PAIN_POINT_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of pain-point analysis |
-| `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes | Model for the structured `PainPointProfilerOutput` parse phase |
-| `GENAI_USE_CASES_MODEL` | Yes | Model for the structured `GenAIUseCasesOutput` (no web search) |
-| `GENAI_USE_CASES_TEMPERATURE` | No (default `0.88`) | Sampling temperature for use-case ideation (higher = more diverse) |
-| `DEPLOYMENT_NAME` | Yes | Stable identifier for this worker deployment (e.g. `sparkstral`) |
+| `DEPLOYMENT_NAME` | Yes | Workflow id: must match the worker registration and API `execute_workflow` |
+| `SERPER_API_KEY` | Yes (worker) | Serper API key for web search in research activities |
+| `WEB_SEARCH_MODEL` | Yes (worker) | Model for the web-search tool loop |
+| `WEB_SEARCH_MAX_ROUNDS` | Yes (worker) | Max tool-call rounds per research step |
+| `COMPANY_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured company profile (`parse`) |
+| `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured pain points (`parse`) |
+| `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use cases (`parse`) |
+| `LLM_MAX_TOKENS` | Yes (worker) | Max output tokens for every chat completion / parse call (e.g. `2048`) |
+| `LLM_TEMPERATURE` | Yes (worker) | Temperature for web search and structured profile/pain `parse` calls (e.g. `0`) |
+| `GENAI_USE_CASES_LLM_TEMPERATURE` | Yes (worker) | Temperature for GenAI use-case `parse` only (e.g. `1` for diversity) |
 
 ## Company description workflow
 
@@ -82,20 +85,22 @@ make up
 
 The workflow worker, FastAPI backend, and React frontend all start together via Docker Compose.
 
-**Trigger an execution** from the frontend at http://localhost:5173, or from [console.mistral.ai](https://console.mistral.ai) → Workflows → `sparkstral` → Start Workflow with input:
+**Trigger an execution** from the frontend at http://localhost:5173, or from [console.mistral.ai](https://console.mistral.ai) → Workflows → your `DEPLOYMENT_NAME` (e.g. `sparkstral`) → Start Workflow with input:
 
 ```json
 {"company_name": "Mistral AI"}
 ```
 
-Or programmatically:
+Or programmatically (`workflow_identifier` must match `DEPLOYMENT_NAME` in `.env` and the registered worker workflow):
 
 ```python
+import os
+
 from mistralai.client import Mistral
 
 client = Mistral(api_key="your_key")
 execution = client.workflows.execute_workflow(
-    workflow_identifier="sparkstral",
+    workflow_identifier=os.environ["DEPLOYMENT_NAME"],
     input={"company_name": "Mistral AI"},
 )
 print(execution.model_dump_json(indent=2))
@@ -109,13 +114,14 @@ print(execution.model_dump_json(indent=2))
 │   └── src/
 │       ├── api/       Typed API client
 │       └── App.tsx    Main component
-├── backend/           FastAPI app + Mistral Workflows worker
+├── backend/           FastAPI API (Mistral client; triggers workflows by `DEPLOYMENT_NAME`)
 │   └── src/
-│       ├── api/         Route handlers
+│       ├── api/         Route handlers (e.g. Mistral workflow trigger + status)
 │       ├── core/        Config (settings)
 │       ├── schemas/     Pydantic models
-│       ├── workflow/    Mistral Workflows definitions (worker: `src.workflow.worker`)
 │       └── main.py      App entry point
+├── workflow_worker/   Mistral Workflows worker (registers workflow `name=DEPLOYMENT_NAME`)
+│   └── src/             `python -m src.worker`
 ├── compose.yaml
 ├── Makefile
 └── .env.example

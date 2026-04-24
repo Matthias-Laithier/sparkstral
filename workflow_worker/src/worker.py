@@ -6,22 +6,24 @@ import mistralai.workflows as workflows
 from mistralai.workflows import workflow
 from pydantic import BaseModel, ConfigDict
 
-# Activity and schema modules pull in mistralai.client / httpx. The Temporal
-# workflow sandbox blocks those imports unless they run under pass-through.
+# Activity and schema modules pull in mistralai.client / httpx. `src.config` loads
+# pydantic-settings/dotenv (pathlib), which the workflow sandbox rejects unless the
+# import is marked pass-through (same as activities).
 with workflow.unsafe.imports_passed_through():
-    from src.workflow.activities import (
+    from src.activities import (
         generate_genai_use_cases,
         profile_company,
         profile_pain_points,
     )
-    from src.workflow.schemas import (
+    from src.config import settings
+    from src.schemas import (
         CompanyProfileInput,
         GenAIUseCasesInput,
         PainPointProfilerInput,
         SparkstralStep,
         SparkstralWorkflowResult,
     )
-    from src.workflow.utils import append_sparkstral_step
+    from src.utils import append_sparkstral_step
 
 
 class CompanyInput(BaseModel):
@@ -31,8 +33,8 @@ class CompanyInput(BaseModel):
 
 
 @workflows.workflow.define(
-    name="sparkstral",
-    workflow_display_name="Sparkstral",
+    name=settings.DEPLOYMENT_NAME,
+    workflow_display_name=settings.DEPLOYMENT_NAME.capitalize(),
     workflow_description="Research a company and return a structured profile",
     execution_timeout=timedelta(minutes=10),
 )

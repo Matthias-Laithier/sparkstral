@@ -1,11 +1,11 @@
-import mistralai.workflows as workflows
-from mistralai.client import Mistral
+from datetime import timedelta
 
-from src.core.config import settings
-from src.workflow.agents.company_profiler import CompanyProfilerAgent
-from src.workflow.agents.genai_use_cases import GenAIUseCasesAgent
-from src.workflow.agents.pain_point_profiler import PainPointProfilerAgent
-from src.workflow.schemas import (
+import mistralai.workflows as workflows
+
+from src.agents.company_profiler import CompanyProfilerAgent
+from src.agents.genai_use_cases import GenAIUseCasesAgent
+from src.agents.pain_point_profiler import PainPointProfilerAgent
+from src.schemas import (
     CompanyProfileInput,
     CompanyProfilerResult,
     GenAIUseCasesInput,
@@ -13,28 +13,29 @@ from src.workflow.schemas import (
     PainPointProfilerInput,
     PainPointProfilerResult,
 )
+from src.utils import get_mistral_client
 
 
-@workflows.activity()
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def profile_company(params: CompanyProfileInput) -> CompanyProfilerResult:
-    client = Mistral(api_key=settings.MISTRAL_API_KEY)
+    client = get_mistral_client()
     agent = CompanyProfilerAgent(client=client)
     return await agent.run(params)
 
 
-@workflows.activity()
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def profile_pain_points(
     params: PainPointProfilerInput,
 ) -> PainPointProfilerResult:
-    client = Mistral(api_key=settings.MISTRAL_API_KEY)
+    client = get_mistral_client()
     agent = PainPointProfilerAgent(client=client)
     return await agent.run(params)
 
 
-@workflows.activity()
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def generate_genai_use_cases(
     params: GenAIUseCasesInput,
 ) -> GenAIUseCasesOutput:
-    client = Mistral(api_key=settings.MISTRAL_API_KEY)
+    client = get_mistral_client()
     agent = GenAIUseCasesAgent(client=client)
     return await agent.run(params)

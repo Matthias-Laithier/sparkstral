@@ -20,8 +20,7 @@ services:
       retries: 3
 
   workflow-worker:
-    build: ./backend
+    build: ./workflow_worker
     env_file: .env
-    command: ["uv", "run", "python", "-m", "src.workflow.worker"]
     depends_on:
       - backend

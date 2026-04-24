@@ -1,10 +1,10 @@
 import json
 import logging
 
-from src.core.config import settings
-from src.workflow.agents.base import BaseAgent
-from src.workflow.agents.web_search import WebSearchAgent, WebSearchInput
-from src.workflow.schemas import (
+from src.agents.base import BaseAgent
+from src.agents.web_search import WebSearchAgent, WebSearchInput
+from src.config import settings
+from src.schemas import (
     CompanyProfileOutput,
     PainPointProfilerInput,
     PainPointProfilerOutput,
@@ -56,9 +56,8 @@ class PainPointProfilerAgent(BaseAgent):
                 prompt=(
                     "Search the web for major pain points, unmet needs, and structural"
                     f" challenges in the company's field.\n\n{company_context}\n\n"
-                    "Use few sources: prefer a relevant Wikipedia article when it"
-                    " exists,"
-                    " plus at most one or two other reputable sources.\n"
+                    "Use few sources: prefer Wikipedia, plus at most one or two other"
+                    " reliable pages.\n"
                     "Include the full URL for each finding you cite."
                 )
             )
@@ -71,6 +70,8 @@ class PainPointProfilerAgent(BaseAgent):
         parsed = await self.client.chat.parse_async(
             PainPointProfilerOutput,
             model=settings.PAIN_POINT_PROFILER_AGENT_MODEL,
+            max_tokens=settings.LLM_MAX_TOKENS,
+            temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": self.system_prompt},
                 {

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.company import router as company_router
 from src.api.message import router as message_router
+from src.api.mistral_workflows import router as workflows_router
 
 app = FastAPI(title="Sparkstral")
 
@@ -14,7 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(message_router, prefix="/api")
-app.include_router(company_router, prefix="/api")
+app.include_router(workflows_router, prefix="/api")
 
 
 @app.get("/api/health")
