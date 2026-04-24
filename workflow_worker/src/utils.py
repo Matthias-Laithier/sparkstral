@@ -8,24 +8,25 @@ from src.config import settings
 from src.schemas import SparkstralStep
 from mistralai.client.httpclient import AsyncHttpClient
 
-LONG_TIMEOUT = httpx.Timeout(
-    connect=10.0,
-    read=180.0,
-    write=30.0,
-    pool=10.0,
-)
+
 
 
 class LongTimeoutAsyncClient(AsyncHttpClient):
     def __init__(self) -> None:
+        self.LONG_TIMEOUT = httpx.Timeout(
+            connect=10.0,
+            read=180.0,
+            write=30.0,
+            pool=10.0,
+        )
         self._client = httpx.AsyncClient(
             follow_redirects=True,
-            timeout=LONG_TIMEOUT,
+            timeout=self.LONG_TIMEOUT,
         )
 
     def build_request(self, method, url, **kwargs):
         # Force timeout even if the SDK passes its own default.
-        kwargs["timeout"] = LONG_TIMEOUT
+        kwargs["timeout"] = self.LONG_TIMEOUT
         return self._client.build_request(method, url, **kwargs)
 
     async def send(self, request, **kwargs):
