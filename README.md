@@ -62,6 +62,8 @@ make check      # run all of the above
 | Variable | Required | Description |
 |---|---|---|
 | `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
+| `COMPANY_PROFILER_SEARCH_MODEL` | Yes | Model for the web-search research phase of company profiling |
+| `COMPANY_PROFILER_AGENT_MODEL` | Yes | Model for the structured `CompanyProfileOutput` parse phase |
 | `DEPLOYMENT_NAME` | Yes | Stable identifier for this worker deployment (e.g. `sparkstral`) |
 
 ## Company description workflow
@@ -108,7 +110,7 @@ print(execution.model_dump_json(indent=2))
 │       ├── api/         Route handlers
 │       ├── core/        Config (settings)
 │       ├── schemas/     Pydantic models
-│       ├── workflows/   Mistral Workflows definitions
+│       ├── workflow/    Mistral Workflows definitions (worker: `src.workflow.company`)
 │       └── main.py      App entry point
 ├── compose.yaml
 ├── Makefile

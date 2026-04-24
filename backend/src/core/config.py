@@ -7,7 +7,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    mistral_api_key: str
+    MISTRAL_API_KEY: str
+    COMPANY_PROFILER_SEARCH_MODEL: str
+    COMPANY_PROFILER_AGENT_MODEL: str
 
 
 settings = Settings()  # type: ignore[call-arg]

@@ -7,7 +7,7 @@ from src.schemas.company import CompanyRequest, StatusResponse, TriggerResponse
 
 router = APIRouter(prefix="/company", tags=["company"])
 
-_client = Mistral(api_key=settings.mistral_api_key)
+_client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
 
 @router.post("", response_model=TriggerResponse)
