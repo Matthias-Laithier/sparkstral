@@ -30,7 +30,8 @@ class WebSearchAgent(BaseAgent):
         today = date.today().strftime("%Y-%m-%d")
         system = (
             f"{self.system_prompt} The current date is {today}. "
-            "Use that date for you web searches as it will give you the most up to date information."
+            "Use that date for you web searches as it will give "
+            "you the most up to date information."
         )
         messages: list[Any] = [
             {"role": "system", "content": system},
