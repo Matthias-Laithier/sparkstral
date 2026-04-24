@@ -22,8 +22,8 @@ clean:
 	docker compose down -v --remove-orphans
 
 format:
-	cd backend && uv run ruff format .
-	cd workflow_worker && uv run ruff format .
+	cd backend && uv run ruff format . && ruff check --select I --fix
+	cd workflow_worker && uv run ruff format . && ruff check --select I --fix
 	cd frontend && npm run format
 
 lint:
