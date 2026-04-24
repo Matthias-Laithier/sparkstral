@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from typing import Any, cast
 
 from mistralai.client.models import AssistantMessage, ToolMessage
@@ -26,8 +27,10 @@ class WebSearchAgent(BaseAgent):
     )
 
     async def run(self, input: WebSearchInput) -> WebSearchOutput:  # type: ignore[override]
+        today = date.today().strftime("%Y-%m-%d")
+        system = f"{self.system_prompt} The current date is {today}."
         messages: list[Any] = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": system},
             {"role": "user", "content": input.prompt},
         ]
 
