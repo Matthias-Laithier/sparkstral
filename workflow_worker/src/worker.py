@@ -4,32 +4,14 @@ from typing import Any
 
 import mistralai.workflows as workflows
 from mistralai.workflows import workflow
-from pydantic import BaseModel, ConfigDict
 
 # Activity and schema modules pull in mistralai.client / httpx. `src.config` loads
 # pydantic-settings/dotenv (pathlib), which the workflow sandbox rejects unless the
-# import is marked pass-through (same as activities).
+# import is marked pass-through.
 with workflow.unsafe.imports_passed_through():
-    from src.activities import (
-        generate_genai_use_cases,
-        profile_company,
-        profile_pain_points,
-    )
     from src.config import settings
-    from src.schemas import (
-        CompanyProfileInput,
-        GenAIUseCasesInput,
-        PainPointProfilerInput,
-        SparkstralStep,
-        SparkstralWorkflowResult,
-    )
-    from src.utils import append_sparkstral_step
-
-
-class CompanyInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_name: str
+    from src.pipeline import run_sparkstral_pipeline
+    from src.schemas import CompanyInput
 
 
 @workflows.workflow.define(
@@ -41,50 +23,8 @@ class CompanyInput(BaseModel):
 class SparkstralWorkflow:
     @workflows.workflow.entrypoint
     async def run(self, params: CompanyInput) -> dict[str, Any]:
-        steps: list[SparkstralStep] = []
-        company = await profile_company(
-            CompanyProfileInput(company_query=params.company_name)
-        )
-        append_sparkstral_step(
-            steps,
-            label="Company research (web search)",
-            phase="research",
-            content=company.research_text,
-        )
-        append_sparkstral_step(
-            steps,
-            label="Company profile (structured)",
-            phase="structure",
-            data=company.profile.model_dump(mode="json"),
-        )
-        pain = await profile_pain_points(
-            PainPointProfilerInput(company_profile=company.profile)
-        )
-        append_sparkstral_step(
-            steps,
-            label="Pain point research (web search)",
-            phase="research",
-            content=pain.research_text,
-        )
-        append_sparkstral_step(
-            steps,
-            label="Pain points (structured)",
-            phase="structure",
-            data=pain.output.model_dump(mode="json"),
-        )
-        use_cases = await generate_genai_use_cases(
-            GenAIUseCasesInput(
-                company_profile=company.profile,
-                pain_points=pain.output,
-            )
-        )
-        append_sparkstral_step(
-            steps,
-            label="GenAI use cases (structured)",
-            phase="structure",
-            data=use_cases.model_dump(mode="json"),
-        )
-        return SparkstralWorkflowResult(steps=steps).model_dump(mode="json")
+        result = await run_sparkstral_pipeline(params)
+        return result.model_dump(mode="json")
 
 
 async def main() -> None:

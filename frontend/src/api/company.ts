@@ -1,4 +1,7 @@
-import type { SparkstralWorkflowResult } from "../types/sparkstral";
+import {
+	isSparkstralResult,
+	type SparkstralWorkflowResult,
+} from "../types/sparkstral";
 
 export type TriggerResponse = {
 	execution_id: string;
@@ -39,7 +42,7 @@ export async function getExecutionStatus(
 	return (await response.json()) as StatusResponse;
 }
 
-/** Unwrap common Mistral or proxy nesting: `{ steps: [...] }` or `{ result: { ... } }`. */
+/** Unwrap common Mistral or proxy nesting: `{ outputs: [...] }` or `{ result: { ... } }`. */
 function extractSparkstralPayload(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value === "string") {
@@ -49,7 +52,7 @@ function extractSparkstralPayload(value: unknown): unknown {
 			return value;
 		}
 	}
-	if (typeof value === "object" && value !== null && "steps" in value) {
+	if (isSparkstralResult(value)) {
 		return value;
 	}
 	if (typeof value === "object" && value !== null && "result" in value) {
@@ -58,18 +61,10 @@ function extractSparkstralPayload(value: unknown): unknown {
 	return value;
 }
 
-/** When status is COMPLETED, `result` may be a Sparkstral payload with ordered steps. */
+/** When status is COMPLETED, `result` may be a Sparkstral payload. */
 export function asSparkstralResult(
 	result: unknown,
 ): SparkstralWorkflowResult | null {
 	const payload = extractSparkstralPayload(result);
-	if (
-		payload &&
-		typeof payload === "object" &&
-		"steps" in payload &&
-		Array.isArray((payload as { steps: unknown }).steps)
-	) {
-		return payload as SparkstralWorkflowResult;
-	}
-	return null;
+	return isSparkstralResult(payload) ? payload : null;
 }

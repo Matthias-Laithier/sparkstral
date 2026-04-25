@@ -86,7 +86,9 @@ make check      # run all of the above
 
 ## Company description workflow
 
-A Mistral Workflows worker that, given a company name, runs company research and profiling, a pain-point pass, then a GenAI use-case ideation step—ordered steps in the UI.
+A Mistral Workflows worker that, given a company name, runs company research,
+profiling, pain-point analysis, and returns exactly 3 high-impact GenAI use cases.
+The frontend is a simple output viewer for the workflow's raw text and JSON results.
 
 **Run everything** (worker + backend + frontend) with one command:
 

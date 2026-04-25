@@ -22,8 +22,8 @@ clean:
 	docker compose down -v --remove-orphans
 
 format:
-	cd backend && uv run ruff format . && ruff check --select I --fix
-	cd workflow_worker && uv run ruff format . && ruff check --select I --fix
+	cd backend && uv run ruff format . && uv run ruff check --select I --fix
+	cd workflow_worker && uv run ruff format . && uv run ruff check --select I --fix
 	cd frontend && npm run format
 
 lint:
@@ -38,6 +38,7 @@ typecheck:
 
 test:
 	cd backend && uv run pytest
+	cd workflow_worker && uv run pytest
 	cd frontend && npm run test
 
 check: format lint typecheck test

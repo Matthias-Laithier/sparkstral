@@ -1,13 +1,13 @@
-export type SparkstralStep = {
+export type PipelineOutput = {
 	id: number;
-	label: string;
-	phase: "research" | "structure";
-	content?: string | null;
+	kind: "text" | "json";
+	text?: string | null;
 	data?: Record<string, unknown> | null;
 };
 
 export type SparkstralWorkflowResult = {
-	steps: SparkstralStep[];
+	outputs: PipelineOutput[];
+	final: GenAIUseCasesData;
 };
 
 export type CompanyProfileData = {
@@ -51,5 +51,5 @@ export function isSparkstralResult(
 ): value is SparkstralWorkflowResult {
 	if (value === null || typeof value !== "object") return false;
 	const o = value as Record<string, unknown>;
-	return Array.isArray(o.steps);
+	return Array.isArray(o.outputs);
 }

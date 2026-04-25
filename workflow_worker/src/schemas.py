@@ -1,10 +1,20 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class CompanyInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_name: str = Field(..., description="Raw company name entered by the user.")
 
 
 class CompanyProfileInput(BaseModel):
     company_query: str = Field(..., description="Raw company name entered by the user.")
+
+
+class ResearchResult(BaseModel):
+    text: str
 
 
 class EvidenceItem(BaseModel):
@@ -26,13 +36,13 @@ class CompanyProfileOutput(BaseModel):
     evidence: list[EvidenceItem] = Field(default_factory=list)
     notes: str = Field(
         default="",
-        description="Optional caveats or extraction errors.",
+        description="Optional caveats about the extracted profile.",
     )
 
 
-class CompanyProfilerResult(BaseModel):
+class CompanyProfileStructuringInput(BaseModel):
+    company_query: str
     research_text: str
-    profile: CompanyProfileOutput
 
 
 class PainPointItem(BaseModel):
@@ -51,13 +61,13 @@ class PainPointProfilerOutput(BaseModel):
     pain_points: list[PainPointItem] = Field(default_factory=list)
 
 
-class PainPointProfilerInput(BaseModel):
+class PainPointResearchInput(BaseModel):
     company_profile: CompanyProfileOutput
 
 
-class PainPointProfilerResult(BaseModel):
+class PainPointStructuringInput(BaseModel):
+    company_profile: CompanyProfileOutput
     research_text: str
-    output: PainPointProfilerOutput
 
 
 class GenAIUseCaseItem(BaseModel):
@@ -93,8 +103,10 @@ class GenAIUseCaseItem(BaseModel):
 
 class GenAIUseCasesOutput(BaseModel):
     use_cases: list[GenAIUseCaseItem] = Field(
-        default_factory=list,
-        description="Between 8 and 12 use cases (ideally 10).",
+        ...,
+        min_length=3,
+        max_length=3,
+        description="Exactly 3 high-impact GenAI use cases.",
     )
 
 
@@ -103,13 +115,13 @@ class GenAIUseCasesInput(BaseModel):
     pain_points: PainPointProfilerOutput
 
 
-class SparkstralStep(BaseModel):
+class PipelineOutput(BaseModel):
     id: int
-    label: str
-    phase: Literal["research", "structure"]
-    content: str | None = None
+    kind: Literal["text", "json"]
+    text: str | None = None
     data: dict[str, Any] | None = None
 
 
 class SparkstralWorkflowResult(BaseModel):
-    steps: list[SparkstralStep]
+    outputs: list[PipelineOutput]
+    final: GenAIUseCasesOutput

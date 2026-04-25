@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.message import router as message_router
 from src.api.mistral_workflows import router as workflows_router
 from src.api.web_search_cache import router as web_search_cache_router
 from src.db.engine import init_db
@@ -25,7 +24,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(message_router, prefix="/api")
 app.include_router(workflows_router, prefix="/api")
 app.include_router(web_search_cache_router, prefix="/api")
 

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from src.agents.base import BaseAgent
 from src.config import settings
+from src.prompts import web_search_system_prompt
 from src.tools.cached_web_search import CACHED_WEB_SEARCH_TOOL, cached_web_search
 
 
@@ -18,24 +19,13 @@ class WebSearchOutput(BaseModel):
     text: str
 
 
-class WebSearchAgent(BaseAgent):
+class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
     name = "web-search"
-    system_prompt = (
-        "You are a research assistant. Use cached_web_search to find accurate,"
-        " up-to-date information. Cite the source URL for every fact you report. "
-        "You have to be concise and to the point."
-    )
 
-    async def run(self, input: WebSearchInput) -> WebSearchOutput:  # type: ignore[override]
-        today = date.today().strftime("%Y-%m-%d")
-        system = (
-            f"{self.system_prompt} The current date is {today}. "
-            "Use that date for you web searches as it will give "
-            "you the most up to date information."
-        )
+    async def run(self, params: WebSearchInput) -> WebSearchOutput:
         messages: list[Any] = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": input.prompt},
+            {"role": "system", "content": web_search_system_prompt(date.today())},
+            {"role": "user", "content": params.prompt},
         ]
 
         for _ in range(settings.WEB_SEARCH_MAX_ROUNDS):
@@ -57,7 +47,10 @@ class WebSearchAgent(BaseAgent):
             messages.append(msg)
 
             if not msg.tool_calls:
-                return WebSearchOutput(text=_text(msg))
+                text = _text(msg).strip()
+                if not text:
+                    raise RuntimeError("web search returned an empty assistant message")
+                return WebSearchOutput(text=text)
 
             for tc in msg.tool_calls:
                 if tc.function.name == "cached_web_search":
@@ -74,11 +67,14 @@ class WebSearchAgent(BaseAgent):
                     )
                 )
 
-        # Fallback: concatenate any assistant text collected so far
         texts: list[str] = [
-            _text(m) for m in messages if isinstance(m, AssistantMessage) and m.content
+            _text(m).strip()
+            for m in messages
+            if isinstance(m, AssistantMessage) and m.content
         ]
-        return WebSearchOutput(text="\n".join(texts))
+        if texts:
+            return WebSearchOutput(text="\n".join(texts))
+        raise RuntimeError("web search completed without usable research text")
 
 
 def _text(msg: AssistantMessage) -> str:
