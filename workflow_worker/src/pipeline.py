@@ -16,6 +16,7 @@ from src.activities import (
     structure_company_resolution,
     structure_pain_points,
     write_final_report,
+    write_markdown_report,
 )
 from src.schemas import (
     CompanyInput,
@@ -27,6 +28,7 @@ from src.schemas import (
     FinalReportInput,
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
+    MarkdownReportInput,
     OpportunityMapInput,
     PainPointResearchInput,
     PainPointStructuringInput,
@@ -164,4 +166,9 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json({"final_report": final_report.model_dump(mode="json")})
 
-    return SparkstralWorkflowResult(outputs=outputs, final=final_report)
+    markdown_report = await write_markdown_report(
+        MarkdownReportInput(final_report=final_report)
+    )
+    append_text(markdown_report.markdown)
+
+    return SparkstralWorkflowResult(outputs=outputs, final=markdown_report.markdown)

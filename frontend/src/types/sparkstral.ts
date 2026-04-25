@@ -7,7 +7,7 @@ export type PipelineOutput = {
 
 export type SparkstralWorkflowResult = {
 	outputs: PipelineOutput[];
-	final: GenAIUseCasesData;
+	final: string;
 };
 
 export type CompanyProfileData = {

@@ -17,7 +17,7 @@ with workflow.unsafe.imports_passed_through():
 @workflows.workflow.define(
     name=settings.DEPLOYMENT_NAME,
     workflow_display_name=settings.DEPLOYMENT_NAME.capitalize(),
-    workflow_description="Research a company and return a structured profile",
+    workflow_description="Research a company and return a client-ready GenAI report",
     execution_timeout=timedelta(minutes=10),
 )
 class SparkstralWorkflow:

@@ -355,6 +355,18 @@ class PipelineOutput(BaseModel):
     data: dict[str, Any] | None = None
 
 
+class MarkdownReportInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    final_report: FinalReport
+
+
+class MarkdownReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    markdown: str
+
+
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: FinalReport
+    final: str

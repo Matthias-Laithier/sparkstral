@@ -8,6 +8,7 @@ from src.agents.deduper import UseCaseDeduperAgent
 from src.agents.final_reporter import FinalReporterAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
+from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
 from src.agents.red_team import RedTeamAgent
@@ -35,6 +36,8 @@ from src.schemas import (
     GradedUseCasePool,
     GradeUseCasesInput,
     InitialSelectionOutput,
+    MarkdownReport,
+    MarkdownReportInput,
     OpportunityMapInput,
     OpportunityMapOutput,
     PainPointProfilerOutput,
@@ -209,6 +212,16 @@ async def write_final_report(params: FinalReportInput) -> FinalReport:
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("final report writing failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def write_markdown_report(params: MarkdownReportInput) -> MarkdownReport:
+    client = get_mistral_client()
+    agent = MarkdownReporterAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("markdown report writing failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

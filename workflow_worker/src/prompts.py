@@ -3,6 +3,7 @@ from datetime import date
 
 from src.schemas import (
     CompanyProfileOutput,
+    FinalReport,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
@@ -575,4 +576,44 @@ def final_reporter_user_prompt(
         "methodology, caveats, and report-level source_urls. The methodology must "
         "explain the scoring and refinement loop. Do not add markdown formatting "
         "or any Mistral/vendor-fit discussion."
+    )
+
+
+def markdown_reporter_system_prompt() -> str:
+    return (
+        "You are a senior GenAI strategy consultant writing the client-ready "
+        "markdown deliverable from an already structured final report JSON.\n"
+        "Return only structured data matching the requested schema. The `markdown` "
+        "field must contain the complete markdown report.\n"
+        "Write polished, professional prose for executives and business owners. "
+        "Make the report feel like a finished consulting deliverable, not a raw "
+        "data dump. Use clear markdown structure: title, executive summary, "
+        "company context, methodology, ranked recommendations, implementation "
+        "considerations, caveats, and sources.\n"
+        "Leverage the structure of the input JSON. Preserve the rank order and "
+        "include all three recommended use cases with their score totals and "
+        "important score breakdowns. Make each use case easy to scan with business "
+        "problem, proposed GenAI solution, why it fits the company, expected "
+        "impact, required data, feasibility, risks, and supporting sources.\n"
+        "Use only facts, caveats, scores, and source URLs from the supplied JSON. "
+        "Do not invent new facts, metrics, timelines or source URLs. Keep source "
+        "URLs as full URLs copied from the input."
+    )
+
+
+def markdown_reporter_user_prompt(final_report: FinalReport) -> str:
+    final_report_json = json.dumps(
+        final_report.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Structured final report JSON:\n"
+        f"{final_report_json}\n\n"
+        "Write the final client-ready markdown report in the `markdown` field. "
+        "Use the JSON as the source of truth. Start with a concise H1 title for "
+        "the company, then write a polished executive summary, company context, "
+        "methodology, ranked top-3 recommendations, caveats, and sources. "
+        "Use professional markdown formatting with headings, bullets, and tables "
+        "where useful, but do not include raw JSON or unsupported claims."
     )

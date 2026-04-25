@@ -1,12 +1,13 @@
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import final_reporter, grader, red_team, refiner
+from src.agents import final_reporter, grader, markdown_reporter, red_team, refiner
 from src.agents.final_reporter import FinalReporterAgent
 from src.agents.grader import UseCaseGraderAgent, compute_total_score
+from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.red_team import RedTeamAgent
 from src.agents.refiner import UseCaseRefinerAgent
 from src.schemas import (
@@ -25,6 +26,8 @@ from src.schemas import (
     GradedUseCasePool,
     GradeUseCasesInput,
     InitialSelectionOutput,
+    MarkdownReport,
+    MarkdownReportInput,
     OpportunityItem,
     OpportunityMapOutput,
     PainPointItem,
@@ -36,6 +39,7 @@ from src.schemas import (
     RefinedUseCasePool,
     RefineUseCasesInput,
     ResearchResult,
+    SparkstralWorkflowResult,
     UseCaseCriticism,
     UseCaseScore,
 )
@@ -287,6 +291,16 @@ def _final_report(final_selection: FinalSelectionOutput) -> FinalReport:
     )
 
 
+def _markdown_report() -> MarkdownReport:
+    return MarkdownReport(
+        markdown=(
+            "# Acme Corporation GenAI Opportunity Report\n\n"
+            "## Executive Summary\n\n"
+            "Top three use cases are ready for client discussion."
+        )
+    )
+
+
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
@@ -301,6 +315,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     red_team_params: RedTeamInput | None = None
     refiner_params: RefineUseCasesInput | None = None
     final_report_params: FinalReportInput | None = None
+    markdown_report_params: MarkdownReportInput | None = None
     generated_candidates = _candidate_pool()
     deduplicated_candidates = _deduplicated_pool()
     graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
@@ -368,6 +383,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         selected=select_top_n(final_graded_candidates.graded_use_cases, 3)
     )
     final_report_result = _final_report(final_selection)
+    markdown_report_result = _markdown_report()
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -455,6 +471,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         final_report_params = params
         return final_report_result
 
+    async def write_markdown_report(params: MarkdownReportInput) -> MarkdownReport:
+        nonlocal markdown_report_params
+        calls.append("write_markdown_report")
+        markdown_report_params = params
+        return markdown_report_result
+
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
     )
@@ -476,6 +498,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "red_team_use_cases", red_team_use_cases)
     monkeypatch.setattr(pipeline, "refine_use_cases", refine_use_cases)
     monkeypatch.setattr(pipeline, "write_final_report", write_final_report)
+    monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
@@ -496,6 +519,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "grade_use_cases",
         "select_final_top_3",
         "write_final_report",
+        "write_markdown_report",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -514,6 +538,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
+        "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
     assert result.outputs[6].data == _opportunity_map().model_dump(mode="json")
@@ -538,6 +563,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.outputs[15].data == {
         "final_report": final_report_result.model_dump(mode="json")
     }
+    assert result.outputs[16].text == markdown_report_result.markdown
     assert generation_opportunity_map == _opportunity_map()
     assert deduplication_candidates == generated_candidates
     assert grading_use_cases == [deduplicated_candidates.use_cases, refined_candidates]
@@ -569,18 +595,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         opportunity_map=_opportunity_map(),
         final_selection=final_selection,
     )
+    assert markdown_report_params == MarkdownReportInput(
+        final_report=final_report_result,
+    )
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
-    assert result.final == final_report_result
-    assert len(result.final.top_3_use_cases) == 3
-    assert [item.score.use_case_id for item in result.final.top_3_use_cases] == [
-        "uc-3",
-        "uc-4",
-        "uc-5",
-    ]
-    assert all(
-        item.title.startswith("Refined ") for item in result.final.top_3_use_cases
-    )
+    assert result.final == markdown_report_result.markdown
+    assert "Executive Summary" in result.final
 
 
 @pytest.mark.asyncio
@@ -1167,6 +1188,64 @@ async def test_write_final_report_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
+async def test_markdown_reporter_agent_returns_markdown_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = FinalSelectionOutput(
+        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+    )
+    final_report = _final_report(selected)
+    agent_result = _markdown_report()
+    model_name = ""
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> MarkdownReport:
+        nonlocal model_name
+        model_name = _kwargs["model"]
+        return agent_result
+
+    monkeypatch.setattr(
+        markdown_reporter.settings,
+        "MARKDOWN_REPORTER_AGENT_MODEL",
+        "markdown-model",
+    )
+    monkeypatch.setattr(markdown_reporter, "parse_chat_model", parse_chat_model)
+
+    result = await MarkdownReporterAgent(client=cast(Any, object())).run(
+        MarkdownReportInput(final_report=final_report)
+    )
+
+    assert result == agent_result
+    assert model_name == "markdown-model"
+
+
+@pytest.mark.asyncio
+async def test_write_markdown_report_activity_returns_agent_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = FinalSelectionOutput(
+        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+    )
+    final_report = _final_report(selected)
+    agent_result = _markdown_report()
+
+    class FakeMarkdownReporterAgent:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        async def run(self, _params: MarkdownReportInput) -> MarkdownReport:
+            return agent_result
+
+    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
+    monkeypatch.setattr(activities, "MarkdownReporterAgent", FakeMarkdownReporterAgent)
+
+    result = await activities.write_markdown_report(
+        MarkdownReportInput(final_report=final_report)
+    )
+
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
 async def test_select_initial_top_5_activity_returns_selection() -> None:
     pool = GradedUseCasePool(
         graded_use_cases=[
@@ -1497,6 +1576,20 @@ def test_final_report_use_case_requires_allowed_rank() -> None:
 
     with pytest.raises(ValidationError):
         FinalReportUseCase.model_validate(data)
+
+
+def test_markdown_report_forbids_extra_fields() -> None:
+    data = _markdown_report().model_dump()
+    data["unexpected"] = "ignored before strict schemas"
+
+    with pytest.raises(ValidationError):
+        MarkdownReport.model_validate(data)
+
+
+def test_workflow_result_final_is_markdown_string() -> None:
+    result = SparkstralWorkflowResult(outputs=[], final=_markdown_report().markdown)
+
+    assert result.final.startswith("# Acme Corporation")
 
 
 @pytest.mark.parametrize("count", [4, 6])

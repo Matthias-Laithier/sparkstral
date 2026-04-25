@@ -19,40 +19,8 @@ describe("App", () => {
 						{ id: 1, kind: "text", text: "research notes" },
 						{ id: 2, kind: "json", data: { company_name: "Acme" } },
 					],
-					final: {
-						use_cases: [
-							{
-								title: "Use case 1",
-								target_users: ["Ops"],
-								business_problem: "Problem",
-								why_this_company: "Fit",
-								genai_solution: "Solution",
-								required_data: "Data",
-								expected_impact: "Impact",
-								risks: ["Risk"],
-							},
-							{
-								title: "Use case 2",
-								target_users: ["Sales"],
-								business_problem: "Problem",
-								why_this_company: "Fit",
-								genai_solution: "Solution",
-								required_data: "Data",
-								expected_impact: "Impact",
-								risks: ["Risk"],
-							},
-							{
-								title: "Use case 3",
-								target_users: ["Product"],
-								business_problem: "Problem",
-								why_this_company: "Fit",
-								genai_solution: "Solution",
-								required_data: "Data",
-								expected_impact: "Impact",
-								risks: ["Risk"],
-							},
-						],
-					},
+					final:
+						"# Acme Corporation GenAI Opportunity Report\n\n## Executive Summary",
 				}}
 			/>,
 		);
@@ -60,5 +28,6 @@ describe("App", () => {
 		expect(screen.getByText("research notes")).toBeDefined();
 		expect(screen.getByText(/company_name/)).toBeDefined();
 		expect(screen.getByText("Final result")).toBeDefined();
+		expect(screen.getByText(/Executive Summary/)).toBeDefined();
 	});
 });
