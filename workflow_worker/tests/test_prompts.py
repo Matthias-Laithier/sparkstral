@@ -10,8 +10,10 @@ def test_web_search_system_prompt_includes_current_date() -> None:
     assert "cached_web_search" in prompt
 
 
-def test_genai_prompt_requires_three_use_cases() -> None:
+def test_genai_prompt_requires_candidate_pool() -> None:
     prompt = genai_use_cases_system_prompt()
 
-    assert "exactly 3" in prompt
-    assert "high-impact" in prompt
+    assert "8-12" in prompt
+    assert "candidate pool" in prompt
+    assert "grounded consultant" in prompt
+    assert "moonshot strategist" in prompt

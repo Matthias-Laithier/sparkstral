@@ -14,7 +14,7 @@ from src.schemas import (
     CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
-    GenAIUseCasesInput,
+    GenAIUseCaseCandidateInput,
     OpportunityMapInput,
     PainPointResearchInput,
     PainPointStructuringInput,
@@ -75,7 +75,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     append_json_output(outputs, opportunity_map.model_dump(mode="json"))
 
     use_cases = await generate_genai_use_cases(
-        GenAIUseCasesInput(
+        GenAIUseCaseCandidateInput(
             company_profile=company_profile,
             pain_points=pain_points,
             opportunity_map=opportunity_map,

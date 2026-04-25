@@ -9,13 +9,21 @@ from src.schemas import (
     CompanyProfileOutput,
     CompanyResolutionOutput,
     EvidenceItem,
-    GenAIUseCaseItem,
-    GenAIUseCasesOutput,
+    GenAIUseCaseCandidate,
+    GenAIUseCaseCandidatePool,
     OpportunityItem,
     OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
     ResearchResult,
+)
+
+IDEATION_LENSES = (
+    "grounded consultant",
+    "moonshot strategist",
+    "operations expert",
+    "customer/partner expert",
+    "risk/compliance expert",
 )
 
 
@@ -82,8 +90,10 @@ def _opportunity_map() -> OpportunityMapOutput:
     )
 
 
-def _use_case(index: int) -> GenAIUseCaseItem:
-    return GenAIUseCaseItem(
+def _candidate(index: int) -> GenAIUseCaseCandidate:
+    opportunity_index = ((index - 1) % 3) + 1
+    return GenAIUseCaseCandidate(
+        id=f"uc-{index}",
         title=f"Use case {index}",
         target_users=["Ops"],
         business_problem="Problem",
@@ -91,7 +101,12 @@ def _use_case(index: int) -> GenAIUseCaseItem:
         genai_solution="Solution",
         required_data="Data",
         expected_impact="Impact",
+        why_iconic="Iconic fit",
+        feasibility_notes="Feasible with existing records",
         risks=["Risk"],
+        linked_opportunities=[f"Opportunity {opportunity_index}"],
+        evidence_sources=[f"https://example.com/pain-{opportunity_index}"],
+        ideation_lens=IDEATION_LENSES[(index - 1) % len(IDEATION_LENSES)],
     )
 
 
@@ -136,11 +151,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         calls.append("map_opportunities")
         return _opportunity_map()
 
-    async def generate_genai_use_cases(params: Any) -> GenAIUseCasesOutput:
+    async def generate_genai_use_cases(params: Any) -> GenAIUseCaseCandidatePool:
         nonlocal generation_opportunity_map
         calls.append("generate_genai_use_cases")
         generation_opportunity_map = params.opportunity_map
-        return GenAIUseCasesOutput(use_cases=[_use_case(1), _use_case(2), _use_case(3)])
+        return GenAIUseCaseCandidatePool(
+            use_cases=[_candidate(index) for index in range(1, 9)]
+        )
 
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
@@ -184,7 +201,11 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert generation_opportunity_map == _opportunity_map()
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
-    assert len(result.final.use_cases) == 3
+    assert len(result.final.use_cases) == 8
+    assert all(candidate.id for candidate in result.final.use_cases)
+    assert all(candidate.ideation_lens for candidate in result.final.use_cases)
+    assert all(candidate.linked_opportunities for candidate in result.final.use_cases)
+    assert all(candidate.evidence_sources for candidate in result.final.use_cases)
 
 
 @pytest.mark.asyncio
@@ -307,7 +328,27 @@ def test_opportunity_map_forbids_empty_required_lists(field_name: str) -> None:
         OpportunityMapOutput.model_validate(data)
 
 
-@pytest.mark.parametrize("count", [2, 4])
-def test_genai_use_cases_output_requires_exactly_three_items(count: int) -> None:
+@pytest.mark.parametrize("count", [7, 13])
+def test_genai_use_case_candidate_pool_requires_eight_to_twelve_items(
+    count: int,
+) -> None:
     with pytest.raises(ValidationError):
-        GenAIUseCasesOutput(use_cases=[_use_case(index) for index in range(count)])
+        GenAIUseCaseCandidatePool(
+            use_cases=[_candidate(index) for index in range(1, count + 1)]
+        )
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    ["target_users", "risks", "linked_opportunities", "evidence_sources"],
+)
+def test_genai_use_case_candidates_forbid_empty_required_lists(
+    field_name: str,
+) -> None:
+    data = GenAIUseCaseCandidatePool(
+        use_cases=[_candidate(index) for index in range(1, 9)]
+    ).model_dump()
+    data["use_cases"][0][field_name] = []
+
+    with pytest.raises(ValidationError):
+        GenAIUseCaseCandidatePool.model_validate(data)

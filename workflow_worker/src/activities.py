@@ -20,8 +20,8 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
-    GenAIUseCasesInput,
-    GenAIUseCasesOutput,
+    GenAIUseCaseCandidateInput,
+    GenAIUseCaseCandidatePool,
     OpportunityMapInput,
     OpportunityMapOutput,
     PainPointProfilerOutput,
@@ -125,8 +125,8 @@ async def map_opportunities(
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def generate_genai_use_cases(
-    params: GenAIUseCasesInput,
-) -> GenAIUseCasesOutput:
+    params: GenAIUseCaseCandidateInput,
+) -> GenAIUseCaseCandidatePool:
     client = get_mistral_client()
     agent = GenAIUseCasesAgent(client=client)
     try:

@@ -129,9 +129,10 @@ class OpportunityMapInput(BaseModel):
     pain_points: PainPointProfilerOutput
 
 
-class GenAIUseCaseItem(BaseModel):
+class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    id: str
     title: str
     target_users: list[str] = Field(
         ...,
@@ -155,25 +156,32 @@ class GenAIUseCaseItem(BaseModel):
         ...,
         description="Expected business or operational impact.",
     )
+    why_iconic: str
+    feasibility_notes: str
     risks: list[str] = Field(
         ...,
         min_length=1,
         description="Main risks (technical, compliance, org, model).",
     )
+    linked_opportunities: list[str] = Field(..., min_length=1)
+    evidence_sources: list[str] = Field(..., min_length=1)
+    ideation_lens: str
 
 
-class GenAIUseCasesOutput(BaseModel):
+class GenAIUseCaseCandidatePool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    use_cases: list[GenAIUseCaseItem] = Field(
+    use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=3,
-        max_length=3,
-        description="Exactly 3 high-impact GenAI use cases.",
+        min_length=8,
+        max_length=12,
+        description="Candidate pool of 8-12 GenAI use cases.",
     )
 
 
-class GenAIUseCasesInput(BaseModel):
+class GenAIUseCaseCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
     opportunity_map: OpportunityMapOutput
@@ -188,4 +196,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: GenAIUseCasesOutput
+    final: GenAIUseCaseCandidatePool
