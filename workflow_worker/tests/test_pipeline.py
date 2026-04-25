@@ -4,7 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents.grader import compute_total_score, sort_graded_use_cases
+from src.agents import grader
+from src.agents.grader import UseCaseGraderAgent, compute_total_score
 from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
@@ -16,6 +17,7 @@ from src.schemas import (
     GradedUseCase,
     GradedUseCasePool,
     GradeUseCasesInput,
+    InitialSelectionOutput,
     OpportunityItem,
     OpportunityMapOutput,
     PainPointItem,
@@ -23,6 +25,7 @@ from src.schemas import (
     ResearchResult,
     UseCaseScore,
 )
+from src.utils import select_top_n
 
 IDEATION_LENSES = (
     "grounded consultant",
@@ -191,9 +194,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     deduplication_candidates: GenAIUseCaseCandidatePool | None = None
     grading_use_cases: list[GenAIUseCaseCandidate] | None = None
     grading_company_profile: CompanyProfileOutput | None = None
+    selection_candidates: GradedUseCasePool | None = None
     generated_candidates = _candidate_pool()
     deduplicated_candidates = _deduplicated_pool()
     graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
+    initial_selection = InitialSelectionOutput(
+        selected=graded_candidates.graded_use_cases[:5],
+    )
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -248,6 +255,14 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         grading_company_profile = params.company_profile
         return graded_candidates
 
+    async def select_initial_top_5(
+        params: GradedUseCasePool,
+    ) -> InitialSelectionOutput:
+        nonlocal selection_candidates
+        calls.append("select_initial_top_5")
+        selection_candidates = params
+        return initial_selection
+
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
     )
@@ -264,6 +279,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
+    monkeypatch.setattr(pipeline, "select_initial_top_5", select_initial_top_5)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
@@ -278,6 +294,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "generate_genai_use_cases",
         "deduplicate_use_cases",
         "grade_use_cases",
+        "select_initial_top_5",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -290,16 +307,21 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
+        "json",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
     assert result.outputs[6].data == _opportunity_map().model_dump(mode="json")
     assert result.outputs[7].data == generated_candidates.model_dump(mode="json")
     assert result.outputs[8].data == deduplicated_candidates.model_dump(mode="json")
     assert result.outputs[9].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[10].data == {
+        "initial_top_5": initial_selection.model_dump(mode="json")
+    }
     assert generation_opportunity_map == _opportunity_map()
     assert deduplication_candidates == generated_candidates
     assert grading_use_cases == deduplicated_candidates.use_cases
     assert grading_company_profile == _company_profile()
+    assert selection_candidates == graded_candidates
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
     assert result.final == graded_candidates
@@ -377,42 +399,96 @@ def test_compute_total_score_sums_rubric_dimensions() -> None:
     assert compute_total_score(score) == 20
 
 
-def test_sort_graded_use_cases_recomputes_total_and_sorts_descending() -> None:
-    low = GradedUseCase(
-        use_case=_candidate(1),
-        score=_score(
-            "uc-1",
-            company_relevance=2,
-            business_impact=2,
-            iconicness=2,
-            genai_fit=2,
-            feasibility=2,
-            evidence_strength=2,
-            total=30,
+def test_select_top_n_sorts_by_total_and_tie_breakers() -> None:
+    graded = [
+        GradedUseCase(
+            use_case=_candidate(1),
+            score=_score(
+                "uc-1",
+                company_relevance=3,
+                business_impact=5,
+                iconicness=5,
+                genai_fit=3,
+                feasibility=2,
+                evidence_strength=2,
+            ),
         ),
-    )
-    high = GradedUseCase(
-        use_case=_candidate(2),
-        score=_score(
-            "uc-2",
-            company_relevance=5,
-            business_impact=4,
-            iconicness=4,
-            genai_fit=4,
-            feasibility=4,
-            evidence_strength=3,
-            total=6,
+        GradedUseCase(
+            use_case=_candidate(2),
+            score=_score(
+                "uc-2",
+                company_relevance=5,
+                business_impact=1,
+                iconicness=1,
+                genai_fit=5,
+                feasibility=4,
+                evidence_strength=4,
+            ),
         ),
-    )
+        GradedUseCase(
+            use_case=_candidate(3),
+            score=_score(
+                "uc-3",
+                company_relevance=5,
+                business_impact=4,
+                iconicness=1,
+                genai_fit=4,
+                feasibility=3,
+                evidence_strength=3,
+            ),
+        ),
+        GradedUseCase(
+            use_case=_candidate(4),
+            score=_score(
+                "uc-4",
+                company_relevance=5,
+                business_impact=4,
+                iconicness=5,
+                genai_fit=2,
+                feasibility=2,
+                evidence_strength=2,
+            ),
+        ),
+        GradedUseCase(
+            use_case=_candidate(5),
+            score=_score(
+                "uc-5",
+                company_relevance=4,
+                business_impact=4,
+                iconicness=4,
+                genai_fit=3,
+                feasibility=3,
+                evidence_strength=3,
+            ),
+        ),
+        GradedUseCase(
+            use_case=_candidate(6),
+            score=_score(
+                "uc-6",
+                company_relevance=5,
+                business_impact=5,
+                iconicness=5,
+                genai_fit=2,
+                feasibility=1,
+                evidence_strength=1,
+            ),
+        ),
+    ]
 
-    sorted_items = sort_graded_use_cases([low, high])
+    selected = select_top_n(graded, 5)
 
-    assert [item.use_case.id for item in sorted_items] == ["uc-2", "uc-1"]
-    assert [item.score.total for item in sorted_items] == [24, 12]
+    assert [item.use_case.id for item in selected] == [
+        "uc-5",
+        "uc-4",
+        "uc-3",
+        "uc-2",
+        "uc-1",
+    ]
+    assert len(selected) == 5
 
 
 @pytest.mark.asyncio
-async def test_grade_use_cases_activity_recomputes_total_and_sorts(
+async def test_use_case_grader_agent_recomputes_total_without_sorting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     use_cases = [_candidate(index) for index in range(1, 7)]
@@ -454,12 +530,42 @@ async def test_grade_use_cases_activity_recomputes_total_and_sorts(
         ]
     )
 
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> GradedUseCasePool:
+        return llm_result
+
+    monkeypatch.setattr(grader, "parse_chat_model", parse_chat_model)
+
+    result = await UseCaseGraderAgent(client=object()).run(
+        GradeUseCasesInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            use_cases=use_cases,
+        )
+    )
+
+    assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
+        "uc-1",
+        "uc-2",
+    ]
+    assert [item.score.total for item in result.graded_use_cases[:2]] == [12, 24]
+
+
+@pytest.mark.asyncio
+async def test_grade_use_cases_activity_returns_agent_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_cases = [_candidate(index) for index in range(1, 7)]
+    agent_result = _graded_pool(use_cases)
+
     class FakeUseCaseGraderAgent:
         def __init__(self, client: object) -> None:
             self.client = client
 
         async def run(self, _params: GradeUseCasesInput) -> GradedUseCasePool:
-            return llm_result
+            return agent_result
 
     monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
     monkeypatch.setattr(activities, "UseCaseGraderAgent", FakeUseCaseGraderAgent)
@@ -475,12 +581,38 @@ async def test_grade_use_cases_activity_recomputes_total_and_sorts(
         )
     )
 
-    assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
-        "uc-2",
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
+async def test_select_initial_top_5_activity_returns_selection() -> None:
+    pool = GradedUseCasePool(
+        graded_use_cases=[
+            GradedUseCase(
+                use_case=_candidate(index),
+                score=_score(
+                    f"uc-{index}",
+                    company_relevance=index if index <= 5 else 1,
+                    business_impact=3,
+                    iconicness=3,
+                    genai_fit=3,
+                    feasibility=3,
+                    evidence_strength=3,
+                ),
+            )
+            for index in range(1, 7)
+        ]
+    )
+
+    result = await activities.select_initial_top_5(pool)
+
+    assert [item.use_case.id for item in result.selected] == [
+        "uc-5",
+        "uc-4",
         "uc-3",
+        "uc-2",
+        "uc-1",
     ]
-    assert result.graded_use_cases[0].score.total == 24
-    assert result.graded_use_cases[-1].score.total == 12
 
 
 def test_company_resolution_output_requires_llm_fields() -> None:
@@ -616,6 +748,36 @@ def test_graded_use_case_pool_requires_at_least_six_items() -> None:
                 for index in range(1, 6)
             ]
         )
+
+
+@pytest.mark.parametrize("count", [4, 6])
+def test_initial_selection_output_requires_exactly_five_items(count: int) -> None:
+    with pytest.raises(ValidationError):
+        InitialSelectionOutput(
+            selected=[
+                GradedUseCase(
+                    use_case=_candidate(index),
+                    score=_score(f"uc-{index}"),
+                )
+                for index in range(1, count + 1)
+            ],
+        )
+
+
+def test_initial_selection_output_forbids_extra_fields() -> None:
+    data = InitialSelectionOutput(
+        selected=[
+            GradedUseCase(
+                use_case=_candidate(index),
+                score=_score(f"uc-{index}"),
+            )
+            for index in range(1, 6)
+        ],
+    ).model_dump()
+    data["unexpected"] = "ignored before strict schemas"
+
+    with pytest.raises(ValidationError):
+        InitialSelectionOutput.model_validate(data)
 
 
 @pytest.mark.parametrize(

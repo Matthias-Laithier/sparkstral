@@ -6,6 +6,7 @@ from src.activities import (
     research_company,
     research_company_resolution,
     research_pain_points,
+    select_initial_top_5,
     structure_company_profile,
     structure_company_resolution,
     structure_pain_points,
@@ -101,5 +102,11 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         )
     )
     append_json_output(outputs, graded_use_cases.model_dump(mode="json"))
+
+    initial_top_5 = await select_initial_top_5(graded_use_cases)
+    append_json_output(
+        outputs,
+        {"initial_top_5": initial_top_5.model_dump(mode="json")},
+    )
 
     return SparkstralWorkflowResult(outputs=outputs, final=graded_use_cases)

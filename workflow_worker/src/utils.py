@@ -10,7 +10,7 @@ from mistralai.client import Mistral
 from pydantic import BaseModel
 
 from src.config import settings
-from src.schemas import PipelineOutput
+from src.schemas import GradedUseCase, PipelineOutput
 
 ResponseT = TypeVar("ResponseT")
 ParsedResponseT = TypeVar("ParsedResponseT", bound=BaseModel)
@@ -83,6 +83,19 @@ def append_json_output(outputs: list[PipelineOutput], data: dict[str, Any]) -> N
             data=data,
         )
     )
+
+
+def select_top_n(graded: list[GradedUseCase], n: int) -> list[GradedUseCase]:
+    return sorted(
+        graded,
+        key=lambda item: (
+            item.score.total,
+            item.score.company_relevance,
+            item.score.business_impact,
+            item.score.iconicness,
+        ),
+        reverse=True,
+    )[:n]
 
 
 async def parse_chat_model(

@@ -6,7 +6,7 @@ from src.agents.company_profiler import CompanyProfilerAgent
 from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.deduper import UseCaseDeduperAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
-from src.agents.grader import UseCaseGraderAgent, sort_graded_use_cases
+from src.agents.grader import UseCaseGraderAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
@@ -28,6 +28,7 @@ from src.schemas import (
     GenAIUseCaseCandidatePool,
     GradedUseCasePool,
     GradeUseCasesInput,
+    InitialSelectionOutput,
     OpportunityMapInput,
     OpportunityMapOutput,
     PainPointProfilerOutput,
@@ -35,7 +36,7 @@ from src.schemas import (
     PainPointStructuringInput,
     ResearchResult,
 )
-from src.utils import get_mistral_client
+from src.utils import get_mistral_client, select_top_n
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
@@ -160,9 +161,18 @@ async def grade_use_cases(
     client = get_mistral_client()
     agent = UseCaseGraderAgent(client=client)
     try:
-        result = await agent.run(params)
-        return GradedUseCasePool(
-            graded_use_cases=sort_graded_use_cases(result.graded_use_cases)
-        )
+        return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("use-case grading failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def select_initial_top_5(
+    params: GradedUseCasePool,
+) -> InitialSelectionOutput:
+    try:
+        return InitialSelectionOutput(
+            selected=select_top_n(params.graded_use_cases, 5),
+        )
+    except Exception as exc:
+        raise RuntimeError("initial top-5 selection failed") from exc

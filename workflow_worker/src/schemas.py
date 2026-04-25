@@ -222,6 +222,12 @@ class GradedUseCasePool(BaseModel):
     graded_use_cases: list[GradedUseCase] = Field(..., min_length=6)
 
 
+class InitialSelectionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    selected: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
+
+
 class GradeUseCasesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -21,8 +21,8 @@ def compute_total_score(score: UseCaseScore) -> int:
     )
 
 
-def sort_graded_use_cases(items: list[GradedUseCase]) -> list[GradedUseCase]:
-    rescored_items = [
+def update_total_scores(items: list[GradedUseCase]) -> list[GradedUseCase]:
+    return [
         GradedUseCase(
             use_case=item.use_case,
             score=item.score.model_copy(
@@ -31,18 +31,13 @@ def sort_graded_use_cases(items: list[GradedUseCase]) -> list[GradedUseCase]:
         )
         for item in items
     ]
-    return sorted(
-        rescored_items,
-        key=lambda item: item.score.total,
-        reverse=True,
-    )
 
 
 class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
     name = "use-case-grader"
 
     async def run(self, params: GradeUseCasesInput) -> GradedUseCasePool:
-        return await parse_chat_model(
+        result = await parse_chat_model(
             self.client,
             GradedUseCasePool,
             phase="use-case grading",
@@ -61,4 +56,7 @@ class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
                     ),
                 },
             ],
+        )
+        return GradedUseCasePool(
+            graded_use_cases=update_total_scores(result.graded_use_cases)
         )
