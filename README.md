@@ -74,10 +74,11 @@ make check      # run all of the above
 | `DATABASE_URL` | Yes (backend) | SQLAlchemy URL for PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/db` |
 | `BACKEND_BASE_URL` | Yes (worker) | Base URL of the FastAPI backend; Serper web search cache calls use this. Compose sets `http://backend:8000`. |
 | `DEPLOYMENT_NAME` | Yes | Workflow id: must match the worker registration and API `execute_workflow` |
-| `WEB_SEARCH_PROVIDER` | No (worker) | Web search provider: `serper` (default, backend cache + Serper) or `mistralai` (Mistral built-in `web_search`) |
-| `SERPER_API_KEY` | Yes when `WEB_SEARCH_PROVIDER=serper` | Serper API key for web search on cache miss (stored rows come from the backend). Not required for `mistralai`. |
+| `WEB_SEARCH_PROVIDER` | No (worker) | Web search provider: `serper` (default, backend cache + Serper), `tavily` (Tavily SDK with advanced search depth), or `mistralai` (Mistral built-in `web_search`) |
+| `SERPER_API_KEY` | Yes when `WEB_SEARCH_PROVIDER=serper` | Serper API key for web search on cache miss (stored rows come from the backend). Not required for `mistralai` or `tavily`. |
+| `TAVILY_API_KEY` | Yes when `WEB_SEARCH_PROVIDER=tavily` | Tavily API key for SDK searches. Tavily results do not use the backend cache. |
 | `WEB_SEARCH_MODEL` | Yes (worker) | Model for web-search research |
-| `WEB_SEARCH_MAX_ROUNDS` | Yes when `WEB_SEARCH_PROVIDER=serper` | Max custom tool-call rounds per research step. The Mistral built-in provider uses the Conversations API instead. |
+| `WEB_SEARCH_MAX_ROUNDS` | Yes when `WEB_SEARCH_PROVIDER=serper` or `tavily` | Max custom tool-call rounds per research step. The Mistral built-in provider uses the Conversations API instead. |
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured company profile (`parse`) |
 | `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured pain points (`parse`) |
 | `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use cases (`parse`) |

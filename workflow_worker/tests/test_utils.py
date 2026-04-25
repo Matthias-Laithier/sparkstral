@@ -292,6 +292,20 @@ async def test_web_search_agent_uses_mistral_web_search_provider(
 
 
 @pytest.mark.asyncio
+async def test_web_search_agent_uses_custom_tool_loop_for_tavily(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "WEB_SEARCH_PROVIDER", "tavily")
+    response = _CompletionResponse(_CompletionMessage("research"))
+    client = _CompletionClient([response])
+
+    result = await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
+
+    assert result.text == "research"
+    assert client.chat.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_web_search_agent_retries_llm_completion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

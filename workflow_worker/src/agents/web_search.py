@@ -26,9 +26,9 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
     async def run(self, params: WebSearchInput) -> WebSearchOutput:
         if settings.WEB_SEARCH_PROVIDER == "mistralai":
             return await self._run_mistralai(params)
-        return await self._run_serper(params)
+        return await self._run_custom_search_tool(params)
 
-    async def _run_serper(self, params: WebSearchInput) -> WebSearchOutput:
+    async def _run_custom_search_tool(self, params: WebSearchInput) -> WebSearchOutput:
         messages: list[Any] = [
             {"role": "system", "content": web_search_system_prompt(date.today())},
             {"role": "user", "content": params.prompt},

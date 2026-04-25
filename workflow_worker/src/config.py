@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     DEPLOYMENT_NAME: str
     BACKEND_BASE_URL: str
     SERPER_API_KEY: str | None = None
-    WEB_SEARCH_PROVIDER: Literal["serper", "mistralai"]
+    TAVILY_API_KEY: str | None = None
+    WEB_SEARCH_PROVIDER: Literal["serper", "mistralai", "tavily"] = "serper"
     WEB_SEARCH_MODEL: str
     WEB_SEARCH_MAX_ROUNDS: int
     COMPANY_RESOLVER_AGENT_MODEL: str
@@ -33,10 +34,14 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float
 
     @model_validator(mode="after")
-    def require_serper_key_for_serper_provider(self) -> Self:
+    def require_search_provider_key(self) -> Self:
         if self.WEB_SEARCH_PROVIDER == "serper" and not self.SERPER_API_KEY:
             raise ValueError(
                 "SERPER_API_KEY is required when WEB_SEARCH_PROVIDER=serper"
+            )
+        if self.WEB_SEARCH_PROVIDER == "tavily" and not self.TAVILY_API_KEY:
+            raise ValueError(
+                "TAVILY_API_KEY is required when WEB_SEARCH_PROVIDER=tavily"
             )
         return self
 
