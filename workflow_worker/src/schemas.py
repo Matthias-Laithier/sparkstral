@@ -228,6 +228,38 @@ class InitialSelectionOutput(BaseModel):
     selected: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
 
 
+class UseCaseCriticism(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    comment: str
+    severity: Literal["low", "medium", "high"]
+    required_fix: str
+
+
+class RedTeamReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_case_id: str
+    criticisms: list[UseCaseCriticism] = Field(..., min_length=1)
+    verdict: Literal["keep", "revise", "discard"]
+
+
+class RedTeamOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reviews: list[RedTeamReview] = Field(..., min_length=5, max_length=5)
+
+
+class RedTeamInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    opportunity_map: OpportunityMapOutput
+    selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
+
+
 class GradeUseCasesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

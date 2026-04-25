@@ -5,6 +5,7 @@ from src.activities import (
     generate_genai_use_cases,
     grade_use_cases,
     map_opportunities,
+    red_team_use_cases,
     research_company,
     research_company_resolution,
     research_pain_points,
@@ -26,6 +27,7 @@ from src.schemas import (
     PainPointResearchInput,
     PainPointStructuringInput,
     PipelineOutput,
+    RedTeamInput,
     SparkstralWorkflowResult,
 )
 from src.utils import append_json_output, append_text_output
@@ -109,5 +111,15 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
 
     initial_top_5 = await select_initial_top_5(graded_use_cases)
     append_json({"initial_top_5": initial_top_5.model_dump(mode="json")})
+
+    red_team_review = await red_team_use_cases(
+        RedTeamInput(
+            company_profile=company_profile,
+            pain_points=pain_points,
+            opportunity_map=opportunity_map,
+            selected_use_cases=initial_top_5.selected,
+        )
+    )
+    append_json({"red_team_review": red_team_review.model_dump(mode="json")})
 
     return SparkstralWorkflowResult(outputs=outputs, final=graded_use_cases)

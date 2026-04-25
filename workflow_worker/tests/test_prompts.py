@@ -4,10 +4,23 @@ from src.prompts import (
     deduper_system_prompt,
     deduper_user_prompt,
     genai_use_cases_system_prompt,
+    red_team_system_prompt,
+    red_team_user_prompt,
     use_case_grader_system_prompt,
     web_search_system_prompt,
 )
-from src.schemas import GenAIUseCaseCandidate, GenAIUseCaseCandidatePool
+from src.schemas import (
+    CompanyProfileOutput,
+    EvidenceItem,
+    GenAIUseCaseCandidate,
+    GenAIUseCaseCandidatePool,
+    GradedUseCase,
+    OpportunityItem,
+    OpportunityMapOutput,
+    PainPointItem,
+    PainPointProfilerOutput,
+    UseCaseScore,
+)
 
 
 def _candidate(index: int) -> GenAIUseCaseCandidate:
@@ -27,6 +40,83 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         evidence_sources=[f"https://example.com/source-{index}"],
         ideation_lens="grounded consultant",
     )
+
+
+def _company_profile() -> CompanyProfileOutput:
+    return CompanyProfileOutput(
+        company_name="Acme Corporation",
+        industry="Manufacturing",
+        business_lines=["Widgets"],
+        key_customers=["Industrial buyers"],
+        strategic_priorities=["Operational efficiency"],
+        evidence=[
+            EvidenceItem(
+                claim="Acme makes widgets",
+                source="https://example.com/company",
+            )
+        ],
+        notes="No caveats.",
+    )
+
+
+def _pain_point(index: int) -> PainPointItem:
+    return PainPointItem(
+        title=f"Pain {index}",
+        description="Description",
+        prominence=8,
+        sources=[f"https://example.com/pain-{index}"],
+    )
+
+
+def _pain_points() -> PainPointProfilerOutput:
+    return PainPointProfilerOutput(
+        pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+    )
+
+
+def _opportunity(index: int) -> OpportunityItem:
+    return OpportunityItem(
+        title=f"Opportunity {index}",
+        business_line="Widgets",
+        linked_pain_points=[f"Pain {index}"],
+        why_it_matters="Why it matters",
+        why_genai_is_suitable="GenAI can reason across unstructured records.",
+        likely_data_sources=["Work orders"],
+        evidence_sources=[f"https://example.com/pain-{index}"],
+    )
+
+
+def _opportunity_map() -> OpportunityMapOutput:
+    return OpportunityMapOutput(
+        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
+        summary="Opportunity summary",
+    )
+
+
+def _score(use_case_id: str) -> UseCaseScore:
+    return UseCaseScore(
+        use_case_id=use_case_id,
+        company_relevance=3,
+        business_impact=3,
+        iconicness=3,
+        genai_fit=3,
+        feasibility=3,
+        evidence_strength=3,
+        total=18,
+        rationale="Rationale",
+        strengths=["Strength"],
+        weaknesses=["Weakness"],
+    )
+
+
+def _graded_use_cases() -> list[GradedUseCase]:
+    return [
+        GradedUseCase(
+            use_case=_candidate(index),
+            score=_score(f"uc-{index}"),
+        )
+        for index in range(1, 6)
+    ]
 
 
 def test_web_search_system_prompt_includes_current_date() -> None:
@@ -81,3 +171,31 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "evidence_strength" in prompt
     assert "Penalize generic candidates" in prompt
     assert "Do not skip" in prompt
+
+
+def test_red_team_prompt_requires_critique_only() -> None:
+    prompt = red_team_system_prompt()
+
+    assert "red-team critic" in prompt
+    assert "Do not rewrite" in prompt
+    assert "generic ideas" in prompt
+    assert "unsupported claims" in prompt
+    assert "weak feasibility" in prompt
+    assert "unclear business impact" in prompt
+    assert "do not really need GenAI" in prompt
+
+
+def test_red_team_user_prompt_includes_selected_top_five_json() -> None:
+    prompt = red_team_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        _opportunity_map(),
+        _graded_use_cases(),
+    )
+
+    assert "Initial top 5 selected use cases to red-team (JSON)" in prompt
+    assert '"id": "uc-1"' in prompt
+    assert '"id": "uc-5"' in prompt
+    assert "Return exactly 5 reviews" in prompt
+    assert "one per selected use case" in prompt
+    assert "do not rewrite use cases" in prompt

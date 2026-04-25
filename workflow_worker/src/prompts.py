@@ -5,6 +5,7 @@ from src.schemas import (
     CompanyProfileOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
+    GradedUseCase,
     OpportunityMapOutput,
     PainPointProfilerOutput,
 )
@@ -362,4 +363,71 @@ def use_case_grader_user_prompt(
         "company_relevance, business_impact, iconicness, genai_fit, feasibility, "
         "and evidence_strength. Include total, rationale, strengths, and "
         "weaknesses for each use case. Do not choose final recommendations."
+    )
+
+
+def red_team_system_prompt() -> str:
+    return (
+        "You are a strict red-team critic for GenAI use-case strategy. Given the "
+        "company context and the initial top 5 graded use cases, identify "
+        "weaknesses and required fixes before any refinement happens.\n"
+        "Do not rewrite, rename, merge, rank, refine, or improve the use cases. "
+        "Only critique them.\n"
+        "For each selected use case, return exactly one review with at least one "
+        "structured criticism. Every review's use_case_id must match one selected "
+        "use_case.id.\n"
+        "Criticize generic ideas harshly. Flag unsupported claims, weak or "
+        "unclear evidence, weak feasibility, vague implementation assumptions, "
+        "unclear business impact, unclear target users, and ideas that do not "
+        "really need GenAI beyond ordinary software, workflow automation, search, "
+        "or analytics.\n"
+        "Each criticism must include a concise title, concrete comment, severity, "
+        "and required_fix. The required_fix should state what must be addressed, "
+        "not provide rewritten copy.\n"
+        "Use verdict='keep' only when the use case is strong with minor fixes; "
+        "verdict='revise' when meaningful weaknesses must be fixed; and "
+        "verdict='discard' when the idea is generic, unsupported, infeasible, or "
+        "not a real GenAI use case.\n"
+    )
+
+
+def red_team_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    opportunity_map: OpportunityMapOutput,
+    selected_use_cases: list[GradedUseCase],
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    opportunity_json = json.dumps(
+        opportunity_map.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    selected_json = json.dumps(
+        [use_case.model_dump(mode="json") for use_case in selected_use_cases],
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Opportunity map (JSON):\n"
+        f"{opportunity_json}\n\n"
+        "Initial top 5 selected use cases to red-team (JSON):\n"
+        f"{selected_json}\n\n"
+        "Return exactly 5 reviews: one per selected use case, using the matching "
+        "use_case.id as use_case_id. Each review must include at least one "
+        "criticism and a verdict. Critique only: do not rewrite use cases and do "
+        "not create replacement ideas."
     )

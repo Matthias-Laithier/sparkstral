@@ -4,8 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import grader
+from src.agents import grader, red_team
 from src.agents.grader import UseCaseGraderAgent, compute_total_score
+from src.agents.red_team import RedTeamAgent
 from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
@@ -22,7 +23,11 @@ from src.schemas import (
     OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
+    RedTeamInput,
+    RedTeamOutput,
+    RedTeamReview,
     ResearchResult,
+    UseCaseCriticism,
     UseCaseScore,
 )
 from src.utils import select_top_n
@@ -185,6 +190,32 @@ def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
     )
 
 
+def _criticism(index: int = 1) -> UseCaseCriticism:
+    return UseCaseCriticism(
+        title=f"Weakness {index}",
+        comment="The claim is not sufficiently supported by the provided evidence.",
+        severity="medium",
+        required_fix="Add evidence that directly supports the claimed impact.",
+    )
+
+
+def _red_team_review(use_case_id: str, index: int = 1) -> RedTeamReview:
+    return RedTeamReview(
+        use_case_id=use_case_id,
+        criticisms=[_criticism(index)],
+        verdict="revise",
+    )
+
+
+def _red_team_output(selected_use_cases: list[GradedUseCase]) -> RedTeamOutput:
+    return RedTeamOutput(
+        reviews=[
+            _red_team_review(item.use_case.id, index)
+            for index, item in enumerate(selected_use_cases, start=1)
+        ]
+    )
+
+
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
@@ -195,12 +226,14 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     grading_use_cases: list[GenAIUseCaseCandidate] | None = None
     grading_company_profile: CompanyProfileOutput | None = None
     selection_candidates: GradedUseCasePool | None = None
+    red_team_params: RedTeamInput | None = None
     generated_candidates = _candidate_pool()
     deduplicated_candidates = _deduplicated_pool()
     graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
     initial_selection = InitialSelectionOutput(
         selected=graded_candidates.graded_use_cases[:5],
     )
+    red_team_result = _red_team_output(initial_selection.selected)
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -263,6 +296,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         selection_candidates = params
         return initial_selection
 
+    async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
+        nonlocal red_team_params
+        calls.append("red_team_use_cases")
+        red_team_params = params
+        return red_team_result
+
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
     )
@@ -280,6 +319,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
     monkeypatch.setattr(pipeline, "select_initial_top_5", select_initial_top_5)
+    monkeypatch.setattr(pipeline, "red_team_use_cases", red_team_use_cases)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
@@ -295,6 +335,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "deduplicate_use_cases",
         "grade_use_cases",
         "select_initial_top_5",
+        "red_team_use_cases",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -302,6 +343,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
         "json",
         "text",
+        "json",
         "json",
         "json",
         "json",
@@ -317,11 +359,22 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.outputs[10].data == {
         "initial_top_5": initial_selection.model_dump(mode="json")
     }
+    assert result.outputs[11].data == {
+        "red_team_review": red_team_result.model_dump(mode="json")
+    }
     assert generation_opportunity_map == _opportunity_map()
     assert deduplication_candidates == generated_candidates
     assert grading_use_cases == deduplicated_candidates.use_cases
     assert grading_company_profile == _company_profile()
     assert selection_candidates == graded_candidates
+    assert red_team_params == RedTeamInput(
+        company_profile=_company_profile(),
+        pain_points=PainPointProfilerOutput(
+            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+        ),
+        opportunity_map=_opportunity_map(),
+        selected_use_cases=initial_selection.selected,
+    )
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
     assert result.final == graded_candidates
@@ -585,6 +638,97 @@ async def test_grade_use_cases_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
+async def test_red_team_agent_returns_structured_review(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    agent_result = _red_team_output(selected)
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RedTeamOutput:
+        return agent_result
+
+    monkeypatch.setattr(red_team, "parse_chat_model", parse_chat_model)
+
+    result = await RedTeamAgent(client=object()).run(
+        RedTeamInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=selected,
+        )
+    )
+
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
+async def test_red_team_agent_rejects_missing_selected_review(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    agent_result = RedTeamOutput(
+        reviews=[
+            _red_team_review(item.use_case.id, index)
+            for index, item in enumerate(selected[:4], start=1)
+        ]
+        + [_red_team_review("uc-other", 5)]
+    )
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RedTeamOutput:
+        return agent_result
+
+    monkeypatch.setattr(red_team, "parse_chat_model", parse_chat_model)
+
+    with pytest.raises(
+        RuntimeError,
+        match="exactly one review per selected use case",
+    ):
+        await RedTeamAgent(client=object()).run(
+            RedTeamInput(
+                company_profile=_company_profile(),
+                pain_points=PainPointProfilerOutput(
+                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+                ),
+                opportunity_map=_opportunity_map(),
+                selected_use_cases=selected,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_red_team_use_cases_activity_returns_agent_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    agent_result = _red_team_output(selected)
+
+    class FakeRedTeamAgent:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        async def run(self, _params: RedTeamInput) -> RedTeamOutput:
+            return agent_result
+
+    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
+    monkeypatch.setattr(activities, "RedTeamAgent", FakeRedTeamAgent)
+
+    result = await activities.red_team_use_cases(
+        RedTeamInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=selected,
+        )
+    )
+
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
 async def test_select_initial_top_5_activity_returns_selection() -> None:
     pool = GradedUseCasePool(
         graded_use_cases=[
@@ -778,6 +922,60 @@ def test_initial_selection_output_forbids_extra_fields() -> None:
 
     with pytest.raises(ValidationError):
         InitialSelectionOutput.model_validate(data)
+
+
+@pytest.mark.parametrize("count", [4, 6])
+def test_red_team_input_requires_exactly_five_selected_use_cases(count: int) -> None:
+    with pytest.raises(ValidationError):
+        RedTeamInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=[
+                GradedUseCase(
+                    use_case=_candidate(index),
+                    score=_score(f"uc-{index}"),
+                )
+                for index in range(1, count + 1)
+            ],
+        )
+
+
+@pytest.mark.parametrize("count", [4, 6])
+def test_red_team_output_requires_exactly_five_reviews(count: int) -> None:
+    with pytest.raises(ValidationError):
+        RedTeamOutput(
+            reviews=[
+                _red_team_review(f"uc-{index}", index) for index in range(1, count + 1)
+            ]
+        )
+
+
+def test_red_team_review_requires_criticism() -> None:
+    with pytest.raises(ValidationError):
+        RedTeamReview(
+            use_case_id="uc-1",
+            criticisms=[],
+            verdict="revise",
+        )
+
+
+def test_red_team_criticism_requires_allowed_severity() -> None:
+    data = _criticism().model_dump()
+    data["severity"] = "critical"
+
+    with pytest.raises(ValidationError):
+        UseCaseCriticism.model_validate(data)
+
+
+def test_red_team_review_requires_allowed_verdict() -> None:
+    data = _red_team_review("uc-1").model_dump()
+    data["verdict"] = "maybe"
+
+    with pytest.raises(ValidationError):
+        RedTeamReview.model_validate(data)
 
 
 @pytest.mark.parametrize(

@@ -9,6 +9,7 @@ from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
+from src.agents.red_team import RedTeamAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
     company_research_prompt,
@@ -34,6 +35,8 @@ from src.schemas import (
     PainPointProfilerOutput,
     PainPointResearchInput,
     PainPointStructuringInput,
+    RedTeamInput,
+    RedTeamOutput,
     ResearchResult,
 )
 from src.utils import get_mistral_client, select_top_n
@@ -176,3 +179,13 @@ async def select_initial_top_5(
         )
     except Exception as exc:
         raise RuntimeError("initial top-5 selection failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
+    client = get_mistral_client()
+    agent = RedTeamAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("red-team review failed") from exc
