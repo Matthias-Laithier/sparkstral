@@ -1,3 +1,5 @@
+from functools import partial
+
 from src.activities import (
     deduplicate_use_cases,
     generate_genai_use_cases,
@@ -31,11 +33,13 @@ from src.utils import append_json_output, append_text_output
 
 async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowResult:
     outputs: list[PipelineOutput] = []
+    append_text = partial(append_text_output, outputs)
+    append_json = partial(append_json_output, outputs)
 
     resolution_research = await research_company_resolution(
         CompanyResolutionInput(company_query=params.company_name)
     )
-    append_text_output(outputs, resolution_research.text)
+    append_text(resolution_research.text)
 
     company_resolution = await structure_company_resolution(
         CompanyResolutionStructuringInput(
@@ -43,12 +47,12 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             research_text=resolution_research.text,
         )
     )
-    append_json_output(outputs, company_resolution.model_dump(mode="json"))
+    append_json(company_resolution.model_dump(mode="json"))
 
     company_research = await research_company(
         CompanyProfileInput(company_query=company_resolution.resolved_name)
     )
-    append_text_output(outputs, company_research.text)
+    append_text(company_research.text)
 
     company_profile = await structure_company_profile(
         CompanyProfileStructuringInput(
@@ -56,12 +60,12 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             research_text=company_research.text,
         )
     )
-    append_json_output(outputs, company_profile.model_dump(mode="json"))
+    append_json(company_profile.model_dump(mode="json"))
 
     pain_research = await research_pain_points(
         PainPointResearchInput(company_profile=company_profile)
     )
-    append_text_output(outputs, pain_research.text)
+    append_text(pain_research.text)
 
     pain_points = await structure_pain_points(
         PainPointStructuringInput(
@@ -69,7 +73,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             research_text=pain_research.text,
         )
     )
-    append_json_output(outputs, pain_points.model_dump(mode="json"))
+    append_json(pain_points.model_dump(mode="json"))
 
     opportunity_map = await map_opportunities(
         OpportunityMapInput(
@@ -77,7 +81,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             pain_points=pain_points,
         )
     )
-    append_json_output(outputs, opportunity_map.model_dump(mode="json"))
+    append_json(opportunity_map.model_dump(mode="json"))
 
     use_cases = await generate_genai_use_cases(
         GenAIUseCaseCandidateInput(
@@ -86,12 +90,12 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             opportunity_map=opportunity_map,
         )
     )
-    append_json_output(outputs, use_cases.model_dump(mode="json"))
+    append_json(use_cases.model_dump(mode="json"))
 
     deduplicated_use_cases = await deduplicate_use_cases(
         DeduplicateUseCasesInput(candidates=use_cases)
     )
-    append_json_output(outputs, deduplicated_use_cases.model_dump(mode="json"))
+    append_json(deduplicated_use_cases.model_dump(mode="json"))
 
     graded_use_cases = await grade_use_cases(
         GradeUseCasesInput(
@@ -101,12 +105,9 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             use_cases=deduplicated_use_cases.use_cases,
         )
     )
-    append_json_output(outputs, graded_use_cases.model_dump(mode="json"))
+    append_json(graded_use_cases.model_dump(mode="json"))
 
     initial_top_5 = await select_initial_top_5(graded_use_cases)
-    append_json_output(
-        outputs,
-        {"initial_top_5": initial_top_5.model_dump(mode="json")},
-    )
+    append_json({"initial_top_5": initial_top_5.model_dump(mode="json")})
 
     return SparkstralWorkflowResult(outputs=outputs, final=graded_use_cases)
