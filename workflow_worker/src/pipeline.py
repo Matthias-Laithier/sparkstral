@@ -1,4 +1,5 @@
 from src.activities import (
+    deduplicate_use_cases,
     generate_genai_use_cases,
     map_opportunities,
     research_company,
@@ -14,6 +15,7 @@ from src.schemas import (
     CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
+    DeduplicateUseCasesInput,
     GenAIUseCaseCandidateInput,
     OpportunityMapInput,
     PainPointResearchInput,
@@ -83,4 +85,9 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json_output(outputs, use_cases.model_dump(mode="json"))
 
-    return SparkstralWorkflowResult(outputs=outputs, final=use_cases)
+    deduplicated_use_cases = await deduplicate_use_cases(
+        DeduplicateUseCasesInput(candidates=use_cases)
+    )
+    append_json_output(outputs, deduplicated_use_cases.model_dump(mode="json"))
+
+    return SparkstralWorkflowResult(outputs=outputs, final=deduplicated_use_cases)

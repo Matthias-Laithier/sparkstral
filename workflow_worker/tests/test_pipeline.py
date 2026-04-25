@@ -8,6 +8,7 @@ from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
+    DeduplicatedUseCasePool,
     EvidenceItem,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
@@ -110,12 +111,31 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
     )
 
 
+def _candidate_pool() -> GenAIUseCaseCandidatePool:
+    return GenAIUseCaseCandidatePool(
+        use_cases=[_candidate(index) for index in range(1, 9)]
+    )
+
+
+def _deduplicated_pool() -> DeduplicatedUseCasePool:
+    return DeduplicatedUseCasePool(
+        use_cases=[_candidate(index) for index in range(1, 7)],
+        removed_or_merged=["uc-7 merged into uc-2", "uc-8 removed as duplicate"],
+        rationale=(
+            "Merged overlapping candidates and kept the most company-specific set."
+        ),
+    )
+
+
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     company_research_query = ""
     company_profile_query = ""
     generation_opportunity_map: OpportunityMapOutput | None = None
+    deduplication_candidates: GenAIUseCaseCandidatePool | None = None
+    generated_candidates = _candidate_pool()
+    deduplicated_candidates = _deduplicated_pool()
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -155,9 +175,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         nonlocal generation_opportunity_map
         calls.append("generate_genai_use_cases")
         generation_opportunity_map = params.opportunity_map
-        return GenAIUseCaseCandidatePool(
-            use_cases=[_candidate(index) for index in range(1, 9)]
-        )
+        return generated_candidates
+
+    async def deduplicate_use_cases(params: Any) -> DeduplicatedUseCasePool:
+        nonlocal deduplication_candidates
+        calls.append("deduplicate_use_cases")
+        deduplication_candidates = params.candidates
+        return deduplicated_candidates
 
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
@@ -173,6 +197,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
     monkeypatch.setattr(pipeline, "map_opportunities", map_opportunities)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
+    monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
@@ -185,6 +210,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "structure_pain_points",
         "map_opportunities",
         "generate_genai_use_cases",
+        "deduplicate_use_cases",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -198,10 +224,15 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
     assert result.outputs[6].data == _opportunity_map().model_dump(mode="json")
+    assert result.outputs[7].data == deduplicated_candidates.model_dump(mode="json")
     assert generation_opportunity_map == _opportunity_map()
+    assert deduplication_candidates == generated_candidates
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
-    assert len(result.final.use_cases) == 8
+    assert result.final == deduplicated_candidates
+    assert len(result.final.use_cases) == 6
+    assert result.final.removed_or_merged
+    assert result.final.rationale
     assert all(candidate.id for candidate in result.final.use_cases)
     assert all(candidate.ideation_lens for candidate in result.final.use_cases)
     assert all(candidate.linked_opportunities for candidate in result.final.use_cases)
@@ -336,6 +367,26 @@ def test_genai_use_case_candidate_pool_requires_eight_to_twelve_items(
         GenAIUseCaseCandidatePool(
             use_cases=[_candidate(index) for index in range(1, count + 1)]
         )
+
+
+@pytest.mark.parametrize("count", [5, 11])
+def test_deduplicated_use_case_pool_requires_six_to_ten_items(
+    count: int,
+) -> None:
+    with pytest.raises(ValidationError):
+        DeduplicatedUseCasePool(
+            use_cases=[_candidate(index) for index in range(1, count + 1)],
+            removed_or_merged=["Merged overlapping candidates"],
+            rationale="Deduplicated the candidate pool.",
+        )
+
+
+def test_deduplicated_use_case_pool_requires_merge_explanation() -> None:
+    data = _deduplicated_pool().model_dump()
+    del data["removed_or_merged"]
+
+    with pytest.raises(ValidationError):
+        DeduplicatedUseCasePool.model_validate(data)
 
 
 @pytest.mark.parametrize(

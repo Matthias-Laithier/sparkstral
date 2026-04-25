@@ -179,6 +179,20 @@ class GenAIUseCaseCandidatePool(BaseModel):
     )
 
 
+class DeduplicateUseCasesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidates: GenAIUseCaseCandidatePool
+
+
+class DeduplicatedUseCasePool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=6, max_length=10)
+    removed_or_merged: list[str]
+    rationale: str
+
+
 class GenAIUseCaseCandidateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -196,4 +210,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: GenAIUseCaseCandidatePool
+    final: DeduplicatedUseCasePool

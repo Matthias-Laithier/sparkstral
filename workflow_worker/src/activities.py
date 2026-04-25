@@ -4,6 +4,7 @@ import mistralai.workflows as workflows
 
 from src.agents.company_profiler import CompanyProfilerAgent
 from src.agents.company_resolver import CompanyResolverAgent
+from src.agents.deduper import UseCaseDeduperAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
@@ -20,6 +21,8 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
+    DeduplicatedUseCasePool,
+    DeduplicateUseCasesInput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
     OpportunityMapInput,
@@ -133,3 +136,15 @@ async def generate_genai_use_cases(
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("GenAI use-case generation failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def deduplicate_use_cases(
+    params: DeduplicateUseCasesInput,
+) -> DeduplicatedUseCasePool:
+    client = get_mistral_client()
+    agent = UseCaseDeduperAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("use-case deduplication failed") from exc

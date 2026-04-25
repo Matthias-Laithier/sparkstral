@@ -3,6 +3,7 @@ from datetime import date
 
 from src.schemas import (
     CompanyProfileOutput,
+    GenAIUseCaseCandidatePool,
     OpportunityMapOutput,
     PainPointProfilerOutput,
 )
@@ -241,4 +242,44 @@ def genai_use_cases_user_prompt(
         "evidence_sources (1+ full URLs copied from prior inputs); and "
         "ideation_lens. Use the opportunity map as the bridge from pain points "
         "to candidates. Do not rank, score, or choose a final top 3."
+    )
+
+
+def deduper_system_prompt() -> str:
+    return (
+        "You are a GenAI use-case deduplication editor. Given an 8-12 item "
+        "candidate pool generated from several ideation lenses, return a merged "
+        "pool of 6-10 candidates.\n"
+        "Remove near duplicates and merge overlapping candidates when they solve "
+        "the same business problem for the same users or workflow. When merging, "
+        "keep the strongest company-specific details from each candidate.\n"
+        "Prefer the more company-specific candidate over a generic one. Preserve "
+        "diversity across ideation_lens values where possible, while keeping the "
+        "best candidates.\n"
+        "Preserve evidence: every evidence_sources URL from merged candidates "
+        "that still supports the retained use case must be copied into the "
+        "retained candidate's evidence_sources. Do not invent new URLs.\n"
+        "Explain removed or merged candidates in removed_or_merged. The rationale "
+        "should summarize the deduplication logic. Do not grade, score, rank, or "
+        "write a final report."
+    )
+
+
+def deduper_user_prompt(candidates: GenAIUseCaseCandidatePool) -> str:
+    candidates_json = json.dumps(
+        candidates.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Candidate use-case pool (JSON):\n"
+        f"{candidates_json}\n\n"
+        "Return a deduplicated pool with 6-10 use cases. Remove near duplicates; "
+        "merge overlapping candidates by preserving the strongest details, "
+        "including title specificity, target users, business problem, company fit, "
+        "solution details, required data, expected impact, feasibility notes, "
+        "risks, linked opportunities, evidence source URLs, and ideation lens "
+        "diversity. Keep the more company-specific candidate when deciding what "
+        "survives. In removed_or_merged, list which candidate ids or titles were "
+        "removed or merged and why."
     )
