@@ -4,6 +4,7 @@ from src.prompts import (
     deduper_system_prompt,
     deduper_user_prompt,
     genai_use_cases_system_prompt,
+    use_case_grader_system_prompt,
     web_search_system_prompt,
 )
 from src.schemas import GenAIUseCaseCandidate, GenAIUseCaseCandidatePool
@@ -67,3 +68,16 @@ def test_deduper_user_prompt_includes_candidate_json() -> None:
     assert "https://example.com/source-1" in prompt
     assert "removed_or_merged" in prompt
     assert "6-10" in prompt
+
+
+def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
+    prompt = use_case_grader_system_prompt()
+
+    assert "company_relevance" in prompt
+    assert "business_impact" in prompt
+    assert "iconicness" in prompt
+    assert "genai_fit" in prompt
+    assert "feasibility" in prompt
+    assert "evidence_strength" in prompt
+    assert "Penalize generic candidates" in prompt
+    assert "Do not skip" in prompt

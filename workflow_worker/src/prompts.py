@@ -3,6 +3,7 @@ from datetime import date
 
 from src.schemas import (
     CompanyProfileOutput,
+    GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     OpportunityMapOutput,
     PainPointProfilerOutput,
@@ -282,4 +283,83 @@ def deduper_user_prompt(candidates: GenAIUseCaseCandidatePool) -> str:
         "diversity. Keep the more company-specific candidate when deciding what "
         "survives. In removed_or_merged, list which candidate ids or titles were "
         "removed or merged and why."
+    )
+
+
+def use_case_grader_system_prompt() -> str:
+    return (
+        "You are a strict GenAI use-case grading analyst. Given a company profile, "
+        "pain-point analysis, opportunity map, and genai use-case idea pool, "
+        "grade every provided use case with an explicit rubric. Do not skip, merge, "
+        "rewrite, refine, red-team, or anything else.\n"
+        "Score each rubric dimension from 1 (weak) to 5 (excellent):\n"
+        "- company_relevance: how specifically the use case fits this company's "
+        "business lines, priorities, users, and context.\n"
+        "- business_impact: expected operational, financial, customer, risk, or "
+        "strategic value if executed well.\n"
+        "- iconicness: whether this feels distinctive and memorable for this "
+        "company, not a default GenAI idea.\n"
+        "- genai_fit: whether generative AI is genuinely needed for language, "
+        "reasoning, synthesis, generation, or multimodal work beyond ordinary "
+        "software or analytics.\n"
+        "- feasibility: whether required data, workflows, integration paths, "
+        "change management, and risks look practical.\n"
+        "- evidence_strength: how strongly the candidate is supported by supplied "
+        "company facts, pain points, opportunities, and source URLs.\n"
+        "Penalize generic candidates harshly. A generic chatbot, document search "
+        "assistant, marketing generator, or broad productivity automation should "
+        "score low unless the candidate is unmistakably grounded in the company's "
+        "specific operations, users, data, and evidence.\n"
+        "Penalize weak company specificity, vague impact, unclear need for GenAI, "
+        "missing evidence, unsupported claims, unrealistic implementation, and "
+        "risks that make the idea hard to deploy.\n"
+        "Do not add any criterion beyond the stated ones. "
+        "The rubric is only: company_relevance, business_impact, "
+        "iconicness, genai_fit, feasibility, and evidence_strength.\n"
+        "For each score, include rationale, strengths, and weaknesses. Set total "
+        "to the sum of the six rubric fields."
+    )
+
+
+def use_case_grader_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    opportunity_map: OpportunityMapOutput,
+    use_cases: list[GenAIUseCaseCandidate],
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    opportunity_json = json.dumps(
+        opportunity_map.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    use_cases_json = json.dumps(
+        [use_case.model_dump(mode="json") for use_case in use_cases],
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Opportunity map (JSON):\n"
+        f"{opportunity_json}\n\n"
+        "Deduplicated use cases to grade (JSON):\n"
+        f"{use_cases_json}\n\n"
+        "Return one graded_use_cases item for every use case above. Keep each "
+        "original use_case object unchanged. For score.use_case_id, use the "
+        "matching use_case.id. Grade strictly using only the six rubric fields: "
+        "company_relevance, business_impact, iconicness, genai_fit, feasibility, "
+        "and evidence_strength. Include total, rationale, strengths, and "
+        "weaknesses for each use case. Do not choose final recommendations."
     )

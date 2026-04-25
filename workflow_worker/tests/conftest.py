@@ -14,6 +14,7 @@ os.environ.setdefault("PAIN_POINT_PROFILER_AGENT_MODEL", "mistral-medium-latest"
 os.environ.setdefault("OPPORTUNITY_MAPPER_AGENT_MODEL", "mistral-medium-latest")
 os.environ.setdefault("GENAI_USE_CASES_MODEL", "mistral-medium-latest")
 os.environ.setdefault("USE_CASE_DEDUPER_AGENT_MODEL", "mistral-medium-latest")
+os.environ.setdefault("USE_CASE_GRADER_AGENT_MODEL", "mistral-medium-latest")
 os.environ.setdefault("GENAI_USE_CASES_LLM_TEMPERATURE", "1")
 os.environ.setdefault("LLM_MAX_TOKENS", "2048")
 os.environ.setdefault("LLM_TEMPERATURE", "0")

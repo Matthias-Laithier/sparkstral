@@ -193,6 +193,44 @@ class DeduplicatedUseCasePool(BaseModel):
     rationale: str
 
 
+class UseCaseScore(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_case_id: str
+    company_relevance: int = Field(..., ge=1, le=5)
+    business_impact: int = Field(..., ge=1, le=5)
+    iconicness: int = Field(..., ge=1, le=5)
+    genai_fit: int = Field(..., ge=1, le=5)
+    feasibility: int = Field(..., ge=1, le=5)
+    evidence_strength: int = Field(..., ge=1, le=5)
+    total: int = Field(..., ge=6, le=30)
+    rationale: str
+    strengths: list[str] = Field(..., min_length=1)
+    weaknesses: list[str] = Field(..., min_length=1)
+
+
+class GradedUseCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_case: GenAIUseCaseCandidate
+    score: UseCaseScore
+
+
+class GradedUseCasePool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    graded_use_cases: list[GradedUseCase] = Field(..., min_length=6)
+
+
+class GradeUseCasesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    opportunity_map: OpportunityMapOutput
+    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=1)
+
+
 class GenAIUseCaseCandidateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -210,4 +248,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: DeduplicatedUseCasePool
+    final: GradedUseCasePool
