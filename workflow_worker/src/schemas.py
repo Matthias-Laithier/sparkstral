@@ -18,6 +18,8 @@ class ResearchResult(BaseModel):
 
 
 class EvidenceItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     claim: str = Field(
         ..., description="Short factual claim used to build the profile."
     )
@@ -28,14 +30,16 @@ class EvidenceItem(BaseModel):
 
 
 class CompanyProfileOutput(BaseModel):
-    company_name: str = ""
-    industry: str = ""
-    business_lines: list[str] = Field(default_factory=list)
-    key_customers: list[str] = Field(default_factory=list)
-    strategic_priorities: list[str] = Field(default_factory=list)
-    evidence: list[EvidenceItem] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    company_name: str
+    industry: str
+    business_lines: list[str]
+    key_customers: list[str]
+    strategic_priorities: list[str]
+    evidence: list[EvidenceItem] = Field(..., min_length=1)
     notes: str = Field(
-        default="",
+        ...,
         description="Optional caveats about the extracted profile.",
     )
 
@@ -46,19 +50,24 @@ class CompanyProfileStructuringInput(BaseModel):
 
 
 class PainPointItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(..., description="Short name for the pain point or gap.")
     description: str = Field(..., description="What is going on and why it matters.")
     prominence: int = Field(
         ..., ge=1, le=10, description="Importance 1 (low) to 10 (high) from research."
     )
     sources: list[str] = Field(
-        default_factory=list,
+        ...,
+        min_length=1,
         description="URL strings for facts behind this point.",
     )
 
 
 class PainPointProfilerOutput(BaseModel):
-    pain_points: list[PainPointItem] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    pain_points: list[PainPointItem] = Field(..., min_length=3, max_length=8)
 
 
 class PainPointResearchInput(BaseModel):
@@ -71,6 +80,8 @@ class PainPointStructuringInput(BaseModel):
 
 
 class GenAIUseCaseItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str
     target_users: list[str] = Field(
         ...,
@@ -102,6 +113,8 @@ class GenAIUseCaseItem(BaseModel):
 
 
 class GenAIUseCasesOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     use_cases: list[GenAIUseCaseItem] = Field(
         ...,
         min_length=3,
