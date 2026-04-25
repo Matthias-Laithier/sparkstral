@@ -9,6 +9,12 @@ class CompanyInput(BaseModel):
     company_name: str = Field(..., description="Raw company name entered by the user.")
 
 
+class CompanyResolutionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_query: str
+
+
 class CompanyProfileInput(BaseModel):
     company_query: str = Field(..., description="Raw company name entered by the user.")
 
@@ -27,6 +33,24 @@ class EvidenceItem(BaseModel):
         ...,
         description="URL string (https recommended) supporting the claim.",
     )
+
+
+class CompanyResolutionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input_name: str
+    resolved_name: str
+    website: str
+    headquarters_country: str
+    primary_industry: str
+    ambiguity_notes: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    evidence: list[EvidenceItem] = Field(..., min_length=1)
+
+
+class CompanyResolutionStructuringInput(BaseModel):
+    company_query: str
+    research_text: str
 
 
 class CompanyProfileOutput(BaseModel):

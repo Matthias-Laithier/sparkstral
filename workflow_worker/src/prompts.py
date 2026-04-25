@@ -25,6 +25,49 @@ def company_research_prompt(company_query: str) -> str:
     )
 
 
+def company_resolution_research_prompt(company_query: str) -> str:
+    return (
+        f"Resolve this company name to the most likely official company: "
+        f"{company_query}\n\n"
+        "Find the likely official company identity before deeper research. Prefer "
+        "the official company website, then reliable sources such as company "
+        "registries, annual reports, reputable news, Wikipedia, or Crunchbase. "
+        "Explicitly look for ambiguity: similarly named companies, subsidiaries, "
+        "brands, regional variants, or common meanings of the name.\n"
+        "Gather: official/resolved name; official website; headquarters country; "
+        "primary industry; ambiguity notes; and source URLs next to each factual "
+        "claim.\n"
+        "Use few sources: prefer Wikipedia, plus at most one or two other reliable "
+        "pages."
+    )
+
+
+def company_resolution_system_prompt() -> str:
+    return (
+        "You are a company identity resolution assistant. Given research notes for "
+        "an ambiguous company query, resolve the input to the most likely official "
+        "company identity.\n"
+        "Prefer the official company website and reliable sources. Explicitly "
+        "mention ambiguity, including alternative companies or interpretations "
+        "when relevant.\n"
+        "Only include factual claims supported by the research. Every evidence "
+        "item's `source` must be a full URL from the research, not a site name "
+        "only."
+    )
+
+
+def company_resolution_user_prompt(company_query: str, research_text: str) -> str:
+    return (
+        f"Company query: {company_query}\n\n"
+        f"Research notes:\n{research_text}\n\n"
+        "Return the resolved company identity. Use `input_name` for the original "
+        "query and `resolved_name` for the likely official company name. Include "
+        "the official website if available. In `ambiguity_notes`, explain why this "
+        "company is the likely match and note credible alternatives. Set "
+        "`confidence` from 0.0 to 1.0 based on the evidence strength."
+    )
+
+
 def company_profile_system_prompt() -> str:
     return (
         "You are a data extraction assistant. Given research notes about a company, "

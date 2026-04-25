@@ -3,14 +3,22 @@ from datetime import timedelta
 import mistralai.workflows as workflows
 
 from src.agents.company_profiler import CompanyProfilerAgent
+from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
-from src.prompts import company_research_prompt, pain_point_research_prompt
+from src.prompts import (
+    company_research_prompt,
+    company_resolution_research_prompt,
+    pain_point_research_prompt,
+)
 from src.schemas import (
     CompanyProfileInput,
     CompanyProfileOutput,
     CompanyProfileStructuringInput,
+    CompanyResolutionInput,
+    CompanyResolutionOutput,
+    CompanyResolutionStructuringInput,
     GenAIUseCasesInput,
     GenAIUseCasesOutput,
     PainPointProfilerOutput,
@@ -19,6 +27,33 @@ from src.schemas import (
     ResearchResult,
 )
 from src.utils import get_mistral_client
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def research_company_resolution(params: CompanyResolutionInput) -> ResearchResult:
+    client = get_mistral_client()
+    agent = WebSearchAgent(client=client)
+    try:
+        result = await agent.run(
+            WebSearchInput(
+                prompt=company_resolution_research_prompt(params.company_query),
+            )
+        )
+    except Exception as exc:
+        raise RuntimeError("company resolution research failed") from exc
+    return ResearchResult(text=result.text)
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def structure_company_resolution(
+    params: CompanyResolutionStructuringInput,
+) -> CompanyResolutionOutput:
+    client = get_mistral_client()
+    agent = CompanyResolverAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("company resolution structuring failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
