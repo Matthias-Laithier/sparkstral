@@ -3,6 +3,8 @@ from datetime import date
 from src.prompts import (
     deduper_system_prompt,
     deduper_user_prompt,
+    final_reporter_system_prompt,
+    final_reporter_user_prompt,
     genai_use_cases_system_prompt,
     red_team_system_prompt,
     red_team_user_prompt,
@@ -14,6 +16,7 @@ from src.prompts import (
 from src.schemas import (
     CompanyProfileOutput,
     EvidenceItem,
+    FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
@@ -144,6 +147,10 @@ def _red_team_output() -> RedTeamOutput:
     )
 
 
+def _final_selection() -> FinalSelectionOutput:
+    return FinalSelectionOutput(selected=_graded_use_cases()[:3])
+
+
 def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
@@ -255,3 +262,37 @@ def test_refiner_user_prompt_includes_selected_use_cases_and_red_team_json() -> 
     assert "changes_made" in prompt
     assert "unresolved_concerns" in prompt
     assert "Preserve all original evidence_sources URLs" in prompt
+
+
+def test_final_reporter_prompt_requires_client_ready_report() -> None:
+    prompt = final_reporter_system_prompt()
+
+    assert "client-ready" in prompt
+    assert "exactly 3 use cases" in prompt
+    assert "score breakdown" in prompt
+    assert "scoring" in prompt
+    assert "supplied artifacts" in prompt
+    assert "refinement" in prompt
+    assert "final top-3 selection" in prompt
+    assert "high-impact" in prompt
+    assert "iconic" in prompt
+    assert "source URLs" in prompt
+    assert "Do not write markdown" in prompt
+
+
+def test_final_reporter_user_prompt_includes_final_selection_json() -> None:
+    prompt = final_reporter_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        _opportunity_map(),
+        _final_selection(),
+    )
+
+    assert "Final top 3 selected use cases with scores (JSON)" in prompt
+    assert '"id": "uc-1"' in prompt
+    assert '"score": {' in prompt
+    assert "Return exactly 3 top_3_use_cases" in prompt
+    assert "rank 1, rank 2, and rank 3" in prompt
+    assert "source_urls" in prompt
+    assert "methodology" in prompt
+    assert "scoring and refinement loop" in prompt

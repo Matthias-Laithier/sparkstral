@@ -3,6 +3,7 @@ from datetime import date
 
 from src.schemas import (
     CompanyProfileOutput,
+    FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
@@ -504,4 +505,74 @@ def refiner_user_prompt(
         "changes_made, and include unresolved_concerns. Preserve all original "
         "evidence_sources URLs in the refined use case, fix supported criticisms, "
         "and leave unsafe or unsupported fixes as unresolved concerns."
+    )
+
+
+def final_reporter_system_prompt() -> str:
+    return (
+        "You are a senior GenAI strategy consultant writing the final client-ready "
+        "report from a completed use-case discovery workflow.\n"
+        "Return only structured data matching the requested schema. Do not write "
+        "markdown as the primary output.\n"
+        "The report must contain exactly 3 use cases, ranked 1-3 in the same order "
+        "as the final selection. Use concise, client-ready language for executives "
+        "and business owners.\n"
+        "Explain the methodology using only the supplied artifacts: company "
+        "research, pain-point profiling, opportunity mapping, scoring, "
+        "refinement, and final top-3 selection. "
+        "For every use case, include the score breakdown, why it is specific to "
+        "this company, why it is high-impact, why it is iconic, implementation "
+        "feasibility notes, risks, caveats, and source URLs.\n"
+        "Use only facts, source URLs, and scores from the supplied JSON. Do not "
+        "invent new source URLs. Source URLs must be full URL strings copied from "
+        "the inputs.\n"
+    )
+
+
+def final_reporter_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    opportunity_map: OpportunityMapOutput,
+    final_selection: FinalSelectionOutput,
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    opportunity_json = json.dumps(
+        opportunity_map.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    final_selection_json = json.dumps(
+        final_selection.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Opportunity map (JSON):\n"
+        f"{opportunity_json}\n\n"
+        "Final top 3 selected use cases with scores (JSON):\n"
+        f"{final_selection_json}\n\n"
+        "Write the final client-ready report. Return exactly 3 top_3_use_cases, "
+        "one for each selected use case, preserving the final-selection order as "
+        "rank 1, rank 2, and rank 3. For each report use case, copy the graded "
+        "score object into score, summarize the solution in a one_liner, copy or "
+        "condense target_users, business_problem, why_this_company, genai_solution, "
+        "required_data, expected_impact, why_iconic, feasibility_notes, and risks "
+        "from the selected use case, and set source_urls from its evidence_sources. "
+        "Also provide company_name, executive_summary, company_context, "
+        "methodology, caveats, and report-level source_urls. The methodology must "
+        "explain the scoring and refinement loop. Do not add markdown formatting "
+        "or any Mistral/vendor-fit discussion."
     )

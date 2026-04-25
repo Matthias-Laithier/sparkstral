@@ -5,6 +5,7 @@ import mistralai.workflows as workflows
 from src.agents.company_profiler import CompanyProfilerAgent
 from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.deduper import UseCaseDeduperAgent
+from src.agents.final_reporter import FinalReporterAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
@@ -26,6 +27,8 @@ from src.schemas import (
     CompanyResolutionStructuringInput,
     DeduplicatedUseCasePool,
     DeduplicateUseCasesInput,
+    FinalReport,
+    FinalReportInput,
     FinalSelectionOutput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
@@ -196,6 +199,16 @@ async def select_final_top_3(
         return FinalSelectionOutput(selected=selected)
     except Exception as exc:
         raise RuntimeError("final top-3 selection failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def write_final_report(params: FinalReportInput) -> FinalReport:
+    client = get_mistral_client()
+    agent = FinalReporterAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("final report writing failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

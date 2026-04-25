@@ -15,6 +15,7 @@ from src.activities import (
     structure_company_profile,
     structure_company_resolution,
     structure_pain_points,
+    write_final_report,
 )
 from src.schemas import (
     CompanyInput,
@@ -23,6 +24,7 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
     DeduplicateUseCasesInput,
+    FinalReportInput,
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
     OpportunityMapInput,
@@ -152,4 +154,14 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     final_selection = await select_final_top_3(final_graded_use_cases)
     append_json({"final_top_3": final_selection.model_dump(mode="json")})
 
-    return SparkstralWorkflowResult(outputs=outputs, final=final_selection)
+    final_report = await write_final_report(
+        FinalReportInput(
+            company_profile=company_profile,
+            pain_points=pain_points,
+            opportunity_map=opportunity_map,
+            final_selection=final_selection,
+        )
+    )
+    append_json({"final_report": final_report.model_dump(mode="json")})
+
+    return SparkstralWorkflowResult(outputs=outputs, final=final_report)

@@ -234,6 +234,46 @@ class FinalSelectionOutput(BaseModel):
     selected: list[GradedUseCase] = Field(..., min_length=3, max_length=3)
 
 
+class FinalReportUseCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rank: int = Field(..., ge=1, le=3)
+    title: str
+    one_liner: str
+    target_users: list[str] = Field(..., min_length=1)
+    business_problem: str
+    why_this_company: str
+    genai_solution: str
+    required_data: str
+    expected_impact: str
+    why_iconic: str
+    feasibility_notes: str
+    risks: list[str] = Field(..., min_length=1)
+    score: UseCaseScore
+    source_urls: list[str] = Field(..., min_length=1)
+
+
+class FinalReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_name: str
+    executive_summary: str
+    company_context: str
+    methodology: str
+    top_3_use_cases: list[FinalReportUseCase] = Field(..., min_length=3, max_length=3)
+    caveats: list[str]
+    source_urls: list[str] = Field(..., min_length=1)
+
+
+class FinalReportInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    opportunity_map: OpportunityMapOutput
+    final_selection: FinalSelectionOutput
+
+
 class UseCaseCriticism(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -317,4 +357,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: FinalSelectionOutput
+    final: FinalReport
