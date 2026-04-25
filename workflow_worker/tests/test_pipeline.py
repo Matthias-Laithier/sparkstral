@@ -14,6 +14,7 @@ from src.schemas import (
     CompanyResolutionOutput,
     DeduplicatedUseCasePool,
     EvidenceItem,
+    FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
@@ -251,9 +252,10 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     company_profile_query = ""
     generation_opportunity_map: OpportunityMapOutput | None = None
     deduplication_candidates: GenAIUseCaseCandidatePool | None = None
-    grading_use_cases: list[GenAIUseCaseCandidate] | None = None
-    grading_company_profile: CompanyProfileOutput | None = None
+    grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
+    grading_company_profiles: list[CompanyProfileOutput] = []
     selection_candidates: GradedUseCasePool | None = None
+    final_selection_candidates: GradedUseCasePool | None = None
     red_team_params: RedTeamInput | None = None
     refiner_params: RefineUseCasesInput | None = None
     generated_candidates = _candidate_pool()
@@ -264,6 +266,64 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     red_team_result = _red_team_output(initial_selection.selected)
     refined_result = _refined_pool(initial_selection.selected)
+    refined_candidates = [
+        item.refined_use_case for item in refined_result.refined_use_cases
+    ]
+    final_graded_candidates = GradedUseCasePool(
+        graded_use_cases=[
+            GradedUseCase(
+                use_case=refined_candidates[0],
+                score=_score(refined_candidates[0].id),
+            ),
+            GradedUseCase(
+                use_case=refined_candidates[1],
+                score=_score(
+                    refined_candidates[1].id,
+                    company_relevance=5,
+                    business_impact=5,
+                ),
+            ),
+            GradedUseCase(
+                use_case=refined_candidates[2],
+                score=_score(
+                    refined_candidates[2].id,
+                    company_relevance=5,
+                    business_impact=5,
+                    iconicness=5,
+                    genai_fit=5,
+                    feasibility=5,
+                    evidence_strength=5,
+                ),
+            ),
+            GradedUseCase(
+                use_case=refined_candidates[3],
+                score=_score(
+                    refined_candidates[3].id,
+                    company_relevance=5,
+                    business_impact=5,
+                    iconicness=5,
+                    genai_fit=4,
+                    feasibility=4,
+                    evidence_strength=4,
+                ),
+            ),
+            GradedUseCase(
+                use_case=refined_candidates[4],
+                score=_score(
+                    refined_candidates[4].id,
+                    company_relevance=5,
+                    business_impact=5,
+                    iconicness=4,
+                    genai_fit=4,
+                    feasibility=4,
+                    evidence_strength=4,
+                ),
+            ),
+        ]
+    )
+    final_selection = FinalSelectionOutput(
+        selected=select_top_n(final_graded_candidates.graded_use_cases, 3)
+    )
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -312,11 +372,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         return deduplicated_candidates
 
     async def grade_use_cases(params: Any) -> GradedUseCasePool:
-        nonlocal grading_use_cases, grading_company_profile
         calls.append("grade_use_cases")
-        grading_use_cases = params.use_cases
-        grading_company_profile = params.company_profile
-        return graded_candidates
+        grading_use_cases.append(params.use_cases)
+        grading_company_profiles.append(params.company_profile)
+        if len(grading_use_cases) == 1:
+            return graded_candidates
+        return final_graded_candidates
 
     async def select_initial_top_5(
         params: GradedUseCasePool,
@@ -325,6 +386,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         calls.append("select_initial_top_5")
         selection_candidates = params
         return initial_selection
+
+    async def select_final_top_3(params: GradedUseCasePool) -> FinalSelectionOutput:
+        nonlocal final_selection_candidates
+        calls.append("select_final_top_3")
+        final_selection_candidates = params
+        return final_selection
 
     async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
         nonlocal red_team_params
@@ -355,6 +422,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
     monkeypatch.setattr(pipeline, "select_initial_top_5", select_initial_top_5)
+    monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
     monkeypatch.setattr(pipeline, "red_team_use_cases", red_team_use_cases)
     monkeypatch.setattr(pipeline, "refine_use_cases", refine_use_cases)
 
@@ -374,6 +442,8 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "select_initial_top_5",
         "red_team_use_cases",
         "refine_use_cases",
+        "grade_use_cases",
+        "select_final_top_3",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -381,6 +451,8 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
         "json",
         "text",
+        "json",
+        "json",
         "json",
         "json",
         "json",
@@ -404,11 +476,18 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.outputs[12].data == {
         "refined_use_cases": refined_result.model_dump(mode="json")
     }
+    assert result.outputs[13].data == {
+        "final_grading": final_graded_candidates.model_dump(mode="json")
+    }
+    assert result.outputs[14].data == {
+        "final_top_3": final_selection.model_dump(mode="json")
+    }
     assert generation_opportunity_map == _opportunity_map()
     assert deduplication_candidates == generated_candidates
-    assert grading_use_cases == deduplicated_candidates.use_cases
-    assert grading_company_profile == _company_profile()
+    assert grading_use_cases == [deduplicated_candidates.use_cases, refined_candidates]
+    assert grading_company_profiles == [_company_profile(), _company_profile()]
     assert selection_candidates == graded_candidates
+    assert final_selection_candidates == final_graded_candidates
     assert red_team_params == RedTeamInput(
         company_profile=_company_profile(),
         pain_points=PainPointProfilerOutput(
@@ -428,15 +507,15 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
-    assert result.final == refined_result
-    assert len(result.final.refined_use_cases) == 5
-    assert {item.original_use_case_id for item in result.final.refined_use_cases} == {
-        item.use_case.id for item in initial_selection.selected
-    }
-    assert all(item.changes_made for item in result.final.refined_use_cases)
+    assert result.final == final_selection
+    assert len(result.final.selected) == 3
+    assert [item.use_case.id for item in result.final.selected] == [
+        "uc-3",
+        "uc-4",
+        "uc-5",
+    ]
     assert all(
-        item.refined_use_case.evidence_sources
-        for item in result.final.refined_use_cases
+        item.use_case.title.startswith("Refined ") for item in result.final.selected
     )
 
 
@@ -957,6 +1036,35 @@ async def test_select_initial_top_5_activity_returns_selection() -> None:
     ]
 
 
+@pytest.mark.asyncio
+async def test_select_final_top_3_activity_returns_selection() -> None:
+    pool = GradedUseCasePool(
+        graded_use_cases=[
+            GradedUseCase(
+                use_case=_candidate(index),
+                score=_score(
+                    f"uc-{index}",
+                    company_relevance=index,
+                    business_impact=3,
+                    iconicness=3,
+                    genai_fit=3,
+                    feasibility=3,
+                    evidence_strength=3,
+                ),
+            )
+            for index in range(1, 6)
+        ]
+    )
+
+    result = await activities.select_final_top_3(pool)
+
+    assert [item.use_case.id for item in result.selected] == [
+        "uc-5",
+        "uc-4",
+        "uc-3",
+    ]
+
+
 def test_company_resolution_output_requires_llm_fields() -> None:
     with pytest.raises(ValidationError):
         CompanyResolutionOutput.model_validate({"input_name": "Acme"})
@@ -1079,17 +1187,23 @@ def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
         UseCaseScore.model_validate(data)
 
 
-def test_graded_use_case_pool_requires_at_least_six_items() -> None:
+def test_graded_use_case_pool_allows_refined_top_five_grading() -> None:
+    pool = GradedUseCasePool(
+        graded_use_cases=[
+            GradedUseCase(
+                use_case=_candidate(index),
+                score=_score(f"uc-{index}"),
+            )
+            for index in range(1, 6)
+        ]
+    )
+
+    assert len(pool.graded_use_cases) == 5
+
+
+def test_graded_use_case_pool_requires_at_least_one_item() -> None:
     with pytest.raises(ValidationError):
-        GradedUseCasePool(
-            graded_use_cases=[
-                GradedUseCase(
-                    use_case=_candidate(index),
-                    score=_score(f"uc-{index}"),
-                )
-                for index in range(1, 6)
-            ]
-        )
+        GradedUseCasePool(graded_use_cases=[])
 
 
 @pytest.mark.parametrize("count", [4, 6])
@@ -1120,6 +1234,36 @@ def test_initial_selection_output_forbids_extra_fields() -> None:
 
     with pytest.raises(ValidationError):
         InitialSelectionOutput.model_validate(data)
+
+
+@pytest.mark.parametrize("count", [2, 4])
+def test_final_selection_output_requires_exactly_three_items(count: int) -> None:
+    with pytest.raises(ValidationError):
+        FinalSelectionOutput(
+            selected=[
+                GradedUseCase(
+                    use_case=_candidate(index),
+                    score=_score(f"uc-{index}"),
+                )
+                for index in range(1, count + 1)
+            ],
+        )
+
+
+def test_final_selection_output_forbids_extra_fields() -> None:
+    data = FinalSelectionOutput(
+        selected=[
+            GradedUseCase(
+                use_case=_candidate(index),
+                score=_score(f"uc-{index}"),
+            )
+            for index in range(1, 4)
+        ],
+    ).model_dump()
+    data["unexpected"] = "ignored before strict schemas"
+
+    with pytest.raises(ValidationError):
+        FinalSelectionOutput.model_validate(data)
 
 
 @pytest.mark.parametrize("count", [4, 6])

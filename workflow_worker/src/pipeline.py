@@ -10,6 +10,7 @@ from src.activities import (
     research_company,
     research_company_resolution,
     research_pain_points,
+    select_final_top_3,
     select_initial_top_5,
     structure_company_profile,
     structure_company_resolution,
@@ -135,4 +136,20 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json({"refined_use_cases": refined_use_cases.model_dump(mode="json")})
 
-    return SparkstralWorkflowResult(outputs=outputs, final=refined_use_cases)
+    refined_candidates = [
+        item.refined_use_case for item in refined_use_cases.refined_use_cases
+    ]
+    final_graded_use_cases = await grade_use_cases(
+        GradeUseCasesInput(
+            company_profile=company_profile,
+            pain_points=pain_points,
+            opportunity_map=opportunity_map,
+            use_cases=refined_candidates,
+        )
+    )
+    append_json({"final_grading": final_graded_use_cases.model_dump(mode="json")})
+
+    final_selection = await select_final_top_3(final_graded_use_cases)
+    append_json({"final_top_3": final_selection.model_dump(mode="json")})
+
+    return SparkstralWorkflowResult(outputs=outputs, final=final_selection)

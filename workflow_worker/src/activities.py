@@ -26,6 +26,7 @@ from src.schemas import (
     CompanyResolutionStructuringInput,
     DeduplicatedUseCasePool,
     DeduplicateUseCasesInput,
+    FinalSelectionOutput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
     GradedUseCasePool,
@@ -182,6 +183,19 @@ async def select_initial_top_5(
         )
     except Exception as exc:
         raise RuntimeError("initial top-5 selection failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def select_final_top_3(
+    params: GradedUseCasePool,
+) -> FinalSelectionOutput:
+    try:
+        selected = select_top_n(params.graded_use_cases, 3)
+        if len(selected) != 3:
+            raise RuntimeError("final top-3 selection produced fewer than 3 use cases")
+        return FinalSelectionOutput(selected=selected)
+    except Exception as exc:
+        raise RuntimeError("final top-3 selection failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

@@ -219,13 +219,19 @@ class GradedUseCase(BaseModel):
 class GradedUseCasePool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    graded_use_cases: list[GradedUseCase] = Field(..., min_length=6)
+    graded_use_cases: list[GradedUseCase] = Field(..., min_length=1)
 
 
 class InitialSelectionOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     selected: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
+
+
+class FinalSelectionOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    selected: list[GradedUseCase] = Field(..., min_length=3, max_length=3)
 
 
 class UseCaseCriticism(BaseModel):
@@ -311,4 +317,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: RefinedUseCasePool
+    final: FinalSelectionOutput
