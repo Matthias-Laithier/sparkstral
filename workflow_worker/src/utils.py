@@ -1,4 +1,8 @@
+import asyncio
 import functools
+import logging
+import random
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 import httpx
@@ -8,7 +12,10 @@ from pydantic import BaseModel
 from src.config import settings
 from src.schemas import PipelineOutput
 
-ResponseT = TypeVar("ResponseT", bound=BaseModel)
+ResponseT = TypeVar("ResponseT")
+ParsedResponseT = TypeVar("ParsedResponseT", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 @functools.cache
@@ -26,6 +33,36 @@ def get_mistral_client() -> Mistral:
         ),
         timeout_ms=180_000,
     )
+
+
+async def with_llm_retries(
+    call: Callable[[], Awaitable[ResponseT]],
+    *,
+    phase: str,
+    max_retries: int = 2,
+    base_delay_seconds: float = 1.0,
+) -> ResponseT:
+    attempts = max_retries + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            return await call()
+        except Exception as exc:
+            if attempt == attempts:
+                raise RuntimeError(f"{phase} failed after {attempts} attempts") from exc
+
+            delay_seconds = base_delay_seconds * 2 ** (attempt - 1)
+            delay_seconds += random.uniform(0, delay_seconds * 0.1)
+            logger.warning(
+                "%s failed on attempt %s/%s; retrying in %.2fs: %s",
+                phase,
+                attempt,
+                attempts,
+                delay_seconds,
+                exc,
+            )
+            await asyncio.sleep(delay_seconds)
+
+    raise RuntimeError(f"{phase} failed after {attempts} attempts")
 
 
 def append_text_output(outputs: list[PipelineOutput], text: str) -> None:
@@ -50,25 +87,28 @@ def append_json_output(outputs: list[PipelineOutput], data: dict[str, Any]) -> N
 
 async def parse_chat_model(
     client: Mistral,
-    response_model: type[ResponseT],
+    response_model: type[ParsedResponseT],
     *,
     phase: str,
     model: str,
     max_tokens: int,
     temperature: float,
     messages: list[dict[str, str]],
-) -> ResponseT:
-    parsed = await client.chat.parse_async(
-        response_model,
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        messages=messages,
-    )
-    if (
-        parsed.choices
-        and parsed.choices[0].message
-        and parsed.choices[0].message.parsed is not None
-    ):
-        return parsed.choices[0].message.parsed
-    raise RuntimeError(f"{phase} returned no parsed output")
+) -> ParsedResponseT:
+    async def call() -> ParsedResponseT:
+        parsed = await client.chat.parse_async(
+            response_model,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=messages,
+        )
+        if (
+            parsed.choices
+            and parsed.choices[0].message
+            and parsed.choices[0].message.parsed is not None
+        ):
+            return parsed.choices[0].message.parsed
+        raise RuntimeError(f"{phase} returned no parsed output")
+
+    return await with_llm_retries(call, phase=phase)

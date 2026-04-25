@@ -9,6 +9,7 @@ from src.agents.base import BaseAgent
 from src.config import settings
 from src.prompts import web_search_system_prompt
 from src.tools.cached_web_search import CACHED_WEB_SEARCH_TOOL, cached_web_search
+from src.utils import with_llm_retries
 
 
 class WebSearchInput(BaseModel):
@@ -29,13 +30,16 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
         ]
 
         for _ in range(settings.WEB_SEARCH_MAX_ROUNDS):
-            response = await self.client.chat.complete_async(
-                model=settings.WEB_SEARCH_MODEL,
-                messages=messages,
-                tools=[cast(Any, CACHED_WEB_SEARCH_TOOL)],
-                tool_choice="auto",
-                max_tokens=settings.LLM_MAX_TOKENS,
-                temperature=settings.LLM_TEMPERATURE,
+            response = await with_llm_retries(
+                lambda: self.client.chat.complete_async(
+                    model=settings.WEB_SEARCH_MODEL,
+                    messages=messages,
+                    tools=[cast(Any, CACHED_WEB_SEARCH_TOOL)],
+                    tool_choice="auto",
+                    max_tokens=settings.LLM_MAX_TOKENS,
+                    temperature=settings.LLM_TEMPERATURE,
+                ),
+                phase="web search llm completion",
             )
             if not response.choices:
                 break
