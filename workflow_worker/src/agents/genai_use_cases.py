@@ -26,6 +26,7 @@ class GenAIUseCasesAgent(BaseAgent[GenAIUseCasesInput, GenAIUseCasesOutput]):
                     "content": genai_use_cases_user_prompt(
                         params.company_profile,
                         params.pain_points,
+                        params.opportunity_map,
                     ),
                 },
             ],

@@ -11,6 +11,8 @@ from src.schemas import (
     EvidenceItem,
     GenAIUseCaseItem,
     GenAIUseCasesOutput,
+    OpportunityItem,
+    OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
     ResearchResult,
@@ -61,6 +63,25 @@ def _pain_point(index: int) -> PainPointItem:
     )
 
 
+def _opportunity(index: int) -> OpportunityItem:
+    return OpportunityItem(
+        title=f"Opportunity {index}",
+        business_line="Widgets",
+        linked_pain_points=[f"Pain {index}"],
+        why_it_matters="Why it matters",
+        why_genai_is_suitable="GenAI can reason across unstructured records.",
+        likely_data_sources=["Work orders"],
+        evidence_sources=[f"https://example.com/pain-{index}"],
+    )
+
+
+def _opportunity_map() -> OpportunityMapOutput:
+    return OpportunityMapOutput(
+        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
+        summary="Opportunity summary",
+    )
+
+
 def _use_case(index: int) -> GenAIUseCaseItem:
     return GenAIUseCaseItem(
         title=f"Use case {index}",
@@ -79,6 +100,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     calls: list[str] = []
     company_research_query = ""
     company_profile_query = ""
+    generation_opportunity_map: OpportunityMapOutput | None = None
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -110,8 +132,14 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         )
 
-    async def generate_genai_use_cases(_params: object) -> GenAIUseCasesOutput:
+    async def map_opportunities(_params: object) -> OpportunityMapOutput:
+        calls.append("map_opportunities")
+        return _opportunity_map()
+
+    async def generate_genai_use_cases(params: Any) -> GenAIUseCasesOutput:
+        nonlocal generation_opportunity_map
         calls.append("generate_genai_use_cases")
+        generation_opportunity_map = params.opportunity_map
         return GenAIUseCasesOutput(use_cases=[_use_case(1), _use_case(2), _use_case(3)])
 
     monkeypatch.setattr(
@@ -126,6 +154,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     monkeypatch.setattr(pipeline, "research_pain_points", research_pain_points)
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
+    monkeypatch.setattr(pipeline, "map_opportunities", map_opportunities)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
@@ -137,6 +166,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "structure_company_profile",
         "research_pain_points",
         "structure_pain_points",
+        "map_opportunities",
         "generate_genai_use_cases",
     ]
     assert [output.kind for output in result.outputs] == [
@@ -147,8 +177,11 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
         "json",
         "json",
+        "json",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
+    assert result.outputs[6].data == _opportunity_map().model_dump(mode="json")
+    assert generation_opportunity_map == _opportunity_map()
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
     assert len(result.final.use_cases) == 3
@@ -249,6 +282,29 @@ def test_pain_point_profiler_requires_at_least_three_points() -> None:
         PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2)],
         )
+
+
+def test_opportunity_map_requires_at_least_three_opportunities() -> None:
+    with pytest.raises(ValidationError):
+        OpportunityMapOutput(
+            opportunities=[_opportunity(1), _opportunity(2)],
+            summary="Too few opportunities",
+        )
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    ["linked_pain_points", "likely_data_sources", "evidence_sources"],
+)
+def test_opportunity_map_forbids_empty_required_lists(field_name: str) -> None:
+    data = OpportunityMapOutput(
+        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
+        summary="Opportunity summary",
+    ).model_dump()
+    data["opportunities"][0][field_name] = []
+
+    with pytest.raises(ValidationError):
+        OpportunityMapOutput.model_validate(data)
 
 
 @pytest.mark.parametrize("count", [2, 4])

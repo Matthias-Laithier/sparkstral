@@ -1,7 +1,11 @@
 import json
 from datetime import date
 
-from src.schemas import CompanyProfileOutput, PainPointProfilerOutput
+from src.schemas import (
+    CompanyProfileOutput,
+    OpportunityMapOutput,
+    PainPointProfilerOutput,
+)
 
 
 def web_search_system_prompt(today: date) -> str:
@@ -128,27 +132,27 @@ def pain_point_user_prompt(
     )
 
 
-def genai_use_cases_system_prompt() -> str:
+def opportunity_mapper_system_prompt() -> str:
     return (
-        "You are a principal GenAI strategy consultant. You receive a structured "
-        "company profile and a structured pain-point analysis. Propose exactly 3 "
-        "high-impact, company-specific generative-AI use cases that feel iconic "
-        "for THIS company, not interchangeable with any other business.\n"
-        "Each use case must tie to the company profile, pain points, industry, "
-        "and strategic priorities. Be concrete: name workflows, data, org roles, "
-        "and what makes the solution distinctive.\n"
-        "STRICT: Do not propose overused, generic product ideas, including: "
-        "generic customer support chatbot, internal knowledge assistant or RAG "
-        "for documents, or generic marketing copy generators, unless the write-up "
-        "is so specific to this company that it is clearly not a default listing.\n"
-        "Prefer creative combinations of agents, tools, and domain control that "
-        "plausibly use this org's data and market position. Vary angles across "
-        "the list, such as operations, product, risk, R&D, or partner ecosystem "
-        "where relevant."
+        "You are a GenAI opportunity mapping strategist. Given a structured "
+        "company profile and structured pain-point analysis, map the company's "
+        "facts and pain points into 3-8 GenAI-shaped opportunity areas.\n"
+        "Do not produce final use cases yet. Stay one level higher than a "
+        "solution design: identify opportunity territories that could later "
+        "become use cases.\n"
+        "Avoid generic opportunities such as 'improve efficiency', 'automate "
+        "support', or 'increase productivity' unless they are made specific to "
+        "the company's business lines, pain points, data, and operating context.\n"
+        "For every opportunity, explain why it matters, why GenAI is suitable "
+        "rather than ordinary software or analytics, and which likely data "
+        "sources would be needed. Link each opportunity to at least one named "
+        "pain point from the input.\n"
+        "Evidence sources must be full URL strings taken only from the prior "
+        "company profile evidence or pain-point sources."
     )
 
 
-def genai_use_cases_user_prompt(
+def opportunity_mapper_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
 ) -> str:
@@ -167,7 +171,65 @@ def genai_use_cases_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
+        "Return an opportunity map with 3-8 opportunities and a concise summary. "
+        "Each opportunity must include: title; business_line; linked_pain_points "
+        "(1+ exact or clearly recognizable pain-point titles from the input); "
+        "why_it_matters; why_genai_is_suitable; likely_data_sources (1+); and "
+        "evidence_sources (1+ full URLs copied from the profile evidence or pain "
+        "point sources). Do not write final use cases or implementation plans."
+    )
+
+
+def genai_use_cases_system_prompt() -> str:
+    return (
+        "You are a principal GenAI strategy consultant. You receive a structured "
+        "company profile, structured pain-point analysis, and opportunity map. "
+        "Propose exactly 3 high-impact, company-specific generative-AI use cases "
+        "that feel iconic for THIS company, not interchangeable with any other "
+        "business.\n"
+        "Each use case must tie to the company profile, pain points, opportunity "
+        "map, industry, and strategic priorities. Be concrete: name workflows, "
+        "data, org roles, and what makes the solution distinctive.\n"
+        "STRICT: Do not propose overused, generic product ideas, including: "
+        "generic customer support chatbot, internal knowledge assistant or RAG "
+        "for documents, or generic marketing copy generators, unless the write-up "
+        "is so specific to this company that it is clearly not a default listing.\n"
+        "Prefer creative combinations of agents, tools, and domain control that "
+        "plausibly use this org's data and market position. Vary angles across "
+        "the list, such as operations, product, risk, R&D, or partner ecosystem "
+        "where relevant."
+    )
+
+
+def genai_use_cases_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    opportunity_map: OpportunityMapOutput,
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    opportunity_json = json.dumps(
+        opportunity_map.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Opportunity map (JSON):\n"
+        f"{opportunity_json}\n\n"
         "Output exactly 3 use cases. Each must have: title; target_users (1+); "
         "business_problem; why_this_company; genai_solution; required_data; "
-        "expected_impact; risks (1+). Rank them by relevance and impact."
+        "expected_impact; risks (1+). Use the opportunity map as the bridge from "
+        "pain points to use cases, and rank the use cases by relevance and impact."
     )
