@@ -8,6 +8,7 @@ from src.schemas import (
     GradedUseCase,
     OpportunityMapOutput,
     PainPointProfilerOutput,
+    RedTeamOutput,
 )
 
 
@@ -430,4 +431,77 @@ def red_team_user_prompt(
         "use_case.id as use_case_id. Each review must include at least one "
         "criticism and a verdict. Critique only: do not rewrite use cases and do "
         "not create replacement ideas."
+    )
+
+
+def refiner_system_prompt() -> str:
+    return (
+        "You are a GenAI use-case refinement editor. Given company context, the "
+        "initial top 5 graded use cases, and red-team criticism, return exactly "
+        "5 refined use cases: one refinement per selected original.\n"
+        "Use the red-team feedback directly. Fix high-severity issues wherever "
+        "the supplied evidence and context support a safe fix. Make the company "
+        "fit more specific, the solution more feasible and concrete, and the "
+        "expected impact more operationally specific.\n"
+        "Preserve evidence: every source URL from the original selected use case "
+        "must remain in the refined use case's evidence_sources. You may copy "
+        "additional source URLs only from the supplied company profile, pain "
+        "points, opportunity map, or selected use cases. Do not invent source "
+        "URLs or unsupported facts.\n"
+        "For each item, set original_use_case_id to the original use_case.id, "
+        "return a complete refined_use_case object, list concrete changes_made, "
+        "and keep unresolved_concerns explicit when a criticism cannot be safely "
+        "fixed from the provided evidence."
+    )
+
+
+def refiner_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    opportunity_map: OpportunityMapOutput,
+    selected_use_cases: list[GradedUseCase],
+    red_team: RedTeamOutput,
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    opportunity_json = json.dumps(
+        opportunity_map.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    selected_json = json.dumps(
+        [use_case.model_dump(mode="json") for use_case in selected_use_cases],
+        indent=2,
+        ensure_ascii=False,
+    )
+    red_team_json = json.dumps(
+        red_team.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Opportunity map (JSON):\n"
+        f"{opportunity_json}\n\n"
+        "Initial top 5 selected use cases to refine (JSON):\n"
+        f"{selected_json}\n\n"
+        "Red-team review to address (JSON):\n"
+        f"{red_team_json}\n\n"
+        "Return exactly 5 refined_use_cases: one per selected use case. Each "
+        "item must reference the matching original use_case.id in "
+        "original_use_case_id, include a complete refined_use_case object, list "
+        "changes_made, and include unresolved_concerns. Preserve all original "
+        "evidence_sources URLs in the refined use case, fix supported criticisms, "
+        "and leave unsafe or unsupported fixes as unresolved concerns."
     )

@@ -4,9 +4,10 @@ import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import grader, red_team
+from src.agents import grader, red_team, refiner
 from src.agents.grader import UseCaseGraderAgent, compute_total_score
 from src.agents.red_team import RedTeamAgent
+from src.agents.refiner import UseCaseRefinerAgent
 from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
@@ -26,6 +27,9 @@ from src.schemas import (
     RedTeamInput,
     RedTeamOutput,
     RedTeamReview,
+    RefinedUseCase,
+    RefinedUseCasePool,
+    RefineUseCasesInput,
     ResearchResult,
     UseCaseCriticism,
     UseCaseScore,
@@ -216,6 +220,30 @@ def _red_team_output(selected_use_cases: list[GradedUseCase]) -> RedTeamOutput:
     )
 
 
+def _refined_use_case(item: GradedUseCase, index: int = 1) -> RefinedUseCase:
+    return RefinedUseCase(
+        original_use_case_id=item.use_case.id,
+        refined_use_case=item.use_case.model_copy(
+            update={
+                "title": f"Refined {item.use_case.title}",
+                "why_this_company": "Sharper company-specific fit",
+                "expected_impact": "More concrete operational impact",
+            }
+        ),
+        changes_made=[f"Addressed red-team weakness {index}"],
+        unresolved_concerns=[f"Concern {index} still needs validation"],
+    )
+
+
+def _refined_pool(selected_use_cases: list[GradedUseCase]) -> RefinedUseCasePool:
+    return RefinedUseCasePool(
+        refined_use_cases=[
+            _refined_use_case(item, index)
+            for index, item in enumerate(selected_use_cases, start=1)
+        ]
+    )
+
+
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
@@ -227,6 +255,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     grading_company_profile: CompanyProfileOutput | None = None
     selection_candidates: GradedUseCasePool | None = None
     red_team_params: RedTeamInput | None = None
+    refiner_params: RefineUseCasesInput | None = None
     generated_candidates = _candidate_pool()
     deduplicated_candidates = _deduplicated_pool()
     graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
@@ -234,6 +263,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         selected=graded_candidates.graded_use_cases[:5],
     )
     red_team_result = _red_team_output(initial_selection.selected)
+    refined_result = _refined_pool(initial_selection.selected)
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -302,6 +332,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         red_team_params = params
         return red_team_result
 
+    async def refine_use_cases(params: RefineUseCasesInput) -> RefinedUseCasePool:
+        nonlocal refiner_params
+        calls.append("refine_use_cases")
+        refiner_params = params
+        return refined_result
+
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
     )
@@ -320,6 +356,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
     monkeypatch.setattr(pipeline, "select_initial_top_5", select_initial_top_5)
     monkeypatch.setattr(pipeline, "red_team_use_cases", red_team_use_cases)
+    monkeypatch.setattr(pipeline, "refine_use_cases", refine_use_cases)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
@@ -336,6 +373,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "grade_use_cases",
         "select_initial_top_5",
         "red_team_use_cases",
+        "refine_use_cases",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",
@@ -343,6 +381,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
         "json",
         "text",
+        "json",
         "json",
         "json",
         "json",
@@ -362,6 +401,9 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.outputs[11].data == {
         "red_team_review": red_team_result.model_dump(mode="json")
     }
+    assert result.outputs[12].data == {
+        "refined_use_cases": refined_result.model_dump(mode="json")
+    }
     assert generation_opportunity_map == _opportunity_map()
     assert deduplication_candidates == generated_candidates
     assert grading_use_cases == deduplicated_candidates.use_cases
@@ -375,19 +417,27 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         opportunity_map=_opportunity_map(),
         selected_use_cases=initial_selection.selected,
     )
+    assert refiner_params == RefineUseCasesInput(
+        company_profile=_company_profile(),
+        pain_points=PainPointProfilerOutput(
+            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+        ),
+        opportunity_map=_opportunity_map(),
+        selected_use_cases=initial_selection.selected,
+        red_team=red_team_result,
+    )
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
-    assert result.final == graded_candidates
-    assert len(result.final.graded_use_cases) == 6
-    assert {item.score.use_case_id for item in result.final.graded_use_cases} == {
-        candidate.id for candidate in deduplicated_candidates.use_cases
+    assert result.final == refined_result
+    assert len(result.final.refined_use_cases) == 5
+    assert {item.original_use_case_id for item in result.final.refined_use_cases} == {
+        item.use_case.id for item in initial_selection.selected
     }
-    assert all(item.use_case.id for item in result.final.graded_use_cases)
-    assert all(item.use_case.ideation_lens for item in result.final.graded_use_cases)
+    assert all(item.changes_made for item in result.final.refined_use_cases)
     assert all(
-        item.use_case.linked_opportunities for item in result.final.graded_use_cases
+        item.refined_use_case.evidence_sources
+        for item in result.final.refined_use_cases
     )
-    assert all(item.use_case.evidence_sources for item in result.final.graded_use_cases)
 
 
 @pytest.mark.asyncio
@@ -729,6 +779,154 @@ async def test_red_team_use_cases_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
+async def test_refiner_agent_returns_structured_refinements(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    red_team_result = _red_team_output(selected)
+    agent_result = _refined_pool(selected)
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
+        return agent_result
+
+    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
+
+    result = await UseCaseRefinerAgent(client=object()).run(
+        RefineUseCasesInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=selected,
+            red_team=red_team_result,
+        )
+    )
+
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
+async def test_refiner_agent_rejects_missing_selected_refinement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    red_team_result = _red_team_output(selected)
+    agent_result = RefinedUseCasePool(
+        refined_use_cases=[
+            _refined_use_case(item, index)
+            for index, item in enumerate(selected[:4], start=1)
+        ]
+        + [
+            RefinedUseCase(
+                original_use_case_id="uc-other",
+                refined_use_case=_candidate(6),
+                changes_made=["Changed unsupported details"],
+                unresolved_concerns=["Original candidate was not selected"],
+            )
+        ]
+    )
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
+        return agent_result
+
+    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
+
+    with pytest.raises(
+        RuntimeError,
+        match="exactly one item per selected use case",
+    ):
+        await UseCaseRefinerAgent(client=object()).run(
+            RefineUseCasesInput(
+                company_profile=_company_profile(),
+                pain_points=PainPointProfilerOutput(
+                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+                ),
+                opportunity_map=_opportunity_map(),
+                selected_use_cases=selected,
+                red_team=red_team_result,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_refiner_agent_rejects_missing_original_evidence_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    red_team_result = _red_team_output(selected)
+    first_refined = _refined_use_case(selected[0])
+    first_refined = first_refined.model_copy(
+        update={
+            "refined_use_case": first_refined.refined_use_case.model_copy(
+                update={"evidence_sources": ["https://example.com/new-source"]}
+            )
+        }
+    )
+    agent_result = RefinedUseCasePool(
+        refined_use_cases=[first_refined]
+        + [
+            _refined_use_case(item, index)
+            for index, item in enumerate(selected[1:], start=2)
+        ]
+    )
+
+    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
+        return agent_result
+
+    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
+
+    with pytest.raises(
+        RuntimeError,
+        match="preserve original evidence source URLs",
+    ):
+        await UseCaseRefinerAgent(client=object()).run(
+            RefineUseCasesInput(
+                company_profile=_company_profile(),
+                pain_points=PainPointProfilerOutput(
+                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+                ),
+                opportunity_map=_opportunity_map(),
+                selected_use_cases=selected,
+                red_team=red_team_result,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_refine_use_cases_activity_returns_agent_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    red_team_result = _red_team_output(selected)
+    agent_result = _refined_pool(selected)
+
+    class FakeUseCaseRefinerAgent:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        async def run(self, _params: RefineUseCasesInput) -> RefinedUseCasePool:
+            return agent_result
+
+    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
+    monkeypatch.setattr(activities, "UseCaseRefinerAgent", FakeUseCaseRefinerAgent)
+
+    result = await activities.refine_use_cases(
+        RefineUseCasesInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=selected,
+            red_team=red_team_result,
+        )
+    )
+
+    assert result == agent_result
+
+
+@pytest.mark.asyncio
 async def test_select_initial_top_5_activity_returns_selection() -> None:
     pool = GradedUseCasePool(
         graded_use_cases=[
@@ -950,6 +1148,55 @@ def test_red_team_output_requires_exactly_five_reviews(count: int) -> None:
             reviews=[
                 _red_team_review(f"uc-{index}", index) for index in range(1, count + 1)
             ]
+        )
+
+
+@pytest.mark.parametrize("count", [4, 6])
+def test_refine_use_cases_input_requires_exactly_five_selected_use_cases(
+    count: int,
+) -> None:
+    valid_selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+    selected = [
+        GradedUseCase(
+            use_case=_candidate(index),
+            score=_score(f"uc-{index}"),
+        )
+        for index in range(1, count + 1)
+    ]
+    with pytest.raises(ValidationError):
+        RefineUseCasesInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            opportunity_map=_opportunity_map(),
+            selected_use_cases=selected,
+            red_team=_red_team_output(valid_selected),
+        )
+
+
+@pytest.mark.parametrize("count", [4, 6])
+def test_refined_use_case_pool_requires_exactly_five_items(count: int) -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
+
+    with pytest.raises(ValidationError):
+        RefinedUseCasePool(
+            refined_use_cases=[
+                _refined_use_case(selected[(index - 1) % 5], index)
+                for index in range(1, count + 1)
+            ]
+        )
+
+
+def test_refined_use_case_requires_changes_made() -> None:
+    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[0]
+
+    with pytest.raises(ValidationError):
+        RefinedUseCase(
+            original_use_case_id=selected.use_case.id,
+            refined_use_case=selected.use_case,
+            changes_made=[],
+            unresolved_concerns=[],
         )
 
 

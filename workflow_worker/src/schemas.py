@@ -260,6 +260,31 @@ class RedTeamInput(BaseModel):
     selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
 
 
+class RefinedUseCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    original_use_case_id: str
+    refined_use_case: GenAIUseCaseCandidate
+    changes_made: list[str] = Field(..., min_length=1)
+    unresolved_concerns: list[str]
+
+
+class RefinedUseCasePool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refined_use_cases: list[RefinedUseCase] = Field(..., min_length=5, max_length=5)
+
+
+class RefineUseCasesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    opportunity_map: OpportunityMapOutput
+    selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
+    red_team: RedTeamOutput
+
+
 class GradeUseCasesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -286,4 +311,4 @@ class PipelineOutput(BaseModel):
 
 class SparkstralWorkflowResult(BaseModel):
     outputs: list[PipelineOutput]
-    final: GradedUseCasePool
+    final: RefinedUseCasePool

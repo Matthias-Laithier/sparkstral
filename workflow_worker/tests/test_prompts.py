@@ -6,6 +6,8 @@ from src.prompts import (
     genai_use_cases_system_prompt,
     red_team_system_prompt,
     red_team_user_prompt,
+    refiner_system_prompt,
+    refiner_user_prompt,
     use_case_grader_system_prompt,
     web_search_system_prompt,
 )
@@ -19,6 +21,9 @@ from src.schemas import (
     OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
+    RedTeamOutput,
+    RedTeamReview,
+    UseCaseCriticism,
     UseCaseScore,
 )
 
@@ -119,6 +124,26 @@ def _graded_use_cases() -> list[GradedUseCase]:
     ]
 
 
+def _red_team_output() -> RedTeamOutput:
+    return RedTeamOutput(
+        reviews=[
+            RedTeamReview(
+                use_case_id=f"uc-{index}",
+                criticisms=[
+                    UseCaseCriticism(
+                        title=f"Weakness {index}",
+                        comment="The expected impact is too vague.",
+                        severity="high" if index == 1 else "medium",
+                        required_fix="Make the impact concrete without new facts.",
+                    )
+                ],
+                verdict="revise",
+            )
+            for index in range(1, 6)
+        ]
+    )
+
+
 def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
@@ -199,3 +224,34 @@ def test_red_team_user_prompt_includes_selected_top_five_json() -> None:
     assert "Return exactly 5 reviews" in prompt
     assert "one per selected use case" in prompt
     assert "do not rewrite use cases" in prompt
+
+
+def test_refiner_prompt_requires_red_team_driven_refinement() -> None:
+    prompt = refiner_system_prompt()
+
+    assert "red-team criticism" in prompt
+    assert "Fix high-severity issues" in prompt
+    assert "company fit more specific" in prompt
+    assert "expected impact more operationally specific" in prompt
+    assert "Preserve evidence" in prompt
+    assert "unresolved_concerns" in prompt
+
+
+def test_refiner_user_prompt_includes_selected_use_cases_and_red_team_json() -> None:
+    prompt = refiner_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        _opportunity_map(),
+        _graded_use_cases(),
+        _red_team_output(),
+    )
+
+    assert "Initial top 5 selected use cases to refine (JSON)" in prompt
+    assert "Red-team review to address (JSON)" in prompt
+    assert '"id": "uc-1"' in prompt
+    assert '"use_case_id": "uc-5"' in prompt
+    assert "Return exactly 5 refined_use_cases" in prompt
+    assert "original_use_case_id" in prompt
+    assert "changes_made" in prompt
+    assert "unresolved_concerns" in prompt
+    assert "Preserve all original evidence_sources URLs" in prompt

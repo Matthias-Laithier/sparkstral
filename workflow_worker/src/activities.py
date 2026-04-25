@@ -10,6 +10,7 @@ from src.agents.grader import UseCaseGraderAgent
 from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
 from src.agents.red_team import RedTeamAgent
+from src.agents.refiner import UseCaseRefinerAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
     company_research_prompt,
@@ -37,6 +38,8 @@ from src.schemas import (
     PainPointStructuringInput,
     RedTeamInput,
     RedTeamOutput,
+    RefinedUseCasePool,
+    RefineUseCasesInput,
     ResearchResult,
 )
 from src.utils import get_mistral_client, select_top_n
@@ -189,3 +192,13 @@ async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("red-team review failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def refine_use_cases(params: RefineUseCasesInput) -> RefinedUseCasePool:
+    client = get_mistral_client()
+    agent = UseCaseRefinerAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("use-case refinement failed") from exc
