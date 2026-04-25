@@ -11,7 +11,7 @@ describe("App", () => {
 		expect(screen.getByRole("button", { name: "Run analysis" })).toBeDefined();
 	});
 
-	it("renders generic workflow outputs", () => {
+	it("renders generic workflow outputs and final markdown", () => {
 		render(
 			<WorkflowOutput
 				result={{
@@ -20,7 +20,7 @@ describe("App", () => {
 						{ id: 2, kind: "json", data: { company_name: "Acme" } },
 					],
 					final:
-						"# Acme Corporation GenAI Opportunity Report\n\n## Executive Summary",
+						"# Acme Corporation GenAI Opportunity Report\n\n## Executive Summary\n\n- Automate onboarding\n- Improve support",
 				}}
 			/>,
 		);
@@ -28,6 +28,16 @@ describe("App", () => {
 		expect(screen.getByText("research notes")).toBeDefined();
 		expect(screen.getByText(/company_name/)).toBeDefined();
 		expect(screen.getByText("Final result")).toBeDefined();
-		expect(screen.getByText(/Executive Summary/)).toBeDefined();
+		expect(
+			screen.getByRole("heading", {
+				level: 1,
+				name: "Acme Corporation GenAI Opportunity Report",
+			}),
+		).toBeDefined();
+		expect(
+			screen.getByRole("heading", { level: 2, name: "Executive Summary" }),
+		).toBeDefined();
+		expect(screen.getByText("Automate onboarding").tagName).toBe("LI");
+		expect(screen.queryByText(/^# Acme Corporation/)).toBeNull();
 	});
 });
