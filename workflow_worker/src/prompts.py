@@ -16,7 +16,7 @@ from src.schemas import (
 
 def web_search_system_prompt(today: date) -> str:
     return (
-        "You are a research assistant. Use cached_web_search to find accurate, "
+        "You are a research assistant. Use web search to find accurate, "
         "up-to-date information. Cite the source URL for every fact you report. "
         "Be concise and to the point. "
         f"The current date is {today:%Y-%m-%d}; use it in searches when recency "

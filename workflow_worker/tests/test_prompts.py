@@ -194,7 +194,7 @@ def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
     assert "2026-04-25" in prompt
-    assert "cached_web_search" in prompt
+    assert "web search" in prompt
 
 
 def test_genai_prompt_requires_candidate_pool() -> None:

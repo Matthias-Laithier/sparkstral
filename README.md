@@ -72,11 +72,12 @@ make check      # run all of the above
 |---|---|---|
 | `MISTRAL_API_KEY` | Yes | Mistral API key from [console.mistral.ai](https://console.mistral.ai) |
 | `DATABASE_URL` | Yes (backend) | SQLAlchemy URL for PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/db` |
-| `BACKEND_BASE_URL` | Yes (worker) | Base URL of the FastAPI backend; web search cache calls use this. Compose sets `http://backend:8000`. |
+| `BACKEND_BASE_URL` | Yes (worker) | Base URL of the FastAPI backend; Serper web search cache calls use this. Compose sets `http://backend:8000`. |
 | `DEPLOYMENT_NAME` | Yes | Workflow id: must match the worker registration and API `execute_workflow` |
-| `SERPER_API_KEY` | Yes (worker) | Serper API key for web search on cache miss (stored rows come from the backend) |
-| `WEB_SEARCH_MODEL` | Yes (worker) | Model for the web-search tool loop |
-| `WEB_SEARCH_MAX_ROUNDS` | Yes (worker) | Max tool-call rounds per research step |
+| `WEB_SEARCH_PROVIDER` | No (worker) | Web search provider: `serper` (default, backend cache + Serper) or `mistralai` (Mistral built-in `web_search`) |
+| `SERPER_API_KEY` | Yes when `WEB_SEARCH_PROVIDER=serper` | Serper API key for web search on cache miss (stored rows come from the backend). Not required for `mistralai`. |
+| `WEB_SEARCH_MODEL` | Yes (worker) | Model for web-search research |
+| `WEB_SEARCH_MAX_ROUNDS` | Yes when `WEB_SEARCH_PROVIDER=serper` | Max custom tool-call rounds per research step. The Mistral built-in provider uses the Conversations API instead. |
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured company profile (`parse`) |
 | `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured pain points (`parse`) |
 | `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use cases (`parse`) |

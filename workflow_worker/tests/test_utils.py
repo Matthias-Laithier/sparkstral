@@ -1,10 +1,13 @@
-from typing import Any
+from datetime import date
+from typing import Any, cast
 
 import pytest
 from pydantic import BaseModel
 
 import src.utils as utils
 from src.agents.web_search import WebSearchAgent, WebSearchInput
+from src.config import settings
+from src.prompts import web_search_system_prompt
 
 
 class ParsedExample(BaseModel):
@@ -84,14 +87,72 @@ class _CompletionClient:
         self.chat = _CompletionChat(outcomes)
 
 
+class _ConversationChunk:
+    def __init__(
+        self,
+        chunk_type: str,
+        *,
+        text: str | None = None,
+        title: str | None = None,
+        url: str | None = None,
+        source: str | None = None,
+    ) -> None:
+        self.type = chunk_type
+        self.text = text
+        self.title = title
+        self.url = url
+        self.source = source
+
+
+class _ConversationOutput:
+    def __init__(self, output_type: str, content: list[_ConversationChunk]) -> None:
+        self.type = output_type
+        self.content = content
+
+
+class _ConversationResponse:
+    def __init__(self, outputs: list[_ConversationOutput]) -> None:
+        self.outputs = outputs
+
+
+type ConversationOutcome = _ConversationResponse | BaseException
+
+
+class _Conversations:
+    def __init__(self, outcomes: list[ConversationOutcome]) -> None:
+        self.outcomes = outcomes
+        self.calls = 0
+        self.last_kwargs: dict[str, Any] | None = None
+
+    async def start_async(
+        self, *_args: Any, **kwargs: Any
+    ) -> _ConversationResponse:
+        self.calls += 1
+        self.last_kwargs = kwargs
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+
+class _Beta:
+    def __init__(self, outcomes: list[ConversationOutcome]) -> None:
+        self.conversations = _Conversations(outcomes)
+
+
+class _ConversationClient:
+    def __init__(self, outcomes: list[ConversationOutcome]) -> None:
+        self.beta = _Beta(outcomes)
+
+
 def _skip_retry_delays(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     delays: list[float] = []
 
     async def sleep(delay: float) -> None:
         delays.append(delay)
 
-    monkeypatch.setattr(utils.asyncio, "sleep", sleep)
-    monkeypatch.setattr(utils.random, "uniform", lambda _start, _end: 0.0)
+    monkeypatch.setattr(cast(Any, utils).asyncio, "sleep", sleep)
+    monkeypatch.setattr(cast(Any, utils).random, "uniform", lambda _start, _end: 0.0)
     return delays
 
 
@@ -101,7 +162,7 @@ async def test_parse_chat_model_returns_parsed_model() -> None:
     client = _Client([parsed])
 
     result = await utils.parse_chat_model(
-        client,
+        cast(Any, client),
         ParsedExample,
         phase="example",
         model="model",
@@ -123,7 +184,7 @@ async def test_parse_chat_model_retries_after_api_error(
     client = _Client([RuntimeError("transient"), parsed])
 
     result = await utils.parse_chat_model(
-        client,
+        cast(Any, client),
         ParsedExample,
         phase="example",
         model="model",
@@ -146,7 +207,7 @@ async def test_parse_chat_model_retries_after_missing_parsed_output(
     client = _Client([None, parsed])
 
     result = await utils.parse_chat_model(
-        client,
+        cast(Any, client),
         ParsedExample,
         phase="example",
         model="model",
@@ -172,7 +233,7 @@ async def test_parse_chat_model_raises_after_retries(
         match="example failed after 3 attempts",
     ) as exc_info:
         await utils.parse_chat_model(
-            client,
+            cast(Any, client),
             ParsedExample,
             phase="example",
             model="model",
@@ -187,6 +248,50 @@ async def test_parse_chat_model_raises_after_retries(
 
 
 @pytest.mark.asyncio
+async def test_web_search_agent_uses_mistral_web_search_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "WEB_SEARCH_PROVIDER", "mistralai")
+    response = _ConversationResponse(
+        [
+            _ConversationOutput(
+                "message.output",
+                [
+                    _ConversationChunk("text", text="research"),
+                    _ConversationChunk(
+                        "tool_reference",
+                        title="Source",
+                        url="https://example.com/source",
+                    ),
+                    _ConversationChunk(
+                        "tool_reference",
+                        title="Source",
+                        url="https://example.com/source",
+                    ),
+                ],
+            )
+        ]
+    )
+    client = _ConversationClient([response])
+
+    result = await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
+
+    assert result.text == "research\n\nSources:\n- Source: https://example.com/source"
+    assert client.beta.conversations.calls == 1
+    assert client.beta.conversations.last_kwargs == {
+        "model": "mistral-small-latest",
+        "instructions": web_search_system_prompt(date.today()),
+        "inputs": [{"role": "user", "content": "Acme"}],
+        "tools": [{"type": "web_search"}],
+        "completion_args": {
+            "max_tokens": 2048,
+            "temperature": 0.0,
+        },
+        "store": False,
+    }
+
+
+@pytest.mark.asyncio
 async def test_web_search_agent_retries_llm_completion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -194,7 +299,7 @@ async def test_web_search_agent_retries_llm_completion(
     response = _CompletionResponse(_CompletionMessage("research"))
     client = _CompletionClient([RuntimeError("transient"), response])
 
-    result = await WebSearchAgent(client).run(WebSearchInput(prompt="Acme"))
+    result = await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
 
     assert result.text == "research"
     assert client.chat.calls == 2
@@ -218,7 +323,7 @@ async def test_web_search_agent_raises_after_llm_completion_retries(
         RuntimeError,
         match="web search llm completion failed after 3 attempts",
     ):
-        await WebSearchAgent(client).run(WebSearchInput(prompt="Acme"))
+        await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
 
     assert client.chat.calls == 3
     assert delays == [1.0, 2.0]

@@ -34,11 +34,15 @@ CACHED_WEB_SEARCH_TOOL = Tool(
 
 
 async def _serper_search(client: httpx.AsyncClient, query: str) -> str:
+    api_key = settings.SERPER_API_KEY
+    if api_key is None:
+        raise RuntimeError("SERPER_API_KEY is required for Serper web search")
+
     response = await client.post(
         "https://google.serper.dev/search",
         content=json.dumps({"q": query}),
         headers={
-            "X-API-KEY": settings.SERPER_API_KEY,
+            "X-API-KEY": api_key,
             "Content-Type": "application/json",
         },
     )
