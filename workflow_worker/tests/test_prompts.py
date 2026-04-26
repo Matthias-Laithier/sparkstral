@@ -12,6 +12,8 @@ from src.prompts import (
     markdown_reporter_user_prompt,
     pain_point_system_prompt,
     pain_point_user_prompt,
+    use_case_deduplicator_system_prompt,
+    use_case_deduplicator_user_prompt,
     use_case_grader_system_prompt,
     use_case_grader_user_prompt,
     web_search_system_prompt,
@@ -227,7 +229,6 @@ def _company_profile() -> CompanyProfileOutput:
         growth_opportunities=["Aftermarket service expansion"],
         technology_transformation_context=["Factory modernization"],
         claims=_company_claims(),
-        notes="No caveats.",
     )
 
 
@@ -432,6 +433,38 @@ def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
     assert "do not invent target values" in prompt
     assert "company_profile.claims" in prompt
     assert '"claims": [' in prompt
+
+
+def test_use_case_deduplicator_prompt_only_allows_retained_ids() -> None:
+    prompt = use_case_deduplicator_system_prompt()
+
+    assert "sole purpose" in prompt
+    assert "very similar use cases" in prompt
+    assert "strongest existing representative" in prompt
+    assert "retained_use_case_ids" in prompt
+    assert "Do not rewrite" in prompt
+    assert "merge fields" in prompt
+    assert "create new IDs" in prompt
+    assert "change any use case content" in prompt
+    assert "Retain at least 5" in prompt
+    assert "share a pain point" in prompt
+
+
+def test_use_case_deduplicator_user_prompt_includes_original_use_cases() -> None:
+    prompt = use_case_deduplicator_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        [_candidate(1), _candidate(2), _candidate(3), _candidate(4), _candidate(5)],
+    )
+
+    assert "Generated use cases to deduplicate (JSON)" in prompt
+    assert '"id": "uc-1"' in prompt
+    assert "Available use_case IDs: uc-1, uc-2, uc-3, uc-4, uc-5" in prompt
+    assert "Return retained_use_case_ids only" in prompt
+    assert "Retain at least 5 use cases" in prompt
+    assert "Do not output rewritten use cases" in prompt
+    assert "merged use cases" in prompt
+    assert "changed fields" in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:

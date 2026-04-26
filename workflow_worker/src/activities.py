@@ -8,6 +8,7 @@ from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
+from src.agents.use_case_deduplicator import UseCaseDeduplicatorAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
     company_research_prompt,
@@ -19,9 +20,11 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
+    DeduplicateUseCasesInput,
     FinalSelectionOutput,
     GenAIUseCaseCandidateBatch,
     GenAIUseCaseCandidateInput,
+    GenAIUseCaseCandidatePool,
     GenAIUseCaseIdPrefix,
     GenAIUseCasePersona,
     GenAIUseCasePersonaInput,
@@ -150,6 +153,18 @@ async def _generate_genai_use_case_batch(
         )
     except Exception as exc:
         raise RuntimeError(f"{ideation_lens} GenAI use-case generation failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def deduplicate_genai_use_cases(
+    params: DeduplicateUseCasesInput,
+) -> GenAIUseCaseCandidatePool:
+    client = get_mistral_client()
+    agent = UseCaseDeduplicatorAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError("use-case deduplication failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

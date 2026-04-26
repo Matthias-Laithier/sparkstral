@@ -142,12 +142,11 @@ def company_profile_user_prompt(company_query: str, research_text: str) -> str:
         "business_lines; key_customers; customer_segments; strategic_priorities; "
         "recent_strategic_initiatives; geography_markets; operational_context; "
         "regulatory_context; customer_market_pressure; growth_opportunities; "
-        "technology_transformation_context; claims; notes. Be concise: 2-6 "
+        "technology_transformation_context; claims. Be concise: 2-6 "
         "items for compact list fields where the research supports them. Include "
         "at least 15 claims. Each claims item must contain one factual claim, "
         "source_url, and citation. Copy source_url exactly from the research text. "
-        "Drop facts without full URLs or citations. Do not invent missing facts; "
-        "put uncertainty or gaps in notes."
+        "Drop facts without full URLs or citations. Do not invent missing facts."
     )
 
 
@@ -297,6 +296,63 @@ def genai_use_cases_user_prompt(
         "approval step exists. Use company_profile.claims, the company profile, "
         "business lines, strategic priorities, pain points, and evidence URLs "
         "directly. "
+    )
+
+
+def use_case_deduplicator_system_prompt() -> str:
+    return (
+        "You are a GenAI use-case deduplication agent. Your sole purpose is to "
+        "find clusters of very similar use cases and keep the strongest existing "
+        "representative from each cluster.\n"
+        "Return only existing use_case IDs in retained_use_case_ids. Do not "
+        "rewrite, refine, merge fields, rename, reorder, create new IDs, or "
+        "change any use case content. Application code will preserve the original "
+        "use case objects exactly as provided.\n"
+        "Only remove near-duplicates: use cases that solve substantially the same "
+        "business problem for substantially the same users with substantially the "
+        "same GenAI workflow. Do not remove distinct ideas merely because they "
+        "share a pain point, data source, user group, or broad theme.\n"
+        "When a duplicate cluster exists, keep the strongest existing use case: "
+        "the candidate with better company specificity, evidence, concrete "
+        "workflow, GenAI fit, feasibility, and iconicness. Retain at least 5 "
+        "use cases. If removing duplicates would leave fewer than 5, retain the "
+        "5 strongest existing use cases."
+    )
+
+
+def use_case_deduplicator_user_prompt(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    use_cases: list[GenAIUseCaseCandidate],
+) -> str:
+    company_json = json.dumps(
+        company_profile.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    pain_json = json.dumps(
+        pain_points.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
+    use_cases_json = json.dumps(
+        [use_case.model_dump(mode="json") for use_case in use_cases],
+        indent=2,
+        ensure_ascii=False,
+    )
+    use_case_ids = ", ".join(use_case.id for use_case in use_cases)
+    return (
+        "Company profile (JSON):\n"
+        f"{company_json}\n\n"
+        "Pain point analysis (JSON):\n"
+        f"{pain_json}\n\n"
+        "Generated use cases to deduplicate (JSON):\n"
+        f"{use_cases_json}\n\n"
+        f"Available use_case IDs: {use_case_ids}.\n"
+        "Return retained_use_case_ids only. Every retained ID must be copied "
+        "exactly from the available IDs above. Retain at least 5 use cases. "
+        "Do not output rewritten use cases, merged use cases, explanations, "
+        "clusters, replacement IDs, or changed fields."
     )
 
 

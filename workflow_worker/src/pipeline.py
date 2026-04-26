@@ -2,6 +2,7 @@ import asyncio
 from functools import partial
 
 from src.activities import (
+    deduplicate_genai_use_cases,
     generate_grounded_genai_use_cases,
     generate_moonshot_genai_use_cases,
     generate_why_not_genai_use_cases,
@@ -19,6 +20,7 @@ from src.schemas import (
     CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
+    DeduplicateUseCasesInput,
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
     MarkdownReportInput,
@@ -84,6 +86,13 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             ("moonshot_uc", moonshot_use_cases),
             ("why_not_uc", why_not_use_cases),
         ]
+    )
+    use_cases = await deduplicate_genai_use_cases(
+        DeduplicateUseCasesInput(
+            company_profile=company_profile,
+            pain_points=pain_points,
+            use_cases=use_cases.use_cases,
+        )
     )
     append_json(use_cases.model_dump(mode="json"))
 

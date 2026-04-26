@@ -84,10 +84,6 @@ class CompanyProfileOutput(BaseModel):
     growth_opportunities: list[str] = Field(..., min_length=1)
     technology_transformation_context: list[str] = Field(..., min_length=1)
     claims: list[CompanyEvidenceClaim] = Field(..., min_length=15)
-    notes: str = Field(
-        ...,
-        description="Optional caveats about the extracted profile.",
-    )
 
 
 class CompanyProfileStructuringInput(BaseModel):
@@ -252,9 +248,9 @@ class GenAIUseCaseCandidatePool(BaseModel):
 
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=8,
+        min_length=5,
         max_length=12,
-        description="Candidate pool of 8-12 GenAI use cases.",
+        description="Candidate pool of 5-12 GenAI use cases.",
     )
 
 
@@ -274,6 +270,18 @@ class GenAIUseCaseCandidateBatch(BaseModel):
         min_length=3,
         max_length=3,
         description="Exactly 3 GenAI use cases from one generator persona.",
+    )
+
+
+class UseCaseDeduplicationOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    retained_use_case_ids: list[str] = Field(
+        ...,
+        min_length=5,
+        description=(
+            "Existing use case IDs to keep after removing very similar duplicates."
+        ),
     )
 
 
@@ -336,6 +344,14 @@ class FinalSelectionOutput(BaseModel):
 
 
 class GradeUseCasesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=1)
+
+
+class DeduplicateUseCasesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
