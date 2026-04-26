@@ -6,8 +6,6 @@ from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
-from src.agents.pain_point_profiler import PainPointProfilerAgent
-from src.agents.use_case_deduplicator import UseCaseDeduplicatorAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
     company_research_prompt,
@@ -17,20 +15,13 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
-    DeduplicateUseCasesInput,
     FinalSelectionOutput,
-    GenAIUseCaseCandidateBatch,
     GenAIUseCaseCandidateInput,
-    GenAIUseCaseCandidatePool,
-    GenAIUseCaseIdPrefix,
-    GenAIUseCasePersona,
-    GenAIUseCasePersonaInput,
+    GenAIUseCaseGeneration,
     GradedUseCasePool,
     GradeUseCasesInput,
     MarkdownReport,
     MarkdownReportInput,
-    PainPointProfilerOutput,
-    PainPointStructuringInput,
     ResearchResult,
 )
 from src.utils import get_mistral_client, select_top_n
@@ -75,81 +66,15 @@ async def research_company(params: CompanyResolutionOutput) -> ResearchResult:
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def structure_pain_points(
-    params: PainPointStructuringInput,
-) -> PainPointProfilerOutput:
-    client = get_mistral_client()
-    agent = PainPointProfilerAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("pain point structuring failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def generate_grounded_genai_use_cases(
+async def generate_genai_use_cases(
     params: GenAIUseCaseCandidateInput,
-) -> GenAIUseCaseCandidateBatch:
-    return await _generate_genai_use_case_batch(
-        params,
-        ideation_lens="grounded consultant",
-        id_prefix="grounded_uc",
-    )
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def generate_moonshot_genai_use_cases(
-    params: GenAIUseCaseCandidateInput,
-) -> GenAIUseCaseCandidateBatch:
-    return await _generate_genai_use_case_batch(
-        params,
-        ideation_lens="moonshot strategist",
-        id_prefix="moonshot_uc",
-    )
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def generate_why_not_genai_use_cases(
-    params: GenAIUseCaseCandidateInput,
-) -> GenAIUseCaseCandidateBatch:
-    return await _generate_genai_use_case_batch(
-        params,
-        ideation_lens="why not? inventor",
-        id_prefix="why_not_uc",
-    )
-
-
-async def _generate_genai_use_case_batch(
-    params: GenAIUseCaseCandidateInput,
-    *,
-    ideation_lens: GenAIUseCasePersona,
-    id_prefix: GenAIUseCaseIdPrefix,
-) -> GenAIUseCaseCandidateBatch:
+) -> GenAIUseCaseGeneration:
     client = get_mistral_client()
     agent = GenAIUseCasesAgent(client=client)
     try:
-        return await agent.run(
-            GenAIUseCasePersonaInput(
-                company_profile=params.company_profile,
-                pain_points=params.pain_points,
-                ideation_lens=ideation_lens,
-                id_prefix=id_prefix,
-            )
-        )
-    except Exception as exc:
-        raise RuntimeError(f"{ideation_lens} GenAI use-case generation failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def deduplicate_genai_use_cases(
-    params: DeduplicateUseCasesInput,
-) -> GenAIUseCaseCandidatePool:
-    client = get_mistral_client()
-    agent = UseCaseDeduplicatorAgent(client=client)
-    try:
         return await agent.run(params)
     except Exception as exc:
-        raise RuntimeError("use-case deduplication failed") from exc
+        raise RuntimeError("GenAI use-case generation failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

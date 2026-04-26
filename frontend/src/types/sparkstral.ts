@@ -20,17 +20,6 @@ export type CompanyProfileData = {
 	notes?: string;
 };
 
-export type PainPointItem = {
-	title: string;
-	description: string;
-	prominence: number;
-	sources: string[];
-};
-
-export type PainPointBundleData = {
-	pain_points?: PainPointItem[];
-};
-
 export type SourceBackedMetric = {
 	label: string;
 	value: string;
@@ -76,5 +65,5 @@ export function isSparkstralResult(
 ): value is SparkstralWorkflowResult {
 	if (value === null || typeof value !== "object") return false;
 	const o = value as Record<string, unknown>;
-	return Array.isArray(o.outputs);
+	return Array.isArray(o.outputs) && typeof o.final === "string";
 }

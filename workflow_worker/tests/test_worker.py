@@ -18,6 +18,7 @@ async def test_sparkstral_workflow_returns_le_chat_output(monkeypatch) -> None:
         await status_callback("Researching company context...")
         await status_callback("Generating candidate use cases...")
         await status_callback("Scoring opportunities...")
+        await status_callback("Writing final report...")
         return SparkstralWorkflowResult(
             outputs=[
                 PipelineOutput(
@@ -69,15 +70,16 @@ async def test_sparkstral_workflow_returns_le_chat_output(monkeypatch) -> None:
         ],
         "final": "# GenAI Opportunity Report\n\nFinal markdown.",
     }
-    assert assistant_messages[:3] == [
+    assert assistant_messages[:4] == [
         ("Researching company context...", None),
         ("Generating candidate use cases...", None),
         ("Scoring opportunities...", None),
+        ("Writing final report...", None),
     ]
-    assert assistant_messages[3][0][0].text == (
+    assert assistant_messages[4][0][0].text == (
         "Sparkstral analysis complete. The final report is attached."
     )
-    assert assistant_messages[3][0][1].resource.canvas.content == (
+    assert assistant_messages[4][0][1].resource.canvas.content == (
         "# GenAI Opportunity Report\n\nFinal markdown."
     )
-    assert assistant_messages[3][1] is None
+    assert assistant_messages[4][1] is None

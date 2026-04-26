@@ -10,13 +10,7 @@ from mistralai.client import Mistral
 from pydantic import BaseModel
 
 from src.config import settings
-from src.schemas import (
-    GenAIUseCaseCandidateBatch,
-    GenAIUseCaseCandidatePool,
-    GenAIUseCaseIdPrefix,
-    GradedUseCase,
-    PipelineOutput,
-)
+from src.schemas import GradedUseCase, PipelineOutput
 
 ResponseT = TypeVar("ResponseT")
 ParsedResponseT = TypeVar("ParsedResponseT", bound=BaseModel)
@@ -112,41 +106,6 @@ def select_top_n(graded: list[GradedUseCase], n: int) -> list[GradedUseCase]:
         key=_selection_key,
     )
     return ranked[:n]
-
-
-def merge_genai_use_case_batches(
-    batches: list[tuple[GenAIUseCaseIdPrefix, GenAIUseCaseCandidateBatch]],
-) -> GenAIUseCaseCandidatePool:
-    use_cases = []
-    seen_ids: set[str] = set()
-    for id_prefix, batch in batches:
-        expected_ids = {f"{id_prefix}_{index}" for index in range(1, 4)}
-        actual_ids = [use_case.id for use_case in batch.use_cases]
-        duplicate_ids = sorted(
-            use_case_id
-            for use_case_id in set(actual_ids)
-            if actual_ids.count(use_case_id) > 1
-        )
-        if duplicate_ids:
-            raise ValueError(
-                f"{id_prefix} generator returned duplicate use case IDs: "
-                + ", ".join(duplicate_ids)
-            )
-        if set(actual_ids) != expected_ids:
-            raise ValueError(
-                f"{id_prefix} generator returned IDs "
-                + ", ".join(sorted(actual_ids))
-                + "; expected "
-                + ", ".join(sorted(expected_ids))
-            )
-
-        for use_case in batch.use_cases:
-            if use_case.id in seen_ids:
-                raise ValueError(f"duplicate generated use case ID: {use_case.id}")
-            seen_ids.add(use_case.id)
-            use_cases.append(use_case)
-
-    return GenAIUseCaseCandidatePool(use_cases=use_cases)
 
 
 async def parse_chat_model(

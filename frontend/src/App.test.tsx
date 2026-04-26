@@ -27,7 +27,8 @@ describe("App", () => {
 
 		expect(screen.getByText("research notes")).toBeDefined();
 		expect(screen.getByText(/company_name/)).toBeDefined();
-		expect(screen.getByText("Final result")).toBeDefined();
+		expect(screen.getByText("GenAI opportunity report")).toBeDefined();
+		expect(screen.getByText("Pipeline steps")).toBeDefined();
 		expect(
 			screen.getByRole("heading", {
 				level: 1,

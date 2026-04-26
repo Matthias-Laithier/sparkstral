@@ -79,18 +79,16 @@ make check      # run all of the above
 | `TAVILY_API_KEY` | Yes when `WEB_SEARCH_PROVIDER=tavily` | Tavily API key for SDK searches. Tavily results do not use the backend cache. |
 | `WEB_SEARCH_MODEL` | Yes (worker) | Model for web-search research |
 | `WEB_SEARCH_MAX_ROUNDS` | Yes when `WEB_SEARCH_PROVIDER=serper` or `tavily` | Max custom tool-call rounds per research step. The Mistral built-in provider uses the Conversations API instead. |
-| `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured pain points (`parse`) |
-| `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use cases (`parse`) |
-| `DEDUPLICATOR_AGENT_MODEL` | Yes (worker) | Model for structured use-case deduplication (`parse`) |
+| `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use-case generation (`parse`) |
 | `MARKDOWN_REPORTER_AGENT_MODEL` | Yes (worker) | Model for the direct client-ready markdown report writer (`parse`) |
 | `LLM_MAX_TOKENS` | Yes (worker) | Max output tokens for every chat completion / parse call (e.g. `2048`) |
-| `LLM_TEMPERATURE` | Yes (worker) | Temperature for web search and structured profile/pain `parse` calls (e.g. `0`) |
+| `LLM_TEMPERATURE` | Yes (worker) | Temperature for web search and structured profile `parse` calls (e.g. `0`) |
 | `GENAI_USE_CASES_LLM_TEMPERATURE` | Yes (worker) | Temperature for GenAI use-case `parse` only (e.g. `1` for diversity) |
 
 ## Company description workflow
 
 A Mistral Workflows worker that, given a company name, runs company resolution,
-company research, pain-point analysis, use-case selection, and returns a client-ready
+company research, GenAI use-case generation and scoring, and returns a client-ready
 markdown report with the top 3 high-impact GenAI use cases. The frontend is a
 simple output viewer for the workflow's raw text, JSON, and markdown results.
 

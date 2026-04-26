@@ -1,16 +1,10 @@
-import asyncio
 from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import (
-    genai_use_cases,
-    grader,
-    markdown_reporter,
-    use_case_deduplicator,
-)
+from src.agents import genai_use_cases, grader, markdown_reporter
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import (
     UseCaseGraderAgent,
@@ -18,55 +12,39 @@ from src.agents.grader import (
     compute_weighted_total,
 )
 from src.agents.markdown_reporter import MarkdownReporterAgent
-from src.agents.use_case_deduplicator import (
-    UseCaseDeduplicatorAgent,
-    build_deduplicated_use_case_pool,
-)
 from src.schemas import (
     CompanyEvidenceClaim,
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
-    DeduplicateUseCasesInput,
     EvidenceItem,
     FinalSelectionOutput,
     GenAIMechanism,
     GenAIUseCaseCandidate,
-    GenAIUseCaseCandidateBatch,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
-    GenAIUseCasePersonaInput,
+    GenAIUseCaseGeneration,
     GradedUseCase,
     GradedUseCasePool,
     GradeUseCasesInput,
     MarkdownReport,
     MarkdownReportInput,
-    PainPointItem,
-    PainPointOpportunityItem,
-    PainPointProfilerOutput,
     PilotKPI,
     ResearchResult,
     SourceBackedMetric,
     SparkstralWorkflowResult,
-    UseCaseDeduplicationOutput,
     UseCaseGrade,
     UseCaseGradePool,
     UseCaseScore,
 )
-from src.utils import merge_genai_use_case_batches, select_top_n
+from src.utils import select_top_n
 
-IDEATION_LENSES = (
-    "grounded consultant",
-    "moonshot strategist",
-    "operations expert",
-    "customer/partner expert",
-    "risk/compliance expert",
-)
-
-GENERATOR_PERSONAS = (
-    ("grounded_uc", "grounded consultant"),
-    ("moonshot_uc", "moonshot strategist"),
-    ("why_not_uc", "why not? inventor"),
+ARCHETYPES = (
+    "grounded_consultant",
+    "optimistic_stretch",
+    "moonshot",
+    "novel_surprise",
+    "evidence_tight",
 )
 
 
@@ -210,31 +188,6 @@ def _company_profile() -> CompanyProfileOutput:
     )
 
 
-def _pain_point(index: int) -> PainPointItem:
-    return PainPointItem(
-        title=f"Pain {index}",
-        description="Description",
-        prominence=8,
-        sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _opportunity(index: int) -> PainPointOpportunityItem:
-    return PainPointOpportunityItem(
-        title=f"Opportunity {index}",
-        description="Opportunity description",
-        linked_pain_points=[f"Pain {index}"],
-        sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _pain_points() -> PainPointProfilerOutput:
-    return PainPointProfilerOutput(
-        pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)],
-        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
-    )
-
-
 def _genai_mechanism() -> GenAIMechanism:
     return GenAIMechanism(
         mechanisms=["document_understanding", "structured_generation"],
@@ -284,7 +237,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
     pain_point_index = ((index - 1) % 3) + 1
     evidence_source = f"https://example.com/pain-{pain_point_index}"
     return GenAIUseCaseCandidate(
-        id=f"uc-{index}",
+        id=f"uc_{index}",
         title=f"Use case {index}",
         target_users=["Ops"],
         business_problem="Problem",
@@ -298,9 +251,9 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
-        linked_pain_points=[f"Pain {pain_point_index}"],
+        company_signal_labels=[f"signal_{index}", "supply_chain_pressure"],
         evidence_sources=[evidence_source],
-        ideation_lens=IDEATION_LENSES[(index - 1) % len(IDEATION_LENSES)],
+        use_case_archetype=ARCHETYPES[(index - 1) % len(ARCHETYPES)],
     )
 
 
@@ -310,37 +263,9 @@ def _candidate_pool() -> GenAIUseCaseCandidatePool:
     )
 
 
-def _persona_candidate(
-    id_prefix: str,
-    ideation_lens: str,
-    index: int,
-) -> GenAIUseCaseCandidate:
-    return _candidate(index).model_copy(
-        update={
-            "id": f"{id_prefix}_{index}",
-            "ideation_lens": ideation_lens,
-        }
-    )
-
-
-def _persona_batch(
-    id_prefix: str,
-    ideation_lens: str,
-) -> GenAIUseCaseCandidateBatch:
-    return GenAIUseCaseCandidateBatch(
-        use_cases=[
-            _persona_candidate(id_prefix, ideation_lens, index) for index in range(1, 4)
-        ]
-    )
-
-
-def _merged_persona_pool() -> GenAIUseCaseCandidatePool:
-    return GenAIUseCaseCandidatePool(
-        use_cases=[
-            candidate
-            for id_prefix, ideation_lens in GENERATOR_PERSONAS
-            for candidate in _persona_batch(id_prefix, ideation_lens).use_cases
-        ]
+def _genai_use_case_generation(count: int = 8) -> GenAIUseCaseGeneration:
+    return GenAIUseCaseGeneration(
+        use_cases=[_candidate(index) for index in range(1, count + 1)]
     )
 
 
@@ -437,23 +362,13 @@ def _markdown_report() -> MarkdownReport:
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     company_research_params: CompanyResolutionOutput | None = None
-    generation_pain_points: list[PainPointProfilerOutput] = []
-    in_flight_generators = 0
-    max_in_flight_generators = 0
-    deduplication_inputs: list[DeduplicateUseCasesInput] = []
+    generation_inputs: list[GenAIUseCaseCandidateInput] = []
     grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
     final_selection_candidates: GradedUseCasePool | None = None
     markdown_report_params: MarkdownReportInput | None = None
-    generated_batches = {
-        id_prefix: _persona_batch(id_prefix, ideation_lens)
-        for id_prefix, ideation_lens in GENERATOR_PERSONAS
-    }
-    generated_candidates = _merged_persona_pool()
-    deduplicated_candidates = GenAIUseCaseCandidatePool(
-        use_cases=generated_candidates.use_cases[:7]
-    )
-    graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
+    generated = _genai_use_case_generation(8)
+    graded_candidates = _graded_pool(generated.use_cases)
     final_selection = FinalSelectionOutput(
         selected=select_top_n(graded_candidates.graded_use_cases, 3)
     )
@@ -462,6 +377,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         company_resolution=_company_resolution(),
         research_text="company research",
     )
+    use_case_pool = GenAIUseCaseCandidatePool(use_cases=generated.use_cases)
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -477,57 +393,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         company_research_params = params
         return ResearchResult(text="company research")
 
-    async def structure_pain_points(_params: object) -> PainPointProfilerOutput:
-        calls.append("structure_pain_points")
-        return _pain_points()
-
-    async def run_generator(
-        activity_name: str,
-        id_prefix: str,
-        params: Any,
-    ) -> GenAIUseCaseCandidateBatch:
-        nonlocal in_flight_generators, max_in_flight_generators
-        calls.append(activity_name)
-        generation_pain_points.append(params.pain_points)
-        in_flight_generators += 1
-        max_in_flight_generators = max(max_in_flight_generators, in_flight_generators)
-        await asyncio.sleep(0)
-        in_flight_generators -= 1
-        return generated_batches[id_prefix]
-
-    async def generate_grounded_genai_use_cases(
-        params: Any,
-    ) -> GenAIUseCaseCandidateBatch:
-        return await run_generator(
-            "generate_grounded_genai_use_cases",
-            "grounded_uc",
-            params,
-        )
-
-    async def generate_moonshot_genai_use_cases(
-        params: Any,
-    ) -> GenAIUseCaseCandidateBatch:
-        return await run_generator(
-            "generate_moonshot_genai_use_cases",
-            "moonshot_uc",
-            params,
-        )
-
-    async def generate_why_not_genai_use_cases(
-        params: Any,
-    ) -> GenAIUseCaseCandidateBatch:
-        return await run_generator(
-            "generate_why_not_genai_use_cases",
-            "why_not_uc",
-            params,
-        )
-
-    async def deduplicate_genai_use_cases(
-        params: DeduplicateUseCasesInput,
-    ) -> GenAIUseCaseCandidatePool:
-        calls.append("deduplicate_genai_use_cases")
-        deduplication_inputs.append(params)
-        return deduplicated_candidates
+    async def generate_genai_use_cases(
+        params: GenAIUseCaseCandidateInput,
+    ) -> GenAIUseCaseGeneration:
+        calls.append("generate_genai_use_cases")
+        generation_inputs.append(params)
+        return generated
 
     async def grade_use_cases(params: Any) -> GradedUseCasePool:
         calls.append("grade_use_cases")
@@ -554,24 +425,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         pipeline, "structure_company_resolution", structure_company_resolution
     )
     monkeypatch.setattr(pipeline, "research_company", research_company)
-    monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
-    monkeypatch.setattr(
-        pipeline, "generate_grounded_genai_use_cases", generate_grounded_genai_use_cases
-    )
-    monkeypatch.setattr(
-        pipeline, "generate_moonshot_genai_use_cases", generate_moonshot_genai_use_cases
-    )
-    monkeypatch.setattr(
-        pipeline, "generate_why_not_genai_use_cases", generate_why_not_genai_use_cases
-    )
-    monkeypatch.setattr(
-        pipeline, "deduplicate_genai_use_cases", deduplicate_genai_use_cases
-    )
+    monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
     monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
-    status_messages = []
+    status_messages: list[str] = []
 
     async def status_callback(message: str) -> None:
         status_messages.append(message)
@@ -585,11 +444,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "research_company_resolution",
         "structure_company_resolution",
         "research_company",
-        "structure_pain_points",
-        "generate_grounded_genai_use_cases",
-        "generate_moonshot_genai_use_cases",
-        "generate_why_not_genai_use_cases",
-        "deduplicate_genai_use_cases",
+        "generate_genai_use_cases",
         "grade_use_cases",
         "select_final_top_3",
         "write_markdown_report",
@@ -607,32 +462,23 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[3].data == _pain_points().model_dump(mode="json")
-    assert result.outputs[4].data == deduplicated_candidates.model_dump(mode="json")
-    assert result.outputs[5].data == graded_candidates.model_dump(mode="json")
-    assert result.outputs[6].data == {
+    assert result.outputs[3].data == use_case_pool.model_dump(mode="json")
+    assert result.outputs[4].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[5].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[7].text == markdown_report_result.markdown
-    assert generation_pain_points == [_pain_points()] * 3
-    assert max_in_flight_generators == 3
-    assert deduplication_inputs == [
-        DeduplicateUseCasesInput(
-            company_profile=expected_company_profile,
-            pain_points=_pain_points(),
-            use_cases=generated_candidates.use_cases,
-        )
+    assert result.outputs[6].text == markdown_report_result.markdown
+    assert generation_inputs == [
+        GenAIUseCaseCandidateInput(company_profile=expected_company_profile)
     ]
-    assert grading_use_cases == [deduplicated_candidates.use_cases]
+    assert grading_use_cases == [generated.use_cases]
     assert grading_company_profiles == [expected_company_profile]
     assert final_selection_candidates == graded_candidates
     assert markdown_report_params == MarkdownReportInput(
         company_profile=expected_company_profile,
-        pain_points=_pain_points(),
         final_selection=final_selection,
     )
     assert company_research_params == _company_resolution()
@@ -656,8 +502,10 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         calls.append("research_company")
         return ResearchResult(text="company research")
 
-    async def structure_pain_points(_params: object) -> PainPointProfilerOutput:
-        calls.append("structure_pain_points")
+    async def generate_genai_use_cases(
+        _params: object,
+    ) -> GenAIUseCaseGeneration:
+        calls.append("generate_genai_use_cases")
         raise RuntimeError("model failed")
 
     monkeypatch.setattr(
@@ -667,7 +515,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         pipeline, "structure_company_resolution", structure_company_resolution
     )
     monkeypatch.setattr(pipeline, "research_company", research_company)
-    monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
+    monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
 
     with pytest.raises(RuntimeError, match="model failed"):
         await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
@@ -676,13 +524,13 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         "research_company_resolution",
         "structure_company_resolution",
         "research_company",
-        "structure_pain_points",
+        "generate_genai_use_cases",
     ]
 
 
 def test_compute_weighted_total_uses_weighted_formula() -> None:
     score = _score(
-        "uc-1",
+        "uc_1",
         company_relevance=10,
         business_impact=8,
         iconicness=6,
@@ -700,7 +548,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(1),
             score=_score(
-                "uc-1",
+                "uc_1",
                 company_relevance=10,
                 business_impact=10,
                 iconicness=8,
@@ -713,7 +561,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(2),
             score=_score(
-                "uc-2",
+                "uc_2",
                 company_relevance=5,
                 business_impact=1,
                 iconicness=10,
@@ -726,7 +574,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(3),
             score=_score(
-                "uc-3",
+                "uc_3",
                 company_relevance=10,
                 business_impact=10,
                 iconicness=9,
@@ -739,7 +587,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(4),
             score=_score(
-                "uc-4",
+                "uc_4",
                 company_relevance=8,
                 business_impact=10,
                 iconicness=9,
@@ -752,7 +600,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(5),
             score=_score(
-                "uc-5",
+                "uc_5",
                 company_relevance=10,
                 business_impact=10,
                 iconicness=10,
@@ -765,7 +613,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
         GradedUseCase(
             use_case=_candidate(6),
             score=_score(
-                "uc-6",
+                "uc_6",
                 company_relevance=1,
                 business_impact=1,
                 iconicness=1,
@@ -780,133 +628,29 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
     selected = select_top_n(graded, 5)
 
     assert [item.use_case.id for item in selected] == [
-        "uc-6",
-        "uc-2",
-        "uc-3",
-        "uc-4",
-        "uc-1",
+        "uc_6",
+        "uc_2",
+        "uc_3",
+        "uc_4",
+        "uc_1",
     ]
     assert len(selected) == 5
 
 
-def test_merge_genai_use_case_batches_returns_nine_persona_candidates() -> None:
-    pool = merge_genai_use_case_batches(
-        [
-            (id_prefix, _persona_batch(id_prefix, ideation_lens))
-            for id_prefix, ideation_lens in GENERATOR_PERSONAS
-        ]
-    )
-
-    assert [use_case.id for use_case in pool.use_cases] == [
-        "grounded_uc_1",
-        "grounded_uc_2",
-        "grounded_uc_3",
-        "moonshot_uc_1",
-        "moonshot_uc_2",
-        "moonshot_uc_3",
-        "why_not_uc_1",
-        "why_not_uc_2",
-        "why_not_uc_3",
-    ]
-    assert len(pool.use_cases) == 9
-
-
-def test_merge_genai_use_case_batches_rejects_unexpected_id_prefix() -> None:
-    batch = GenAIUseCaseCandidateBatch(
-        use_cases=[
-            _persona_candidate("grounded_uc", "grounded consultant", 1).model_copy(
-                update={"id": "uc-1"}
-            ),
-            _persona_candidate("grounded_uc", "grounded consultant", 2),
-            _persona_candidate("grounded_uc", "grounded consultant", 3),
-        ]
-    )
-
-    with pytest.raises(ValueError, match="grounded_uc generator returned IDs"):
-        merge_genai_use_case_batches([("grounded_uc", batch)])
-
-
-def test_merge_genai_use_case_batches_rejects_duplicate_ids() -> None:
-    batch = GenAIUseCaseCandidateBatch(
-        use_cases=[
-            _persona_candidate("grounded_uc", "grounded consultant", 1),
-            _persona_candidate("grounded_uc", "grounded consultant", 1),
-            _persona_candidate("grounded_uc", "grounded consultant", 3),
-        ]
-    )
-
-    with pytest.raises(ValueError, match="duplicate use case IDs: grounded_uc_1"):
-        merge_genai_use_case_batches([("grounded_uc", batch)])
-
-
-def test_build_deduplicated_use_case_pool_preserves_original_use_cases() -> None:
-    use_cases = [_candidate(index) for index in range(1, 8)]
-
-    result = build_deduplicated_use_case_pool(
-        UseCaseDeduplicationOutput(
-            retained_use_case_ids=["uc-2", "uc-1", "uc-3", "uc-5", "uc-7"]
-        ),
-        use_cases,
-    )
-
-    assert [use_case.id for use_case in result.use_cases] == [
-        "uc-1",
-        "uc-2",
-        "uc-3",
-        "uc-5",
-        "uc-7",
-    ]
-    assert [use_case.model_dump() for use_case in result.use_cases] == [
-        use_cases[0].model_dump(),
-        use_cases[1].model_dump(),
-        use_cases[2].model_dump(),
-        use_cases[4].model_dump(),
-        use_cases[6].model_dump(),
-    ]
-
-
-def test_build_deduplicated_use_case_pool_rejects_unknown_ids() -> None:
-    with pytest.raises(
-        ValueError, match="deduplicator returned unknown use case ID: uc-missing"
-    ):
-        build_deduplicated_use_case_pool(
-            UseCaseDeduplicationOutput(
-                retained_use_case_ids=[
-                    "uc-1",
-                    "uc-2",
-                    "uc-3",
-                    "uc-4",
-                    "uc-5",
-                    "uc-missing",
-                ]
-            ),
-            [_candidate(index) for index in range(1, 7)],
-        )
-
-
-def test_build_deduplicated_use_case_pool_rejects_duplicate_retained_ids() -> None:
-    with pytest.raises(
-        ValueError, match="deduplicator returned duplicate use case IDs"
-    ):
-        build_deduplicated_use_case_pool(
-            UseCaseDeduplicationOutput(
-                retained_use_case_ids=["uc-1", "uc-1", "uc-2", "uc-3", "uc-4", "uc-5"]
-            ),
-            [_candidate(index) for index in range(1, 7)],
-        )
-
-
 @pytest.mark.asyncio
-async def test_genai_use_cases_agent_returns_persona_batch(
+async def test_genai_use_cases_agent_returns_generation_batch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    agent_result = _persona_batch("moonshot_uc", "moonshot strategist")
+    agent_result = _genai_use_case_generation(8)
     response_model: type[Any] | None = None
     model_name = ""
     phase = ""
     messages: list[dict[str, str]] = []
 
-    async def parse_chat_model(*args: Any, **kwargs: Any) -> GenAIUseCaseCandidateBatch:
+    async def parse_chat_model(
+        *args: Any,
+        **kwargs: Any,
+    ) -> GenAIUseCaseGeneration:
         nonlocal response_model, model_name, phase, messages
         response_model = args[1]
         model_name = kwargs["model"]
@@ -922,31 +666,22 @@ async def test_genai_use_cases_agent_returns_persona_batch(
     monkeypatch.setattr(genai_use_cases, "parse_chat_model", parse_chat_model)
 
     result = await GenAIUseCasesAgent(client=cast(Any, object())).run(
-        GenAIUseCasePersonaInput(
-            company_profile=_company_profile(),
-            pain_points=_pain_points(),
-            ideation_lens="moonshot strategist",
-            id_prefix="moonshot_uc",
-        )
+        GenAIUseCaseCandidateInput(company_profile=_company_profile())
     )
 
     assert result == agent_result
-    assert response_model is GenAIUseCaseCandidateBatch
+    assert response_model is GenAIUseCaseGeneration
     assert model_name == "generation-model"
-    assert phase == "GenAI use-case generation (moonshot strategist)"
-    assert "moonshot_uc_1" in messages[0]["content"]
-    assert "moonshot strategist" in messages[1]["content"]
+    assert phase == "GenAI use-case generation"
+    assert "uc_1" in messages[1]["content"] or "6" in messages[1]["content"]
 
 
 @pytest.mark.asyncio
-async def test_persona_generation_activities_return_agent_results(
+async def test_generate_genai_use_cases_activity_returns_agent_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured_params: list[GenAIUseCasePersonaInput] = []
-    batches = {
-        id_prefix: _persona_batch(id_prefix, ideation_lens)
-        for id_prefix, ideation_lens in GENERATOR_PERSONAS
-    }
+    captured_params: list[GenAIUseCaseCandidateInput] = []
+    batch = _genai_use_case_generation(8)
 
     class FakeGenAIUseCasesAgent:
         def __init__(self, client: object) -> None:
@@ -954,130 +689,20 @@ async def test_persona_generation_activities_return_agent_results(
 
         async def run(
             self,
-            params: GenAIUseCasePersonaInput,
-        ) -> GenAIUseCaseCandidateBatch:
+            params: GenAIUseCaseCandidateInput,
+        ) -> GenAIUseCaseGeneration:
             captured_params.append(params)
-            return batches[params.id_prefix]
+            return batch
 
-    generation_input = GenAIUseCaseCandidateInput(
-        company_profile=_company_profile(),
-        pain_points=_pain_points(),
-    )
+    generation_input = GenAIUseCaseCandidateInput(company_profile=_company_profile())
 
     monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
     monkeypatch.setattr(activities, "GenAIUseCasesAgent", FakeGenAIUseCasesAgent)
 
-    results = await asyncio.gather(
-        activities.generate_grounded_genai_use_cases(generation_input),
-        activities.generate_moonshot_genai_use_cases(generation_input),
-        activities.generate_why_not_genai_use_cases(generation_input),
-    )
+    result = await activities.generate_genai_use_cases(generation_input)
 
-    assert list(results) == [
-        batches["grounded_uc"],
-        batches["moonshot_uc"],
-        batches["why_not_uc"],
-    ]
-    assert [(params.ideation_lens, params.id_prefix) for params in captured_params] == [
-        ("grounded consultant", "grounded_uc"),
-        ("moonshot strategist", "moonshot_uc"),
-        ("why not? inventor", "why_not_uc"),
-    ]
-
-
-@pytest.mark.asyncio
-async def test_use_case_deduplicator_agent_filters_original_use_cases(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    use_cases = [_candidate(index) for index in range(1, 8)]
-    llm_result = UseCaseDeduplicationOutput(
-        retained_use_case_ids=["uc-2", "uc-1", "uc-3", "uc-5", "uc-7"]
-    )
-    response_model: type[Any] | None = None
-    model_name = ""
-    phase = ""
-    messages: list[dict[str, str]] = []
-
-    async def parse_chat_model(
-        *args: Any,
-        **kwargs: Any,
-    ) -> UseCaseDeduplicationOutput:
-        nonlocal response_model, model_name, phase, messages
-        response_model = args[1]
-        model_name = kwargs["model"]
-        phase = kwargs["phase"]
-        messages = kwargs["messages"]
-        return llm_result
-
-    monkeypatch.setattr(
-        cast(Any, use_case_deduplicator).settings,
-        "DEDUPLICATOR_AGENT_MODEL",
-        "dedupe-model",
-    )
-    monkeypatch.setattr(use_case_deduplicator, "parse_chat_model", parse_chat_model)
-
-    result = await UseCaseDeduplicatorAgent(client=cast(Any, object())).run(
-        DeduplicateUseCasesInput(
-            company_profile=_company_profile(),
-            pain_points=_pain_points(),
-            use_cases=use_cases,
-        )
-    )
-
-    assert response_model is UseCaseDeduplicationOutput
-    assert model_name == "dedupe-model"
-    assert phase == "use-case deduplication"
-    assert [use_case.id for use_case in result.use_cases] == [
-        "uc-1",
-        "uc-2",
-        "uc-3",
-        "uc-5",
-        "uc-7",
-    ]
-    assert result.use_cases[0].model_dump() == use_cases[0].model_dump()
-    assert "Do not rewrite" in messages[0]["content"]
-    assert "Retain at least 5" in messages[0]["content"]
-    assert '"id": "uc-1"' in messages[1]["content"]
-    assert "retained_use_case_ids only" in messages[1]["content"]
-
-
-@pytest.mark.asyncio
-async def test_deduplicate_genai_use_cases_activity_returns_agent_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_params: list[DeduplicateUseCasesInput] = []
-    deduplicated_pool = GenAIUseCaseCandidatePool(
-        use_cases=[_candidate(index) for index in range(1, 6)]
-    )
-
-    class FakeUseCaseDeduplicatorAgent:
-        def __init__(self, client: object) -> None:
-            self.client = client
-
-        async def run(
-            self,
-            params: DeduplicateUseCasesInput,
-        ) -> GenAIUseCaseCandidatePool:
-            captured_params.append(params)
-            return deduplicated_pool
-
-    deduplication_input = DeduplicateUseCasesInput(
-        company_profile=_company_profile(),
-        pain_points=_pain_points(),
-        use_cases=[_candidate(index) for index in range(1, 8)],
-    )
-
-    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
-    monkeypatch.setattr(
-        activities,
-        "UseCaseDeduplicatorAgent",
-        FakeUseCaseDeduplicatorAgent,
-    )
-
-    result = await activities.deduplicate_genai_use_cases(deduplication_input)
-
-    assert result == deduplicated_pool
-    assert captured_params == [deduplication_input]
+    assert result == batch
+    assert captured_params == [generation_input]
 
 
 @pytest.mark.asyncio
@@ -1088,7 +713,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
     llm_result = UseCaseGradePool(
         grades=[
             _grade(
-                "uc-2",
+                "uc_2",
                 company_relevance=5,
                 business_impact=4,
                 iconicness=4,
@@ -1097,7 +722,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
                 evidence_strength=3,
             ),
             _grade(
-                "uc-1",
+                "uc_1",
                 company_relevance=2,
                 business_impact=2,
                 iconicness=2,
@@ -1120,15 +745,14 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
     result = await UseCaseGraderAgent(client=cast(Any, object())).run(
         GradeUseCasesInput(
             company_profile=_company_profile(),
-            pain_points=_pain_points(),
             use_cases=use_cases,
         )
     )
 
     assert response_model is UseCaseGradePool
     assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
-        "uc-2",
-        "uc-1",
+        "uc_2",
+        "uc_1",
     ]
     assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
         4.05,
@@ -1139,25 +763,25 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
 
 
 def test_build_graded_use_cases_rejects_unknown_grade_id() -> None:
-    with pytest.raises(ValueError, match="unknown use case ID: uc-missing"):
+    with pytest.raises(ValueError, match="unknown use case ID: uc_missing"):
         build_graded_use_cases(
-            [_grade("uc-1"), _grade("uc-missing")],
+            [_grade("uc_1"), _grade("uc_missing")],
             [_candidate(1), _candidate(2)],
         )
 
 
 def test_build_graded_use_cases_rejects_duplicate_grade_id() -> None:
-    with pytest.raises(ValueError, match="duplicate use case ID: uc-1"):
+    with pytest.raises(ValueError, match="duplicate use case ID: uc_1"):
         build_graded_use_cases(
-            [_grade("uc-1"), _grade("uc-1")],
+            [_grade("uc_1"), _grade("uc_1")],
             [_candidate(1)],
         )
 
 
 def test_build_graded_use_cases_rejects_missing_grade_id() -> None:
-    with pytest.raises(ValueError, match="grades for use case IDs: uc-2"):
+    with pytest.raises(ValueError, match="grades for use case IDs: uc_2"):
         build_graded_use_cases(
-            [_grade("uc-1")],
+            [_grade("uc_1")],
             [_candidate(1), _candidate(2)],
         )
 
@@ -1182,7 +806,6 @@ async def test_grade_use_cases_activity_returns_agent_result(
     result = await activities.grade_use_cases(
         GradeUseCasesInput(
             company_profile=_company_profile(),
-            pain_points=_pain_points(),
             use_cases=use_cases,
         )
     )
@@ -1215,7 +838,6 @@ async def test_markdown_reporter_agent_returns_markdown_report(
     result = await MarkdownReporterAgent(client=cast(Any, object())).run(
         MarkdownReportInput(
             company_profile=_company_profile(),
-            pain_points=_pain_points(),
             final_selection=selected,
         )
     )
@@ -1246,7 +868,6 @@ async def test_write_markdown_report_activity_returns_agent_result(
     result = await activities.write_markdown_report(
         MarkdownReportInput(
             company_profile=_company_profile(),
-            pain_points=_pain_points(),
             final_selection=selected,
         )
     )
@@ -1258,7 +879,7 @@ def test_select_top_n_returns_top_three_by_score() -> None:
     graded = [
         GradedUseCase(
             use_case=_candidate(index),
-            score=_score(f"uc-{index}", weighted_total=5.0 - index / 10),
+            score=_score(f"uc_{index}", weighted_total=5.0 - index / 10),
         )
         for index in range(1, 5)
     ]
@@ -1266,9 +887,9 @@ def test_select_top_n_returns_top_three_by_score() -> None:
     selected = select_top_n(graded, 3)
 
     assert [item.use_case.id for item in selected] == [
-        "uc-1",
-        "uc-2",
-        "uc-3",
+        "uc_1",
+        "uc_2",
+        "uc_3",
     ]
     assert len(selected) == 3
 
@@ -1280,7 +901,7 @@ async def test_select_final_top_3_activity_returns_selection() -> None:
             GradedUseCase(
                 use_case=_candidate(index),
                 score=_score(
-                    f"uc-{index}",
+                    f"uc_{index}",
                     company_relevance=index,
                     business_impact=3,
                     iconicness=3,
@@ -1296,9 +917,9 @@ async def test_select_final_top_3_activity_returns_selection() -> None:
     result = await activities.select_final_top_3(pool)
 
     assert [item.use_case.id for item in result.selected] == [
-        "uc-5",
-        "uc-4",
-        "uc-3",
+        "uc_5",
+        "uc_4",
+        "uc_3",
     ]
 
 
@@ -1361,39 +982,16 @@ def test_company_evidence_claim_requires_full_source_url() -> None:
         CompanyEvidenceClaim.model_validate(data)
 
 
-def test_pain_point_profiler_requires_at_least_three_points() -> None:
-    with pytest.raises(ValidationError):
-        PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2)],
-            opportunities=[_opportunity(1)],
-        )
-
-
-@pytest.mark.parametrize("count", [4, 13])
-def test_genai_use_case_candidate_pool_requires_five_to_twelve_items(
-    count: int,
-) -> None:
+@pytest.mark.parametrize("count", [5, 11])
+def test_genai_use_case_candidate_pool_requires_six_to_ten_items(count: int) -> None:
     with pytest.raises(ValidationError):
         GenAIUseCaseCandidatePool(
             use_cases=[_candidate(index) for index in range(1, count + 1)]
         )
 
 
-def test_use_case_deduplication_output_requires_at_least_five_ids() -> None:
-    with pytest.raises(ValidationError):
-        UseCaseDeduplicationOutput(
-            retained_use_case_ids=["uc-1", "uc-2", "uc-3", "uc-4"]
-        )
-
-
-@pytest.mark.parametrize("count", [2, 4])
-def test_genai_use_case_candidate_batch_requires_exactly_three_items(
-    count: int,
-) -> None:
-    with pytest.raises(ValidationError):
-        GenAIUseCaseCandidateBatch(
-            use_cases=[_candidate(index) for index in range(1, count + 1)]
-        )
+def test_genai_use_case_generation_accepts_six_to_ten() -> None:
+    GenAIUseCaseGeneration(use_cases=[_candidate(index) for index in range(1, 7)])
 
 
 def test_genai_use_case_candidate_requires_genai_mechanism() -> None:
@@ -1473,7 +1071,7 @@ def test_genai_mechanism_restricts_mechanism_values() -> None:
     ],
 )
 def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
-    data = _score("uc-1").model_dump()
+    data = _score("uc_1").model_dump()
     data[field_name] = 11
 
     with pytest.raises(ValidationError):
@@ -1481,7 +1079,7 @@ def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
 
 
 def test_use_case_grade_forbids_weighted_total() -> None:
-    data = _grade("uc-1").model_dump()
+    data = _grade("uc_1").model_dump()
     data["weighted_total"] = 3.0
 
     with pytest.raises(ValidationError):
@@ -1498,7 +1096,7 @@ def test_graded_use_case_pool_allows_generated_pool_grading() -> None:
         graded_use_cases=[
             GradedUseCase(
                 use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
+                score=_score(f"uc_{index}"),
             )
             for index in range(1, 9)
         ]
@@ -1519,7 +1117,7 @@ def test_final_selection_output_requires_exactly_three_items(count: int) -> None
             selected=[
                 GradedUseCase(
                     use_case=_candidate(index),
-                    score=_score(f"uc-{index}"),
+                    score=_score(f"uc_{index}"),
                 )
                 for index in range(1, count + 1)
             ],
@@ -1531,7 +1129,7 @@ def test_final_selection_output_forbids_extra_fields() -> None:
         selected=[
             GradedUseCase(
                 use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
+                score=_score(f"uc_{index}"),
             )
             for index in range(1, 4)
         ],
@@ -1558,7 +1156,7 @@ def test_workflow_result_final_is_markdown_string() -> None:
 
 @pytest.mark.parametrize(
     "field_name",
-    ["target_users", "risks", "linked_pain_points", "evidence_sources"],
+    ["target_users", "risks", "company_signal_labels", "evidence_sources"],
 )
 def test_genai_use_case_candidates_forbid_empty_required_lists(
     field_name: str,

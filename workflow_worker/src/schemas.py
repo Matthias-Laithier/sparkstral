@@ -74,56 +74,6 @@ class CompanyProfileOutput(BaseModel):
     research_text: str
 
 
-class PainPointItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str = Field(..., description="Short name for the pain point or gap.")
-    description: str = Field(..., description="What is going on and why it matters.")
-    prominence: int = Field(
-        ..., ge=1, le=10, description="Importance 1 (low) to 10 (high) from research."
-    )
-    sources: list[str] = Field(
-        ...,
-        min_length=1,
-        description="URL strings for facts behind this point.",
-    )
-
-
-class PainPointOpportunityItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str = Field(..., description="Short name for the opportunity.")
-    description: str = Field(
-        ...,
-        description="Opportunity hypothesis linked to the company's pain points.",
-    )
-    linked_pain_points: list[str] = Field(
-        ...,
-        min_length=1,
-        description="Pain point titles this opportunity addresses.",
-    )
-    sources: list[str] = Field(
-        ...,
-        min_length=1,
-        description="URL strings for facts behind this opportunity.",
-    )
-
-
-class PainPointProfilerOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    pain_points: list[PainPointItem] = Field(..., min_length=3, max_length=8)
-    opportunities: list[PainPointOpportunityItem] = Field(
-        ...,
-        min_length=1,
-        max_length=8,
-    )
-
-
-class PainPointStructuringInput(BaseModel):
-    company_profile: CompanyProfileOutput
-
-
 class GenAIMechanism(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -182,6 +132,15 @@ class PilotKPI(BaseModel):
     baseline_needed: str
 
 
+UseCaseArchetype = Literal[
+    "grounded_consultant",
+    "optimistic_stretch",
+    "moonshot",
+    "novel_surprise",
+    "evidence_tight",
+]
+
+
 class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -231,13 +190,19 @@ class GenAIUseCaseCandidate(BaseModel):
         min_length=1,
         description="Main risks (technical, compliance, org, model).",
     )
-    linked_pain_points: list[str] = Field(
+    company_signal_labels: list[str] = Field(
         ...,
         min_length=1,
-        description="Pain point titles from PainPointProfilerOutput.",
+        description=(
+            "Short labels for concrete facts, initiatives, or pressures from the "
+            "company profile or research text that motivate this use case."
+        ),
     )
     evidence_sources: list[str] = Field(..., min_length=1)
-    ideation_lens: str
+    use_case_archetype: UseCaseArchetype = Field(
+        ...,
+        description="Ideation style for diversity across the batch.",
+    )
 
     @model_validator(mode="after")
     def source_backed_metrics_use_candidate_evidence(self) -> Self:
@@ -256,40 +221,22 @@ class GenAIUseCaseCandidatePool(BaseModel):
 
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=5,
-        max_length=12,
-        description="Candidate pool of 5-12 GenAI use cases.",
+        min_length=6,
+        max_length=10,
+        description="Batch of 6-10 GenAI use cases for grading.",
     )
 
 
-GenAIUseCasePersona = Literal[
-    "grounded consultant",
-    "moonshot strategist",
-    "why not? inventor",
-]
-GenAIUseCaseIdPrefix = Literal["grounded_uc", "moonshot_uc", "why_not_uc"]
+class GenAIUseCaseGeneration(BaseModel):
+    """Structured parse output from the GenAI use-case generator."""
 
-
-class GenAIUseCaseCandidateBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=3,
-        max_length=3,
-        description="Exactly 3 GenAI use cases from one generator persona.",
-    )
-
-
-class UseCaseDeduplicationOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    retained_use_case_ids: list[str] = Field(
-        ...,
-        min_length=5,
-        description=(
-            "Existing use case IDs to keep after removing very similar duplicates."
-        ),
+        min_length=6,
+        max_length=10,
+        description="6-10 distinct, company-specific GenAI use cases.",
     )
 
 
@@ -355,32 +302,13 @@ class GradeUseCasesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=1)
-
-
-class DeduplicateUseCasesInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=1)
+    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=6, max_length=10)
 
 
 class GenAIUseCaseCandidateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-
-
-class GenAIUseCasePersonaInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-    ideation_lens: GenAIUseCasePersona
-    id_prefix: GenAIUseCaseIdPrefix
 
 
 class PipelineOutput(BaseModel):
@@ -394,7 +322,6 @@ class MarkdownReportInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
     final_selection: FinalSelectionOutput
 
 

@@ -3,8 +3,8 @@
 ## What We Know About the Company
 Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support.
 
-## Pain Points and Opportunity Themes
-Summarize the strongest pain points and the opportunity themes linked to them. Keep this evidence-led and use source links next to factual claims.
+## Strategic signals from research
+Summarize the strongest pressures, priorities, and opportunities implied by the sourced company research—not a generic industry overview. Keep this evidence-led and use source links next to factual claims.
 
 ## Ranked Opportunities
 | Rank | Opportunity | Primary users | Weighted score | Decision rationale |
@@ -15,7 +15,7 @@ Summarize the strongest pain points and the opportunity themes linked to them. K
 
 ## 1. {Use Case Title}
 ### The Opportunity
-Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and pain points.
+Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and the research-backed signals above.
 
 ### Iconicness
 Explain what makes this use case memorable, company-specific, and strategically meaningful.

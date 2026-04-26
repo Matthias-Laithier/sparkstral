@@ -58,6 +58,16 @@ function extractSparkstralPayload(value: unknown): unknown {
 	if (typeof value === "object" && value !== null && "result" in value) {
 		return extractSparkstralPayload((value as { result: unknown }).result);
 	}
+	/* Mistral LeChat / ChatAssistantWorkflowOutput: payload lives under structuredContent */
+	if (
+		typeof value === "object" &&
+		value !== null &&
+		"structuredContent" in value
+	) {
+		return extractSparkstralPayload(
+			(value as { structuredContent: unknown }).structuredContent,
+		);
+	}
 	return value;
 }
 

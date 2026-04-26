@@ -22,7 +22,6 @@ class MarkdownReporterAgent(BaseAgent[MarkdownReportInput, MarkdownReport]):
                     "role": "user",
                     "content": markdown_reporter_user_prompt(
                         params.company_profile,
-                        params.pain_points,
                         params.final_selection,
                     ),
                 },

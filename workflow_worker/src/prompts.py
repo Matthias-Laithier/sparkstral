@@ -7,9 +7,6 @@ from src.schemas import (
     CompanyResolutionOutput,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
-    GenAIUseCaseIdPrefix,
-    GenAIUseCasePersona,
-    PainPointProfilerOutput,
 )
 
 MARKDOWN_REPORT_TEMPLATE = (
@@ -131,192 +128,72 @@ def company_context(profile: CompanyProfileOutput) -> str:
     )
 
 
-def pain_point_system_prompt() -> str:
+def genai_use_cases_system_prompt() -> str:
     return (
-        "You are an analyst. Given a company_profile containing a resolved company "
-        "identity and sourced company research text, extract major pain points, "
-        "industry gaps, unmet needs, opportunity pressures, and opportunity "
-        "hypotheses relevant to the company and its field.\n"
-        "Only include pain points and opportunities supported by the supplied "
-        "company_profile research text or resolver evidence URLs. Assign pain point "
-        "prominence 1-10 from the evidence strength and business impact. Every "
-        "source must be a full URL string copied from the supplied inputs. Do not "
-        "add new web research, invent unsupported industry generalizations, or cite "
-        "URLs not present in the profile."
+        "You are a senior GenAI opportunity designer. In one pass, produce a batch "
+        "of 6-10 distinct, highly specific GenAI use cases for exactly one company.\n"
+        "Each use case must be a narrow slice: one primary user workflow, one "
+        "dominant value loop, and one clear GenAI mechanism—not an umbrella that "
+        "could cover many unrelated problems. Titles must sound like something "
+        "only this company would discuss internally, not a generic startup pitch.\n"
+        "No two use cases may solve substantially the same problem for the same "
+        "users with the same core GenAI workflow. If two ideas overlap, keep the "
+        "sharper one and replace the other with a different angle.\n"
+        "Distribute ideation styles across the batch: use use_case_archetype on "
+        "each candidate and aim for roughly even counts across these exact values "
+        "only: `grounded_consultant`, `optimistic_stretch`, `moonshot`, "
+        "`novel_surprise`, `evidence_tight`. With 6-10 items and five archetypes, "
+        "some archetypes may appear twice; avoid using only one archetype.\n"
+        "grounded_consultant: practical, pilot-ready, evidence-led. "
+        "optimistic_stretch: credible upside beyond status quo. "
+        "moonshot: bold strategic or category move, still tied to company facts. "
+        "novel_surprise: unusual angle that still fits this company. "
+        "evidence_tight: operational precision, metrics, compliance, or risk-aware "
+        "workflow depth.\n"
+        "Iconicness: each why_iconic must name concrete company anchors (brands, "
+        "markets, products, initiatives, regulations, or sourced facts) so the "
+        "idea is memorable in a client workshop.\n"
+        "GenAI-native value: language/document reasoning, generation, tool "
+        "orchestration, decision support, multimodal understanding, or workflow "
+        "synthesis—not plain automation or classical ML reframed.\n"
+        "Avoid generic customer-support chatbots, generic internal RAG assistants, "
+        "or generic marketing copy generators unless the workflow is sharply "
+        "specific to this company. Do not discuss vendor or platform fit.\n"
+        "evidence_sources must be full URLs copied from company_profile inputs. "
+        "Do not invent numeric impact, ROI, pilot results, or target values. "
+        "source_backed_metrics only when directly supported; otherwise empty. "
+        "company_signal_labels (1+): short phrases naming concrete signals from "
+        "the profile or research (e.g. initiative name, segment, metric, risk) "
+        "that justify the use case—not generic industry tags.\n"
+        "Use consecutive ids uc_1 through uc_N where N is the number of use cases "
+        "you return (6 <= N <= 10)."
     )
 
 
-def pain_point_user_prompt(
-    profile: CompanyProfileOutput,
-) -> str:
-    return (
-        f"{company_context(profile)}\n\n"
-        "Return 3-8 pain points and 3-8 opportunities derived only from this "
-        "company_profile. Use the sourced research sections about business lines, "
-        "customers, strategic priorities, operational pain points, regulatory "
-        "pressure, customer/market pressure, growth opportunities, and technology "
-        "transformation directly. Be specific, avoid duplication, and copy each "
-        "source URL from company_profile.company_resolution.evidence or "
-        "company_profile.research_text. Each opportunity must link to one or more "
-        "pain point titles and describe a different way to address or exploit the "
-        "pressure behind those pain points."
-    )
-
-
-PERSONA_GUIDANCE: dict[GenAIUseCasePersona, str] = {
-    "grounded consultant": (
-        "Stay practical, evidence-led, and implementation-aware, but do not settle "
-        "for ordinary automation. Prefer signature operational workflows that a "
-        "serious client team could pilot with known data and approval paths while "
-        "still feeling high-impact and specific to this company. Keep iconicness "
-        "in mind."
-    ),
-    "moonshot strategist": (
-        "Think ambitiously and optimistically about strategic advantage. Propose "
-        "category-defining ideas that are bold, memorable, and commercially "
-        "important while still grounded in the supplied company facts, pain "
-        "points, and GenAI-native mechanisms. Keep iconicness in mind."
-    ),
-    "why not? inventor": (
-        "Look for unusual, surprising, and novel ideas. Push beyond default "
-        "consulting recommendations toward distinctive concepts that could only "
-        "make sense in this company's context, while making feasibility tradeoffs "
-        "explicit. Keep iconicness in mind."
-    ),
-}
-
-
-def genai_use_cases_system_prompt(
-    ideation_lens: GenAIUseCasePersona,
-    id_prefix: GenAIUseCaseIdPrefix,
-) -> str:
-    expected_ids = ", ".join(f"{id_prefix}_{index}" for index in range(1, 4))
-    return (
-        f"You are the {ideation_lens} GenAI use-case generator. "
-        f"{PERSONA_GUIDANCE[ideation_lens]}\n"
-        "Produce exactly 3 meaningfully varied, company-specific GenAI use cases "
-        "that feel iconic for this company, not interchangeable with any other "
-        "business.\n"
-        f"Every candidate must set ideation_lens exactly to `{ideation_lens}`. "
-        f"Use exactly these IDs, one per candidate: {expected_ids}. Do not use "
-        "any other ID format.\n"
-        "Ground every use case in the resolved company identity, sourced company "
-        "research text, pain points, opportunities, and evidence URLs. Name "
-        "concrete workflows, data, users, and why_iconic.\n"
-        "The core value must be GenAI-native: language/document reasoning, "
-        "generation, tool orchestration, decision support, multimodal "
-        "understanding, or workflow synthesis. Reframe ideas that could be done "
-        "with ordinary software or classical ML.\n"
-        "Avoid overused generic product ideas, including "
-        "generic customer support chatbot, internal knowledge assistant or RAG "
-        "for documents, or generic marketing copy generators unless the concept "
-        "is deeply specific to this company. Do not discuss vendor or platform "
-        "fit.\n"
-        "evidence_sources must be full URLs copied from prior inputs. Do not "
-        "invent numeric impact, ROI, pilot results, or target values. Use "
-        "source_backed_metrics only for metrics directly supported by evidence; "
-        "otherwise leave it empty and use pilot_kpis for what to validate."
-    )
-
-
-def genai_use_cases_user_prompt(
-    company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
-    ideation_lens: GenAIUseCasePersona,
-    id_prefix: GenAIUseCaseIdPrefix,
-) -> str:
-    expected_ids = ", ".join(f"{id_prefix}_{index}" for index in range(1, 4))
+def genai_use_cases_user_prompt(company_profile: CompanyProfileOutput) -> str:
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
     return (
         "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point and opportunity analysis (JSON):\n"
-        f"{pain_json}\n\n"
-        f"Output exactly 3 candidate use cases as the {ideation_lens}. Use "
-        f"exactly these IDs: {expected_ids}. Each candidate's ideation_lens "
-        f"must be exactly `{ideation_lens}`. Each must have: id; title; "
-        "target_users (1+); business_problem; why_this_company; genai_solution; "
-        "genai_mechanism with mechanisms (1+) and the three why_* fields; "
-        "required_data; qualitative_impact; source_backed_metrics; pilot_kpis "
-        "(2+); why_iconic; feasibility_notes; risks (1+); linked_pain_points "
-        "(1+ exact or clearly recognizable pain-point titles from the input); "
-        "evidence_sources (1+ full URLs copied from prior inputs); and "
-        "ideation_lens. source_backed_metrics may be empty if no real metric "
-        "exists, but every included metric's source_url must be copied from "
-        "evidence_sources. Each pilot_kpi must describe what to measure, why it "
-        "matters, how to measure it, the target direction, and the baseline "
-        "needed; do not invent target values or write claims like 'expected "
-        "30%'. Each genai_solution must describe a concrete user workflow: who "
-        "uses it, what they input, what the system generates, and what human "
-        "approval step exists. Use company_profile.company_resolution, "
-        "company_profile.research_text, pain points, opportunities, business lines, "
-        "strategic priorities, and evidence URLs directly. "
-    )
-
-
-def use_case_deduplicator_system_prompt() -> str:
-    return (
-        "You are a GenAI use-case deduplication agent. Your sole purpose is to "
-        "find clusters of very similar use cases and keep the strongest existing "
-        "representative from each cluster.\n"
-        "Return only existing use_case IDs in retained_use_case_ids. Do not "
-        "rewrite, refine, merge fields, rename, reorder, create new IDs, or "
-        "change any use case content. Application code will preserve the original "
-        "use case objects exactly as provided.\n"
-        "Only remove near-duplicates: use cases that solve substantially the same "
-        "business problem for substantially the same users with substantially the "
-        "same GenAI workflow. Do not remove distinct ideas merely because they "
-        "share a pain point, data source, user group, or broad theme.\n"
-        "When a duplicate cluster exists, keep the strongest existing use case: "
-        "the candidate with better company specificity, evidence, concrete "
-        "workflow, GenAI fit, feasibility, and iconicness. Retain at least 5 "
-        "use cases. If removing duplicates would leave fewer than 5, retain the "
-        "5 strongest existing use cases."
-    )
-
-
-def use_case_deduplicator_user_prompt(
-    company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
-    use_cases: list[GenAIUseCaseCandidate],
-) -> str:
-    company_json = json.dumps(
-        company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    use_cases_json = json.dumps(
-        [use_case.model_dump(mode="json") for use_case in use_cases],
-        indent=2,
-        ensure_ascii=False,
-    )
-    use_case_ids = ", ".join(use_case.id for use_case in use_cases)
-    return (
-        "Company profile (resolved identity + sourced research JSON):\n"
-        f"{company_json}\n\n"
-        "Pain point and opportunity analysis (JSON):\n"
-        f"{pain_json}\n\n"
-        "Generated use cases to deduplicate (JSON):\n"
-        f"{use_cases_json}\n\n"
-        f"Available use_case IDs: {use_case_ids}.\n"
-        "Return retained_use_case_ids only. Every retained ID must be copied "
-        "exactly from the available IDs above. Retain at least 5 use cases. "
-        "Do not output rewritten use cases, merged use cases, explanations, "
-        "clusters, replacement IDs, or changed fields."
+        "Return between 6 and 10 use cases in field `use_cases`. Use ids uc_1, "
+        "uc_2, ... uc_N consecutively with no gaps (N = len(use_cases)).\n"
+        "Each use case must include: id; title; target_users (1+); "
+        "business_problem; why_this_company; genai_solution; genai_mechanism "
+        "with mechanisms (1+) and the three why_* fields; required_data; "
+        "qualitative_impact; source_backed_metrics; pilot_kpis (2+); why_iconic; "
+        "feasibility_notes; risks (1+); company_signal_labels (1+); "
+        "evidence_sources (1+ full URLs from inputs); use_case_archetype (one of "
+        "the five allowed literals above).\n"
+        "Each genai_solution must describe a concrete user workflow: who uses it, "
+        "what they input, what the system generates, and what human approval step "
+        "exists. Each pilot_kpi: what to measure, why it matters, how to measure, "
+        "target direction, baseline needed—no invented numeric targets.\n"
+        "Ground every field in company_profile.company_resolution and "
+        "company_profile.research_text; cite only URLs that appear in those inputs."
     )
 
 
@@ -338,16 +215,10 @@ def use_case_grader_system_prompt() -> str:
 
 def use_case_grader_user_prompt(
     company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
     use_cases: list[GenAIUseCaseCandidate],
 ) -> str:
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -359,8 +230,6 @@ def use_case_grader_user_prompt(
     return (
         "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point and opportunity analysis (JSON):\n"
-        f"{pain_json}\n\n"
         "Generated use cases to grade (JSON):\n"
         f"{use_cases_json}\n\n"
         "Return one grades item for every use case above. Each item must use "
@@ -374,13 +243,8 @@ def use_case_grader_user_prompt(
     )
 
 
-def _source_links(sources: list[str]) -> str:
-    return " ".join(f"[source]({source})" for source in sources)
-
-
 def markdown_report_evidence_brief(
     company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
     resolution = company_profile.company_resolution
@@ -394,21 +258,6 @@ def markdown_report_evidence_brief(
     resolution_lines.extend(
         f"- {item.claim} [source]({item.source})" for item in resolution.evidence
     )
-    pain_point_lines = [
-        "- "
-        f"{pain_point.title}: {pain_point.description} "
-        f"(prominence {pain_point.prominence}/10) "
-        f"{_source_links(pain_point.sources)}"
-        for pain_point in pain_points.pain_points
-    ]
-    opportunity_lines = [
-        "- "
-        f"{opportunity.title}: {opportunity.description} "
-        f"(linked pain points: {', '.join(opportunity.linked_pain_points)}) "
-        f"{_source_links(opportunity.sources)}"
-        for opportunity in pain_points.opportunities
-    ]
-
     use_case_sections: list[str] = []
     for rank, item in enumerate(final_selection.selected, start=1):
         use_case = item.use_case
@@ -453,12 +302,12 @@ def markdown_report_evidence_brief(
             f"- Evidence source [source]({source})"
             for source in use_case.evidence_sources
         )
+        lines.append(f"- Company signals: {', '.join(use_case.company_signal_labels)}")
+        lines.append(f"- Archetype: {use_case.use_case_archetype}")
 
         use_case_sections.append("\n".join(lines))
 
     resolution_text = "\n".join(resolution_lines)
-    pain_points_text = "\n".join(pain_point_lines)
-    opportunities_text = "\n".join(opportunity_lines)
     use_cases_text = "\n\n".join(use_case_sections)
 
     return (
@@ -467,10 +316,6 @@ def markdown_report_evidence_brief(
         f"{resolution_text}\n\n"
         "## Sourced company research\n"
         f"{company_profile.research_text}\n\n"
-        "## Pain points\n"
-        f"{pain_points_text}\n\n"
-        "## Opportunities linked to pain points\n"
-        f"{opportunities_text}\n\n"
         "## Selected use cases\n"
         f"{use_cases_text}"
     )
@@ -489,9 +334,10 @@ def markdown_reporter_system_prompt() -> str:
         f"{MARKDOWN_REPORT_TEMPLATE}\n"
         "```\n\n"
         "Use the selected top 3 in order; copy score.weighted_total into the "
-        "ranked table. Discuss pain points and opportunity themes from the "
-        "pain-point analysis. Discuss Iconicness from use_case.why_iconic and "
-        "score.iconicness. In `Why Genai ?`, use genai_mechanism.\n"
+        "ranked table. Summarize strategic signals and pressures using only the "
+        "company profile and sourced research (no separate pain-point JSON). "
+        "Discuss Iconicness from use_case.why_iconic and score.iconicness. "
+        "In `Why Genai ?`, use genai_mechanism.\n"
         "Use only supplied facts and URLs. Cite factual claims and numbers with "
         "adjacent markdown links; ranks and copied scores are exempt. Do not "
         "invent facts, source URLs, ROI, timelines, pilot results, or numeric "
@@ -501,21 +347,14 @@ def markdown_reporter_system_prompt() -> str:
 
 def markdown_reporter_user_prompt(
     company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
     evidence_brief = markdown_report_evidence_brief(
         company_profile,
-        pain_points,
         final_selection,
     )
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -528,8 +367,6 @@ def markdown_reporter_user_prompt(
         f"{evidence_brief}\n\n"
         "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point and opportunity analysis (JSON):\n"
-        f"{pain_json}\n\n"
         "Selected top 3 use cases with scores (JSON):\n"
         f"{final_selection_json}\n\n"
         "Write the final markdown report in the `markdown` field. Use the evidence "

@@ -9,16 +9,11 @@ from src.prompts import (
     markdown_report_evidence_brief,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
-    pain_point_system_prompt,
-    pain_point_user_prompt,
-    use_case_deduplicator_system_prompt,
-    use_case_deduplicator_user_prompt,
     use_case_grader_system_prompt,
     use_case_grader_user_prompt,
     web_search_system_prompt,
 )
 from src.schemas import (
-    CompanyEvidenceClaim,
     CompanyProfileOutput,
     CompanyResolutionOutput,
     EvidenceItem,
@@ -26,9 +21,6 @@ from src.schemas import (
     GenAIMechanism,
     GenAIUseCaseCandidate,
     GradedUseCase,
-    PainPointItem,
-    PainPointOpportunityItem,
-    PainPointProfilerOutput,
     PilotKPI,
     SourceBackedMetric,
     UseCaseScore,
@@ -101,7 +93,7 @@ def _pilot_kpis() -> list[PilotKPI]:
 def _candidate(index: int) -> GenAIUseCaseCandidate:
     evidence_source = f"https://example.com/source-{index}"
     return GenAIUseCaseCandidate(
-        id=f"uc-{index}",
+        id=f"uc_{index}",
         title=f"Use case {index}",
         target_users=["Ops"],
         business_problem="Problem",
@@ -115,102 +107,10 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
-        linked_pain_points=["Pain 1"],
+        company_signal_labels=["Pain 1", "widget_supply"],
         evidence_sources=[evidence_source],
-        ideation_lens="grounded consultant",
+        use_case_archetype="grounded_consultant",
     )
-
-
-def _company_claim(
-    claim: str,
-    source_url: str,
-    citation: str,
-) -> CompanyEvidenceClaim:
-    return CompanyEvidenceClaim(
-        claim=claim,
-        source_url=source_url,
-        citation=citation,
-    )
-
-
-def _company_claims() -> list[CompanyEvidenceClaim]:
-    return [
-        _company_claim(
-            "Acme makes widgets",
-            "https://example.com/company",
-            "Company page describes widget products.",
-        ),
-        _company_claim(
-            "Acme serves industrial buyers",
-            "https://example.com/customers",
-            "Customer page names industrial buyers.",
-        ),
-        _company_claim(
-            "Acme prioritizes operational efficiency",
-            "https://example.com/strategy",
-            "Strategy page lists operational efficiency.",
-        ),
-        _company_claim(
-            "Acme launched a factory modernization initiative",
-            "https://example.com/initiative",
-            "Press release announces modernization.",
-        ),
-        _company_claim(
-            "Acme operates in North America",
-            "https://example.com/markets",
-            "Markets page lists North America.",
-        ),
-        _company_claim(
-            "Acme faces supply chain delays",
-            "https://example.com/pain-1",
-            "Annual report notes supply chain delays.",
-        ),
-        _company_claim(
-            "New safety rules affect Acme's plants",
-            "https://example.com/pain-2",
-            "Regulator page describes new safety rules.",
-        ),
-        _company_claim(
-            "Customers expect faster configuration support",
-            "https://example.com/pain-3",
-            "Publication reports faster configuration expectations.",
-        ),
-        _company_claim(
-            "Acme has an aftermarket service expansion opportunity",
-            "https://example.com/growth",
-            "Investor presentation highlights aftermarket service expansion.",
-        ),
-        _company_claim(
-            "Acme is modernizing factory systems",
-            "https://example.com/digital",
-            "Digital page describes factory system modernization.",
-        ),
-        _company_claim(
-            "Acme tracks on-time delivery as a customer metric",
-            "https://example.com/metrics",
-            "Annual report references on-time delivery.",
-        ),
-        _company_claim(
-            "Acme sells through distributor partners",
-            "https://example.com/partners",
-            "Partner page describes distributor channels.",
-        ),
-        _company_claim(
-            "Acme focuses on configurable industrial products",
-            "https://example.com/configurable-products",
-            "Products page describes configurable industrial products.",
-        ),
-        _company_claim(
-            "Acme is investing in quality management",
-            "https://example.com/quality",
-            "Strategy update describes quality management investment.",
-        ),
-        _company_claim(
-            "Acme Corporation is the official company name",
-            "https://example.com/about",
-            "About page uses Acme Corporation as the official name.",
-        ),
-    ]
 
 
 def _company_profile() -> CompanyProfileOutput:
@@ -250,31 +150,6 @@ def _company_profile() -> CompanyProfileOutput:
     )
 
 
-def _pain_point(index: int) -> PainPointItem:
-    return PainPointItem(
-        title=f"Pain {index}",
-        description="Description",
-        prominence=8,
-        sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _opportunity(index: int) -> PainPointOpportunityItem:
-    return PainPointOpportunityItem(
-        title=f"Opportunity {index}",
-        description="Opportunity description",
-        linked_pain_points=[f"Pain {index}"],
-        sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _pain_points() -> PainPointProfilerOutput:
-    return PainPointProfilerOutput(
-        pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)],
-        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
-    )
-
-
 def _score(use_case_id: str) -> UseCaseScore:
     return UseCaseScore(
         use_case_id=use_case_id,
@@ -296,7 +171,7 @@ def _graded_use_cases() -> list[GradedUseCase]:
     return [
         GradedUseCase(
             use_case=_candidate(index),
-            score=_score(f"uc-{index}"),
+            score=_score(f"uc_{index}"),
         )
         for index in range(1, 6)
     ]
@@ -363,102 +238,36 @@ def test_company_context_keeps_resolution_and_research_text() -> None:
     assert "Source URL: https://example.com/pain-1" in prompt
 
 
-def test_pain_point_prompts_derive_pain_points_and_opportunities() -> None:
-    system_prompt = pain_point_system_prompt()
-    user_prompt = pain_point_user_prompt(_company_profile())
+def test_genai_use_cases_system_prompt_requires_diverse_batch() -> None:
+    prompt = genai_use_cases_system_prompt()
 
-    assert "resolved company identity" in system_prompt
-    assert "sourced company research text" in system_prompt
-    assert "opportunity hypotheses" in system_prompt
-    assert "Do not add new web research" in system_prompt
-    assert "unsupported industry generalizations" in system_prompt
-    assert "Acme Corporation" in user_prompt
-    assert "Return 3-8 pain points and 3-8 opportunities" in user_prompt
-    assert "regulatory pressure" in user_prompt
-    assert "customer/market pressure" in user_prompt
-    assert "growth opportunities" in user_prompt
-    assert "technology transformation" in user_prompt
-    assert "company_profile.company_resolution.evidence" in user_prompt
-    assert "company_profile.research_text" in user_prompt
-    assert "link to one or more pain point titles" in user_prompt
-
-
-def test_genai_prompt_requires_persona_batch() -> None:
-    prompt = genai_use_cases_system_prompt("moonshot strategist", "moonshot_uc")
-
-    assert "exactly 3" in prompt
-    assert "moonshot strategist" in prompt
-    assert "moonshot_uc_1" in prompt
-    assert "moonshot_uc_2" in prompt
-    assert "moonshot_uc_3" in prompt
+    assert "6-10" in prompt or "6–10" in prompt
+    assert "grounded_consultant" in prompt
+    assert "optimistic_stretch" in prompt
+    assert "moonshot" in prompt
+    assert "novel_surprise" in prompt
+    assert "evidence_tight" in prompt
+    assert "No two use cases may solve substantially the same" in prompt
     assert "GenAI-native" in prompt
-    assert "ordinary software or classical ML" in prompt
-    assert "internal knowledge assistant or RAG" in prompt
-    assert "generic customer support chatbot" in prompt
+    assert "plain automation or classical ML" in prompt
+    assert "generic internal RAG assistants" in prompt
+    assert "generic customer-support chatbots" in prompt
     assert "Do not invent numeric impact" in prompt
-    assert "source_backed_metrics" in prompt
-    assert "pilot_kpis" in prompt
-    assert "sourced company research text" in prompt
-    assert "opportunities" in prompt
-    assert "meaningfully varied" in prompt
+    assert "company_signal_labels" in prompt
     assert "why_iconic" in prompt
 
 
-def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
-    prompt = genai_use_cases_user_prompt(
-        _company_profile(),
-        _pain_points(),
-        "why not? inventor",
-        "why_not_uc",
-    )
+def test_genai_use_cases_user_prompt_includes_company_json() -> None:
+    prompt = genai_use_cases_user_prompt(_company_profile())
 
-    assert "exactly 3" in prompt
-    assert "why not? inventor" in prompt
-    assert "why_not_uc_1" in prompt
-    assert "why_not_uc_2" in prompt
-    assert "why_not_uc_3" in prompt
+    assert "between 6 and 10" in prompt
+    assert "use_cases" in prompt
+    assert "company_signal_labels" in prompt
+    assert "use_case_archetype" in prompt
     assert "genai_mechanism" in prompt
-    assert "mechanisms (1+)" in prompt
-    assert "three why_* fields" in prompt
     assert "who uses it" in prompt
-    assert "what they input" in prompt
-    assert "what the system generates" in prompt
     assert "human approval step" in prompt
-    assert "qualitative_impact" in prompt
-    assert "source_backed_metrics" in prompt
-    assert "pilot_kpis (2+)" in prompt
-    assert "do not invent target values" in prompt
-    assert "company_profile.company_resolution" in prompt
-    assert "company_profile.research_text" in prompt
     assert '"research_text":' in prompt
-
-
-def test_use_case_deduplicator_prompt_only_allows_retained_ids() -> None:
-    prompt = use_case_deduplicator_system_prompt()
-
-    assert "retained_use_case_ids" in prompt
-    assert "Do not rewrite" in prompt
-    assert "merge" in prompt
-    assert "create new IDs" in prompt
-    assert "Retain at least 5" in prompt
-    assert "share a pain point" in prompt
-
-
-def test_use_case_deduplicator_user_prompt_includes_original_use_cases() -> None:
-    prompt = use_case_deduplicator_user_prompt(
-        _company_profile(),
-        _pain_points(),
-        [_candidate(1), _candidate(2), _candidate(3), _candidate(4), _candidate(5)],
-    )
-
-    assert "Generated use cases to deduplicate (JSON)" in prompt
-    assert '"id": "uc-1"' in prompt
-    assert "Available use_case IDs: uc-1, uc-2, uc-3, uc-4, uc-5" in prompt
-    assert "Return retained_use_case_ids only" in prompt
-    assert "Retain at least 5 use cases" in prompt
-    assert "Do not output rewritten use cases" in prompt
-    assert "merged use cases" in prompt
-    assert "changed fields" in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -487,20 +296,18 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
 def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
     prompt = use_case_grader_user_prompt(
         _company_profile(),
-        _pain_points(),
         [_candidate(1), _candidate(2)],
     )
 
     assert "Generated use cases to grade (JSON)" in prompt
-    assert '"id": "uc-1"' in prompt
+    assert '"id": "uc_1"' in prompt
     assert "Return one grades item for every use case above" in prompt
     assert "use_case_id equal to the matching use_case.id" in prompt
     assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
     assert "1-10 scale" in prompt
     assert "company_relevance as a grounding check" in prompt
     assert "iconicness as the main differentiator" in prompt
-    assert "Return one graded_use_cases item" not in prompt
-    assert "Keep each original use_case object unchanged" not in prompt
+    assert "Pain point and opportunity analysis" not in prompt
 
 
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
@@ -515,7 +322,7 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "# GenAI Opportunity Report — {Company}" in prompt
     assert "## Recommendation in Brief" not in prompt
     assert "## What We Know About the Company" in prompt
-    assert "## Pain Points and Opportunity Themes" in prompt
+    assert "## Strategic signals from research" in prompt
     assert "## Ranked Opportunities" in prompt
     assert (
         "| Rank | Opportunity | Primary users | Weighted score | Decision rationale |"
@@ -528,7 +335,7 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "## Caveats and Source Limits" in prompt
     assert "## Sources" in prompt
     assert "score.weighted_total" in prompt
-    assert "opportunity themes" in prompt
+    assert "strategic signals" in prompt
     assert "How The Workflow Would Work" in prompt
     assert "Retrieved or generated context" in prompt
     assert "Human approval or decision point" in prompt
@@ -550,7 +357,6 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
 def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     brief = markdown_report_evidence_brief(
         _company_profile(),
-        _pain_points(),
         _final_selection(),
     )
 
@@ -560,16 +366,7 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     assert "## Sourced company research" in brief
     assert "Acme makes widgets" in brief
     assert "Source URL: https://example.com/company" in brief
-    assert "## Pain points" in brief
-    assert (
-        "Pain 1: Description (prominence 8/10) "
-        "[source](https://example.com/pain-1)" in brief
-    )
-    assert "## Opportunities linked to pain points" in brief
-    assert (
-        "Opportunity 1: Opportunity description (linked pain points: Pain 1) "
-        "[source](https://example.com/pain-1)" in brief
-    )
+    assert "## Pain points" not in brief
     assert "## Selected use cases" in brief
     assert "### Rank 1: Use case 1" in brief
     assert "Weighted score: 3.0" in brief
@@ -586,36 +383,31 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     assert "Measure it with Compare cycle time before and during the pilot." in brief
     assert "target direction is decrease" in brief
     assert "Evidence source [source](https://example.com/source-1)" in brief
+    assert "Company signals: Pain 1, widget_supply" in brief
+    assert "Archetype: grounded_consultant" in brief
 
 
 def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     prompt = markdown_reporter_user_prompt(
         _company_profile(),
-        _pain_points(),
         _final_selection(),
     )
 
     assert "Company profile (resolved identity + sourced research JSON)" in prompt
-    assert "Pain point and opportunity analysis (JSON)" in prompt
     assert "Selected top 3 use cases with scores (JSON)" in prompt
     assert "Citation-ready evidence brief" in prompt
     assert "Acme makes widgets" in prompt
     assert "Source URL: https://example.com/company" in prompt
     assert (
-        "Pain 1: Description (prominence 8/10) "
-        "[source](https://example.com/pain-1)" in prompt
-    )
-    assert (
         "Pain prominence: Prominence 8 of 10 "
         "[source](https://example.com/source-1)" in prompt
     )
     assert '"resolved_name": "Acme Corporation"' in prompt
-    assert '"id": "uc-1"' in prompt
+    assert '"id": "uc_1"' in prompt
     assert '"genai_mechanism": {' in prompt
     assert '"document_understanding"' in prompt
     assert '"qualitative_impact": "Qualitative impact"' in prompt
     assert '"research_text":' in prompt
-    assert '"opportunities": [' in prompt
     assert '"source_backed_metrics": [' in prompt
     assert '"pilot_kpis": [' in prompt
     assert '"score": {' in prompt
@@ -623,3 +415,4 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert "evidence brief for citation links" in prompt
     assert "JSON as source of truth" in prompt
     assert "Do not include raw JSON" in prompt
+    assert "Pain point and opportunity analysis" not in prompt

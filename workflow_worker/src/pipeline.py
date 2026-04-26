@@ -1,18 +1,13 @@
-import asyncio
 from collections.abc import Awaitable, Callable
 from functools import partial
 
 from src.activities import (
-    deduplicate_genai_use_cases,
-    generate_grounded_genai_use_cases,
-    generate_moonshot_genai_use_cases,
-    generate_why_not_genai_use_cases,
+    generate_genai_use_cases,
     grade_use_cases,
     research_company,
     research_company_resolution,
     select_final_top_3,
     structure_company_resolution,
-    structure_pain_points,
     write_markdown_report,
 )
 from src.schemas import (
@@ -20,19 +15,14 @@ from src.schemas import (
     CompanyProfileOutput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
-    DeduplicateUseCasesInput,
     GenAIUseCaseCandidateInput,
+    GenAIUseCaseCandidatePool,
     GradeUseCasesInput,
     MarkdownReportInput,
-    PainPointStructuringInput,
     PipelineOutput,
     SparkstralWorkflowResult,
 )
-from src.utils import (
-    append_json_output,
-    append_text_output,
-    merge_genai_use_case_batches,
-)
+from src.utils import append_json_output, append_text_output
 
 PipelineStatusCallback = Callable[[str], Awaitable[None]]
 
@@ -75,45 +65,18 @@ async def run_sparkstral_pipeline(
         research_text=company_research.text,
     )
 
-    pain_points = await structure_pain_points(
-        PainPointStructuringInput(
-            company_profile=company_profile,
-        )
-    )
-    append_json(pain_points.model_dump(mode="json"))
-
     await _send_status(status_callback, "Generating candidate use cases...\n")
     use_case_generation_input = GenAIUseCaseCandidateInput(
         company_profile=company_profile,
-        pain_points=pain_points,
     )
-    grounded_use_cases, moonshot_use_cases, why_not_use_cases = await asyncio.gather(
-        generate_grounded_genai_use_cases(use_case_generation_input),
-        generate_moonshot_genai_use_cases(use_case_generation_input),
-        generate_why_not_genai_use_cases(use_case_generation_input),
-    )
-    use_cases = merge_genai_use_case_batches(
-        [
-            ("grounded_uc", grounded_use_cases),
-            ("moonshot_uc", moonshot_use_cases),
-            ("why_not_uc", why_not_use_cases),
-        ]
-    )
-
-    use_cases = await deduplicate_genai_use_cases(
-        DeduplicateUseCasesInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-            use_cases=use_cases.use_cases,
-        )
-    )
+    generated = await generate_genai_use_cases(use_case_generation_input)
+    use_cases = GenAIUseCaseCandidatePool(use_cases=generated.use_cases)
     append_json(use_cases.model_dump(mode="json"))
 
     await _send_status(status_callback, "Scoring opportunities...\n")
     graded_use_cases = await grade_use_cases(
         GradeUseCasesInput(
             company_profile=company_profile,
-            pain_points=pain_points,
             use_cases=use_cases.use_cases,
         )
     )
@@ -126,7 +89,6 @@ async def run_sparkstral_pipeline(
     markdown_report = await write_markdown_report(
         MarkdownReportInput(
             company_profile=company_profile,
-            pain_points=pain_points,
             final_selection=final_selection,
         )
     )
