@@ -38,8 +38,7 @@ def build_graded_use_cases(
 
     if duplicate_input_ids:
         raise ValueError(
-            "duplicate input use case IDs: "
-            + ", ".join(sorted(duplicate_input_ids))
+            "duplicate input use case IDs: " + ", ".join(sorted(duplicate_input_ids))
         )
 
     seen_grade_ids: set[str] = set()

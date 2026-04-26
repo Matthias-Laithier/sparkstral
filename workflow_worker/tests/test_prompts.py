@@ -216,7 +216,6 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "penalties" in prompt
     assert "use_case_id" in prompt
     assert "Do not repeat or rewrite the original use_case objects" in prompt
-    assert "Do not output weighted_total" in prompt
     assert "application code will compute" in prompt
     assert "Do not skip" in prompt
 
@@ -233,7 +232,6 @@ def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
     assert "Return one grades item for every use case above" in prompt
     assert "use_case_id equal to the matching use_case.id" in prompt
     assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
-    assert "Do not output weighted_total" in prompt
     assert "Return one graded_use_cases item" not in prompt
     assert "Keep each original use_case object unchanged" not in prompt
 

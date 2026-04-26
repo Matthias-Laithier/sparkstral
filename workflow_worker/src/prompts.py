@@ -301,8 +301,7 @@ def use_case_grader_user_prompt(
         "the six rubric fields: "
         "company_relevance, business_impact, iconicness, genai_fit, feasibility, "
         "and evidence_strength. Include strengths, weaknesses, rationale, "
-        "and penalties for each use case. Do not output weighted_total because "
-        "code computes it. Do not choose final recommendations."
+        "and penalties for each use case."
     )
 
 
