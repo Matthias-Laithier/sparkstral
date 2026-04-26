@@ -85,17 +85,27 @@ def append_json_output(outputs: list[PipelineOutput], data: dict[str, Any]) -> N
     )
 
 
+def _selection_key(
+    item: GradedUseCase,
+) -> tuple[float, int, int, int, int, int, int, str]:
+    return (
+        -item.score.weighted_total,
+        -item.score.company_relevance,
+        -item.score.business_impact,
+        -item.score.genai_fit,
+        -item.score.iconicness,
+        -item.score.feasibility,
+        -item.score.evidence_strength,
+        item.use_case.id,
+    )
+
+
 def select_top_n(graded: list[GradedUseCase], n: int) -> list[GradedUseCase]:
-    return sorted(
+    ranked = sorted(
         graded,
-        key=lambda item: (
-            item.score.total,
-            item.score.company_relevance,
-            item.score.business_impact,
-            item.score.iconicness,
-        ),
-        reverse=True,
-    )[:n]
+        key=_selection_key,
+    )
+    return ranked[:n]
 
 
 async def parse_chat_model(

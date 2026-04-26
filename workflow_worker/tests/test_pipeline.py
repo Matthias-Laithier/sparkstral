@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from src import activities, pipeline
 from src.agents import grader, markdown_reporter
-from src.agents.grader import UseCaseGraderAgent, compute_total_score
+from src.agents.grader import UseCaseGraderAgent, compute_weighted_total
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.schemas import (
     CompanyInput,
@@ -168,28 +168,33 @@ def _score(
     genai_fit: int = 3,
     feasibility: int = 3,
     evidence_strength: int = 3,
-    total: int | None = None,
+    weighted_total: float | None = None,
+    penalties: list[str] | None = None,
 ) -> UseCaseScore:
-    computed_total = (
-        company_relevance
-        + business_impact
-        + iconicness
-        + genai_fit
-        + feasibility
-        + evidence_strength
+    computed_weighted_total = round(
+        0.25 * company_relevance
+        + 0.25 * business_impact
+        + 0.20 * genai_fit
+        + 0.15 * iconicness
+        + 0.10 * feasibility
+        + 0.05 * evidence_strength,
+        2,
     )
     return UseCaseScore(
         use_case_id=use_case_id,
+        strengths=["Strength"],
+        weaknesses=["Weakness"],
+        rationale="Rationale",
         company_relevance=company_relevance,
         business_impact=business_impact,
         iconicness=iconicness,
         genai_fit=genai_fit,
         feasibility=feasibility,
         evidence_strength=evidence_strength,
-        total=computed_total if total is None else total,
-        rationale="Rationale",
-        strengths=["Strength"],
-        weaknesses=["Weakness"],
+        penalties=[] if penalties is None else penalties,
+        weighted_total=(
+            computed_weighted_total if weighted_total is None else weighted_total
+        ),
     )
 
 
@@ -406,7 +411,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
     ]
 
 
-def test_compute_total_score_sums_rubric_dimensions() -> None:
+def test_compute_weighted_total_uses_weighted_formula() -> None:
     score = _score(
         "uc-1",
         company_relevance=5,
@@ -415,13 +420,13 @@ def test_compute_total_score_sums_rubric_dimensions() -> None:
         genai_fit=2,
         feasibility=1,
         evidence_strength=5,
-        total=6,
+        weighted_total=1.0,
     )
 
-    assert compute_total_score(score) == 20
+    assert compute_weighted_total(score) == 3.45
 
 
-def test_select_top_n_sorts_by_total_and_tie_breakers() -> None:
+def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
     graded = [
         GradedUseCase(
             use_case=_candidate(1),
@@ -500,17 +505,17 @@ def test_select_top_n_sorts_by_total_and_tie_breakers() -> None:
     selected = select_top_n(graded, 5)
 
     assert [item.use_case.id for item in selected] == [
-        "uc-5",
+        "uc-6",
         "uc-4",
         "uc-3",
-        "uc-2",
+        "uc-5",
         "uc-1",
     ]
     assert len(selected) == 5
 
 
 @pytest.mark.asyncio
-async def test_use_case_grader_agent_recomputes_total_without_sorting(
+async def test_use_case_grader_agent_recomputes_weighted_total_without_sorting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     use_cases = [_candidate(index) for index in range(1, 7)]
@@ -526,7 +531,7 @@ async def test_use_case_grader_agent_recomputes_total_without_sorting(
                     genai_fit=2,
                     feasibility=2,
                     evidence_strength=2,
-                    total=30,
+                    weighted_total=5.0,
                 ),
             ),
             GradedUseCase(
@@ -539,7 +544,7 @@ async def test_use_case_grader_agent_recomputes_total_without_sorting(
                     genai_fit=4,
                     feasibility=4,
                     evidence_strength=3,
-                    total=6,
+                    weighted_total=1.0,
                 ),
             ),
             *[
@@ -571,7 +576,10 @@ async def test_use_case_grader_agent_recomputes_total_without_sorting(
         "uc-1",
         "uc-2",
     ]
-    assert [item.score.total for item in result.graded_use_cases[:2]] == [12, 24]
+    assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
+        2.0,
+        4.2,
+    ]
 
 
 @pytest.mark.asyncio
@@ -670,6 +678,25 @@ async def test_write_markdown_report_activity_returns_agent_result(
     )
 
     assert result == agent_result
+
+
+def test_select_top_n_returns_top_three_by_score() -> None:
+    graded = [
+        GradedUseCase(
+            use_case=_candidate(index),
+            score=_score(f"uc-{index}", weighted_total=5.0 - index / 10),
+        )
+        for index in range(1, 5)
+    ]
+
+    selected = select_top_n(graded, 3)
+
+    assert [item.use_case.id for item in selected] == [
+        "uc-1",
+        "uc-2",
+        "uc-3",
+    ]
+    assert len(selected) == 3
 
 
 @pytest.mark.asyncio

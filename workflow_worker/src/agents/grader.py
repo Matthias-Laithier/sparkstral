@@ -10,23 +10,24 @@ from src.schemas import (
 from src.utils import parse_chat_model
 
 
-def compute_total_score(score: UseCaseScore) -> int:
-    return (
-        score.company_relevance
-        + score.business_impact
-        + score.iconicness
-        + score.genai_fit
-        + score.feasibility
-        + score.evidence_strength
+def compute_weighted_total(score: UseCaseScore) -> float:
+    return round(
+        0.25 * score.company_relevance
+        + 0.25 * score.business_impact
+        + 0.20 * score.genai_fit
+        + 0.15 * score.iconicness
+        + 0.10 * score.feasibility
+        + 0.05 * score.evidence_strength,
+        2,
     )
 
 
-def update_total_scores(items: list[GradedUseCase]) -> list[GradedUseCase]:
+def update_weighted_totals(items: list[GradedUseCase]) -> list[GradedUseCase]:
     return [
         GradedUseCase(
             use_case=item.use_case,
             score=item.score.model_copy(
-                update={"total": compute_total_score(item.score)}
+                update={"weighted_total": compute_weighted_total(item.score)}
             ),
         )
         for item in items
@@ -57,5 +58,5 @@ class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
             ],
         )
         return GradedUseCasePool(
-            graded_use_cases=update_total_scores(result.graded_use_cases)
+            graded_use_cases=update_weighted_totals(result.graded_use_cases)
         )

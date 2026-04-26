@@ -126,16 +126,17 @@ def _pain_points() -> PainPointProfilerOutput:
 def _score(use_case_id: str) -> UseCaseScore:
     return UseCaseScore(
         use_case_id=use_case_id,
+        strengths=["Strength"],
+        weaknesses=["Weakness"],
+        rationale="Rationale",
         company_relevance=3,
         business_impact=3,
         iconicness=3,
         genai_fit=3,
         feasibility=3,
         evidence_strength=3,
-        total=18,
-        rationale="Rationale",
-        strengths=["Strength"],
-        weaknesses=["Weakness"],
+        penalties=[],
+        weighted_total=3.0,
     )
 
 
@@ -206,7 +207,13 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "genai_fit" in prompt
     assert "feasibility" in prompt
     assert "evidence_strength" in prompt
-    assert "Penalize generic candidates" in prompt
+    assert "Scores of 5 should be rare" in prompt
+    assert "Generic chatbot, RAG, internal knowledge assistant" in prompt
+    assert "classical ML, forecasting, optimization" in prompt
+    assert "Unsupported metrics" in prompt
+    assert "Vague target users" in prompt
+    assert "penalties" in prompt
+    assert "application code will recompute" in prompt
     assert "Do not skip" in prompt
 
 
@@ -221,7 +228,7 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "ranked recommendations table" in prompt
     assert "detailed sections for each of the 3 use cases" in prompt
     assert "rank 1, rank 2, and rank 3" in prompt
-    assert "score totals" in prompt
+    assert "weighted scores" in prompt
     assert "Why this is GenAI" in prompt
     assert "genai_mechanism" in prompt
     assert "source URLs" in prompt
