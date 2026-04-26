@@ -329,11 +329,11 @@ def _score(
     penalties: list[str] | None = None,
 ) -> UseCaseScore:
     computed_weighted_total = round(
-        0.25 * company_relevance
+        0.40 * iconicness
         + 0.25 * business_impact
-        + 0.20 * genai_fit
-        + 0.15 * iconicness
-        + 0.10 * feasibility
+        + 0.15 * genai_fit
+        + 0.10 * company_relevance
+        + 0.05 * feasibility
         + 0.05 * evidence_strength,
         2,
     )
@@ -665,16 +665,16 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
 def test_compute_weighted_total_uses_weighted_formula() -> None:
     score = _score(
         "uc-1",
-        company_relevance=5,
-        business_impact=4,
-        iconicness=3,
-        genai_fit=2,
-        feasibility=1,
-        evidence_strength=5,
+        company_relevance=10,
+        business_impact=8,
+        iconicness=6,
+        genai_fit=4,
+        feasibility=2,
+        evidence_strength=10,
         weighted_total=1.0,
     )
 
-    assert compute_weighted_total(score) == 3.45
+    assert compute_weighted_total(score) == 6.6
 
 
 def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
@@ -683,12 +683,13 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
             use_case=_candidate(1),
             score=_score(
                 "uc-1",
-                company_relevance=3,
-                business_impact=5,
-                iconicness=5,
-                genai_fit=3,
-                feasibility=2,
-                evidence_strength=2,
+                company_relevance=10,
+                business_impact=10,
+                iconicness=8,
+                genai_fit=8,
+                feasibility=8,
+                evidence_strength=8,
+                weighted_total=8.0,
             ),
         ),
         GradedUseCase(
@@ -697,58 +698,63 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
                 "uc-2",
                 company_relevance=5,
                 business_impact=1,
-                iconicness=1,
+                iconicness=10,
                 genai_fit=5,
-                feasibility=4,
-                evidence_strength=4,
+                feasibility=5,
+                evidence_strength=5,
+                weighted_total=8.0,
             ),
         ),
         GradedUseCase(
             use_case=_candidate(3),
             score=_score(
                 "uc-3",
-                company_relevance=5,
-                business_impact=4,
-                iconicness=1,
-                genai_fit=4,
-                feasibility=3,
-                evidence_strength=3,
+                company_relevance=10,
+                business_impact=10,
+                iconicness=9,
+                genai_fit=8,
+                feasibility=8,
+                evidence_strength=8,
+                weighted_total=8.0,
             ),
         ),
         GradedUseCase(
             use_case=_candidate(4),
             score=_score(
                 "uc-4",
-                company_relevance=5,
-                business_impact=4,
-                iconicness=5,
-                genai_fit=2,
-                feasibility=2,
-                evidence_strength=2,
+                company_relevance=8,
+                business_impact=10,
+                iconicness=9,
+                genai_fit=8,
+                feasibility=8,
+                evidence_strength=8,
+                weighted_total=8.0,
             ),
         ),
         GradedUseCase(
             use_case=_candidate(5),
             score=_score(
                 "uc-5",
-                company_relevance=4,
-                business_impact=4,
-                iconicness=4,
-                genai_fit=3,
-                feasibility=3,
-                evidence_strength=3,
+                company_relevance=10,
+                business_impact=10,
+                iconicness=10,
+                genai_fit=10,
+                feasibility=10,
+                evidence_strength=10,
+                weighted_total=7.0,
             ),
         ),
         GradedUseCase(
             use_case=_candidate(6),
             score=_score(
                 "uc-6",
-                company_relevance=5,
-                business_impact=5,
-                iconicness=5,
-                genai_fit=2,
+                company_relevance=1,
+                business_impact=1,
+                iconicness=1,
+                genai_fit=1,
                 feasibility=1,
                 evidence_strength=1,
+                weighted_total=9.0,
             ),
         ),
     ]
@@ -757,9 +763,9 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
 
     assert [item.use_case.id for item in selected] == [
         "uc-6",
-        "uc-4",
+        "uc-2",
         "uc-3",
-        "uc-5",
+        "uc-4",
         "uc-1",
     ]
     assert len(selected) == 5
@@ -1117,7 +1123,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
         "uc-1",
     ]
     assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
-        4.2,
+        4.05,
         2.0,
     ]
     assert result.graded_use_cases[0].use_case == use_cases[1]
@@ -1465,7 +1471,7 @@ def test_genai_mechanism_restricts_mechanism_values() -> None:
 )
 def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
     data = _score("uc-1").model_dump()
-    data[field_name] = 6
+    data[field_name] = 11
 
     with pytest.raises(ValidationError):
         UseCaseScore.model_validate(data)

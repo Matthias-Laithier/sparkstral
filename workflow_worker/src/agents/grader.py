@@ -15,11 +15,11 @@ from src.utils import parse_chat_model
 
 def compute_weighted_total(score: UseCaseScore) -> float:
     return round(
-        0.25 * score.company_relevance
+        0.40 * score.iconicness
         + 0.25 * score.business_impact
-        + 0.20 * score.genai_fit
-        + 0.15 * score.iconicness
-        + 0.10 * score.feasibility
+        + 0.15 * score.genai_fit
+        + 0.10 * score.company_relevance
+        + 0.05 * score.feasibility
         + 0.05 * score.evidence_strength,
         2,
     )

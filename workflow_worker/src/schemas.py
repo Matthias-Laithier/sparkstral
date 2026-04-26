@@ -292,14 +292,14 @@ class UseCaseScore(BaseModel):
     strengths: list[str] = Field(..., min_length=1)
     weaknesses: list[str] = Field(..., min_length=1)
     rationale: str
-    company_relevance: int = Field(..., ge=1, le=5)
-    business_impact: int = Field(..., ge=1, le=5)
-    iconicness: int = Field(..., ge=1, le=5)
-    genai_fit: int = Field(..., ge=1, le=5)
-    feasibility: int = Field(..., ge=1, le=5)
-    evidence_strength: int = Field(..., ge=1, le=5)
+    company_relevance: int = Field(..., ge=1, le=10)
+    business_impact: int = Field(..., ge=1, le=10)
+    iconicness: int = Field(..., ge=1, le=10)
+    genai_fit: int = Field(..., ge=1, le=10)
+    feasibility: int = Field(..., ge=1, le=10)
+    evidence_strength: int = Field(..., ge=1, le=10)
     penalties: list[str]
-    weighted_total: float = Field(..., ge=1, le=5)
+    weighted_total: float = Field(..., ge=1, le=10)
 
 
 class UseCaseGrade(BaseModel):
@@ -309,12 +309,12 @@ class UseCaseGrade(BaseModel):
     strengths: list[str] = Field(..., min_length=1)
     weaknesses: list[str] = Field(..., min_length=1)
     rationale: str
-    company_relevance: int = Field(..., ge=1, le=5)
-    business_impact: int = Field(..., ge=1, le=5)
-    iconicness: int = Field(..., ge=1, le=5)
-    genai_fit: int = Field(..., ge=1, le=5)
-    feasibility: int = Field(..., ge=1, le=5)
-    evidence_strength: int = Field(..., ge=1, le=5)
+    company_relevance: int = Field(..., ge=1, le=10)
+    business_impact: int = Field(..., ge=1, le=10)
+    iconicness: int = Field(..., ge=1, le=10)
+    genai_fit: int = Field(..., ge=1, le=10)
+    feasibility: int = Field(..., ge=1, le=10)
+    evidence_strength: int = Field(..., ge=1, le=10)
     penalties: list[str]
 
 

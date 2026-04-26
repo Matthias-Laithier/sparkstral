@@ -405,6 +405,9 @@ def test_genai_prompt_requires_persona_batch() -> None:
     assert "pilot_kpis" in prompt
     assert "company_profile.claims" in prompt
     assert "company_profile.claims.source_url" in prompt
+    assert "meaningfully varied" in prompt
+    assert "practical operational value" in prompt
+    assert "why_iconic field" in prompt
 
 
 def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
@@ -476,7 +479,10 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "genai_fit" in prompt
     assert "feasibility" in prompt
     assert "evidence_strength" in prompt
-    assert "Scores of 5 should be rare" in prompt
+    assert "full 1-10 scale" in prompt
+    assert "scores of 9-10 should be rare" in prompt
+    assert "grounding check" in prompt
+    assert "the decisive criterion" in prompt
     assert "Generic chatbot, RAG, internal knowledge assistant" in prompt
     assert "classical ML, forecasting, optimization" in prompt
     assert "Unsupported metrics" in prompt
@@ -501,6 +507,9 @@ def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
     assert "Return one grades item for every use case above" in prompt
     assert "use_case_id equal to the matching use_case.id" in prompt
     assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
+    assert "1-10 scale" in prompt
+    assert "company_relevance as a grounding check" in prompt
+    assert "iconicness as the main differentiator" in prompt
     assert "Return one graded_use_cases item" not in prompt
     assert "Keep each original use_case object unchanged" not in prompt
 
