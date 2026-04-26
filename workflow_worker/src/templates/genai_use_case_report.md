@@ -3,6 +3,9 @@
 ## What We Know About the Company
 Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support.
 
+## Pain Points and Opportunity Themes
+Summarize the strongest pain points and the opportunity themes linked to them. Keep this evidence-led and use source links next to factual claims.
+
 ## Ranked Opportunities
 | Rank | Opportunity | Primary users | Weighted score | Decision rationale |
 | --- | --- | --- | --- | --- |

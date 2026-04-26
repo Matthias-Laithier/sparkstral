@@ -10,14 +10,13 @@ from src.activities import (
     research_company,
     research_company_resolution,
     select_final_top_3,
-    structure_company_profile,
     structure_company_resolution,
     structure_pain_points,
     write_markdown_report,
 )
 from src.schemas import (
     CompanyInput,
-    CompanyProfileStructuringInput,
+    CompanyProfileOutput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
     DeduplicateUseCasesInput,
@@ -56,13 +55,10 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     company_research = await research_company(company_resolution)
     append_text(company_research.text)
 
-    company_profile = await structure_company_profile(
-        CompanyProfileStructuringInput(
-            company_query=company_resolution.resolved_name,
-            research_text=company_research.text,
-        )
+    company_profile = CompanyProfileOutput(
+        company_resolution=company_resolution,
+        research_text=company_research.text,
     )
-    append_json(company_profile.model_dump(mode="json"))
 
     pain_points = await structure_pain_points(
         PainPointStructuringInput(

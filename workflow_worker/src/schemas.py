@@ -70,24 +70,7 @@ class CompanyResolutionStructuringInput(BaseModel):
 class CompanyProfileOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    company_name: str
-    industry: str
-    business_lines: list[str] = Field(..., min_length=1)
-    key_customers: list[str] = Field(..., min_length=1)
-    customer_segments: list[str] = Field(..., min_length=1)
-    strategic_priorities: list[str] = Field(..., min_length=1)
-    recent_strategic_initiatives: list[str] = Field(..., min_length=1)
-    geography_markets: list[str] = Field(..., min_length=1)
-    operational_context: list[str] = Field(..., min_length=1)
-    regulatory_context: list[str] = Field(..., min_length=1)
-    customer_market_pressure: list[str] = Field(..., min_length=1)
-    growth_opportunities: list[str] = Field(..., min_length=1)
-    technology_transformation_context: list[str] = Field(..., min_length=1)
-    claims: list[CompanyEvidenceClaim] = Field(..., min_length=15)
-
-
-class CompanyProfileStructuringInput(BaseModel):
-    company_query: str
+    company_resolution: CompanyResolutionOutput
     research_text: str
 
 
@@ -106,10 +89,35 @@ class PainPointItem(BaseModel):
     )
 
 
+class PainPointOpportunityItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(..., description="Short name for the opportunity.")
+    description: str = Field(
+        ...,
+        description="Opportunity hypothesis linked to the company's pain points.",
+    )
+    linked_pain_points: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Pain point titles this opportunity addresses.",
+    )
+    sources: list[str] = Field(
+        ...,
+        min_length=1,
+        description="URL strings for facts behind this opportunity.",
+    )
+
+
 class PainPointProfilerOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pain_points: list[PainPointItem] = Field(..., min_length=3, max_length=8)
+    opportunities: list[PainPointOpportunityItem] = Field(
+        ...,
+        min_length=1,
+        max_length=8,
+    )
 
 
 class PainPointStructuringInput(BaseModel):

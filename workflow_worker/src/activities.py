@@ -2,7 +2,6 @@ from datetime import timedelta
 
 import mistralai.workflows as workflows
 
-from src.agents.company_profiler import CompanyProfilerAgent
 from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
@@ -15,8 +14,6 @@ from src.prompts import (
     company_resolution_research_prompt,
 )
 from src.schemas import (
-    CompanyProfileOutput,
-    CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
@@ -75,18 +72,6 @@ async def research_company(params: CompanyResolutionOutput) -> ResearchResult:
     except Exception as exc:
         raise RuntimeError("company research failed") from exc
     return ResearchResult(text=result.text)
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def structure_company_profile(
-    params: CompanyProfileStructuringInput,
-) -> CompanyProfileOutput:
-    client = get_mistral_client()
-    agent = CompanyProfilerAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("company profile structuring failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

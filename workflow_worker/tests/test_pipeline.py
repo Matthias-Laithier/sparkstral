@@ -42,6 +42,7 @@ from src.schemas import (
     MarkdownReport,
     MarkdownReportInput,
     PainPointItem,
+    PainPointOpportunityItem,
     PainPointProfilerOutput,
     PilotKPI,
     ResearchResult,
@@ -181,20 +182,31 @@ def _company_claims() -> list[CompanyEvidenceClaim]:
 
 def _company_profile() -> CompanyProfileOutput:
     return CompanyProfileOutput(
-        company_name="Acme Corporation",
-        industry="Manufacturing",
-        business_lines=["Widgets"],
-        key_customers=["Industrial buyers"],
-        customer_segments=["Industrial buyers"],
-        strategic_priorities=["Operational efficiency"],
-        recent_strategic_initiatives=["Factory modernization"],
-        geography_markets=["North America"],
-        operational_context=["Supply chain delays"],
-        regulatory_context=["New safety rules"],
-        customer_market_pressure=["Customers expect faster configuration support"],
-        growth_opportunities=["Aftermarket service expansion"],
-        technology_transformation_context=["Factory modernization"],
-        claims=_company_claims(),
+        company_resolution=_company_resolution(),
+        research_text=(
+            "**Business Lines & Customer Segments**\n"
+            "- Claim: Acme makes widgets.\n"
+            "  Source URL: https://example.com/products\n"
+            "  Citation: Products page describes Acme's widget business.\n"
+            "- Claim: Acme serves industrial buyers.\n"
+            "  Source URL: https://example.com/customers\n"
+            "  Citation: Customer page names industrial buyers.\n\n"
+            "**Operational Pain Points & Opportunities**\n"
+            "- Claim: Acme faces supply chain delays.\n"
+            "  Source URL: https://example.com/pain-1\n"
+            "  Citation: Annual report notes supply chain delays.\n"
+            "- Claim: New safety rules affect Acme's plants.\n"
+            "  Source URL: https://example.com/pain-2\n"
+            "  Citation: Regulator page describes new safety rules.\n"
+            "- Claim: Customers expect faster configuration support.\n"
+            "  Source URL: https://example.com/pain-3\n"
+            "  Citation: Industry publication reports faster configuration "
+            "expectations.\n"
+            "- Claim: Acme has an aftermarket service expansion opportunity.\n"
+            "  Source URL: https://example.com/growth\n"
+            "  Citation: Investor presentation highlights aftermarket service "
+            "expansion."
+        ),
     )
 
 
@@ -204,6 +216,22 @@ def _pain_point(index: int) -> PainPointItem:
         description="Description",
         prominence=8,
         sources=[f"https://example.com/pain-{index}"],
+    )
+
+
+def _opportunity(index: int) -> PainPointOpportunityItem:
+    return PainPointOpportunityItem(
+        title=f"Opportunity {index}",
+        description="Opportunity description",
+        linked_pain_points=[f"Pain {index}"],
+        sources=[f"https://example.com/pain-{index}"],
+    )
+
+
+def _pain_points() -> PainPointProfilerOutput:
+    return PainPointProfilerOutput(
+        pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)],
+        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
     )
 
 
@@ -409,7 +437,6 @@ def _markdown_report() -> MarkdownReport:
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     company_research_params: CompanyResolutionOutput | None = None
-    company_profile_query = ""
     generation_pain_points: list[PainPointProfilerOutput] = []
     in_flight_generators = 0
     max_in_flight_generators = 0
@@ -431,6 +458,10 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         selected=select_top_n(graded_candidates.graded_use_cases, 3)
     )
     markdown_report_result = _markdown_report()
+    expected_company_profile = CompanyProfileOutput(
+        company_resolution=_company_resolution(),
+        research_text="company research",
+    )
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -446,17 +477,9 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         company_research_params = params
         return ResearchResult(text="company research")
 
-    async def structure_company_profile(params: Any) -> CompanyProfileOutput:
-        nonlocal company_profile_query
-        calls.append("structure_company_profile")
-        company_profile_query = params.company_query
-        return _company_profile()
-
     async def structure_pain_points(_params: object) -> PainPointProfilerOutput:
         calls.append("structure_pain_points")
-        return PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        )
+        return _pain_points()
 
     async def run_generator(
         activity_name: str,
@@ -531,9 +554,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         pipeline, "structure_company_resolution", structure_company_resolution
     )
     monkeypatch.setattr(pipeline, "research_company", research_company)
-    monkeypatch.setattr(
-        pipeline, "structure_company_profile", structure_company_profile
-    )
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
     monkeypatch.setattr(
         pipeline, "generate_grounded_genai_use_cases", generate_grounded_genai_use_cases
@@ -557,7 +577,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "research_company_resolution",
         "structure_company_resolution",
         "research_company",
-        "structure_company_profile",
         "structure_pain_points",
         "generate_grounded_genai_use_cases",
         "generate_moonshot_genai_use_cases",
@@ -575,47 +594,34 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[5].data == deduplicated_candidates.model_dump(mode="json")
-    assert result.outputs[6].data == graded_candidates.model_dump(mode="json")
-    assert result.outputs[7].data == {
+    assert result.outputs[3].data == _pain_points().model_dump(mode="json")
+    assert result.outputs[4].data == deduplicated_candidates.model_dump(mode="json")
+    assert result.outputs[5].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[6].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[8].text == markdown_report_result.markdown
-    assert (
-        generation_pain_points
-        == [
-            PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            )
-        ]
-        * 3
-    )
+    assert result.outputs[7].text == markdown_report_result.markdown
+    assert generation_pain_points == [_pain_points()] * 3
     assert max_in_flight_generators == 3
     assert deduplication_inputs == [
         DeduplicateUseCasesInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            company_profile=expected_company_profile,
+            pain_points=_pain_points(),
             use_cases=generated_candidates.use_cases,
         )
     ]
     assert grading_use_cases == [deduplicated_candidates.use_cases]
-    assert grading_company_profiles == [_company_profile()]
+    assert grading_company_profiles == [expected_company_profile]
     assert final_selection_candidates == graded_candidates
     assert markdown_report_params == MarkdownReportInput(
-        company_profile=_company_profile(),
-        pain_points=PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        ),
+        company_profile=expected_company_profile,
+        pain_points=_pain_points(),
         final_selection=final_selection,
     )
     assert company_research_params == _company_resolution()
-    assert company_profile_query == "Acme Corporation"
     assert result.final == markdown_report_result.markdown
     assert "Recommendation in Brief" not in result.final
 
@@ -636,8 +642,8 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         calls.append("research_company")
         return ResearchResult(text="company research")
 
-    async def structure_company_profile(_params: object) -> CompanyProfileOutput:
-        calls.append("structure_company_profile")
+    async def structure_pain_points(_params: object) -> PainPointProfilerOutput:
+        calls.append("structure_pain_points")
         raise RuntimeError("model failed")
 
     monkeypatch.setattr(
@@ -647,9 +653,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         pipeline, "structure_company_resolution", structure_company_resolution
     )
     monkeypatch.setattr(pipeline, "research_company", research_company)
-    monkeypatch.setattr(
-        pipeline, "structure_company_profile", structure_company_profile
-    )
+    monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
 
     with pytest.raises(RuntimeError, match="model failed"):
         await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
@@ -658,7 +662,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         "research_company_resolution",
         "structure_company_resolution",
         "research_company",
-        "structure_company_profile",
+        "structure_pain_points",
     ]
 
 
@@ -906,9 +910,7 @@ async def test_genai_use_cases_agent_returns_persona_batch(
     result = await GenAIUseCasesAgent(client=cast(Any, object())).run(
         GenAIUseCasePersonaInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             ideation_lens="moonshot strategist",
             id_prefix="moonshot_uc",
         )
@@ -945,9 +947,7 @@ async def test_persona_generation_activities_return_agent_results(
 
     generation_input = GenAIUseCaseCandidateInput(
         company_profile=_company_profile(),
-        pain_points=PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        ),
+        pain_points=_pain_points(),
     )
 
     monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
@@ -1005,9 +1005,7 @@ async def test_use_case_deduplicator_agent_filters_original_use_cases(
     result = await UseCaseDeduplicatorAgent(client=cast(Any, object())).run(
         DeduplicateUseCasesInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             use_cases=use_cases,
         )
     )
@@ -1051,9 +1049,7 @@ async def test_deduplicate_genai_use_cases_activity_returns_agent_result(
 
     deduplication_input = DeduplicateUseCasesInput(
         company_profile=_company_profile(),
-        pain_points=PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        ),
+        pain_points=_pain_points(),
         use_cases=[_candidate(index) for index in range(1, 8)],
     )
 
@@ -1110,9 +1106,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
     result = await UseCaseGraderAgent(client=cast(Any, object())).run(
         GradeUseCasesInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             use_cases=use_cases,
         )
     )
@@ -1174,9 +1168,7 @@ async def test_grade_use_cases_activity_returns_agent_result(
     result = await activities.grade_use_cases(
         GradeUseCasesInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             use_cases=use_cases,
         )
     )
@@ -1209,9 +1201,7 @@ async def test_markdown_reporter_agent_returns_markdown_report(
     result = await MarkdownReporterAgent(client=cast(Any, object())).run(
         MarkdownReportInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             final_selection=selected,
         )
     )
@@ -1242,9 +1232,7 @@ async def test_write_markdown_report_activity_returns_agent_result(
     result = await activities.write_markdown_report(
         MarkdownReportInput(
             company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
+            pain_points=_pain_points(),
             final_selection=selected,
         )
     )
@@ -1330,7 +1318,7 @@ def test_company_resolution_output_requires_evidence() -> None:
         CompanyResolutionOutput.model_validate(data)
 
 
-def test_company_profile_output_requires_llm_fields() -> None:
+def test_company_profile_output_requires_resolution_and_research_text() -> None:
     with pytest.raises(ValidationError):
         CompanyProfileOutput.model_validate({"company_name": "Acme"})
 
@@ -1343,9 +1331,9 @@ def test_company_profile_output_forbids_extra_fields() -> None:
         CompanyProfileOutput.model_validate(data)
 
 
-def test_company_profile_output_requires_rich_claim_ledger() -> None:
+def test_company_profile_output_requires_research_text() -> None:
     data = _company_profile().model_dump()
-    data["claims"] = data["claims"][:14]
+    del data["research_text"]
 
     with pytest.raises(ValidationError):
         CompanyProfileOutput.model_validate(data)
@@ -1363,6 +1351,7 @@ def test_pain_point_profiler_requires_at_least_three_points() -> None:
     with pytest.raises(ValidationError):
         PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2)],
+            opportunities=[_opportunity(1)],
         )
 
 

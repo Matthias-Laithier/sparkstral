@@ -116,59 +116,33 @@ def company_resolution_user_prompt(company_query: str, research_text: str) -> st
     )
 
 
-def company_profile_system_prompt() -> str:
-    return (
-        "You are a data extraction assistant. Given research notes about a company, "
-        "extract and return a compact profile plus a strict cited claim ledger "
-        "that subsequent strategy steps can use as their evidence base.\n"
-        "Only include information supported by the research. Capture company "
-        "profile facts, market context, pain-point signals, regulatory context, "
-        "growth opportunities, and technology transformation context when "
-        "supported.\n"
-        "The `claims` field is the primary evidence ledger. Every claim must have "
-        "a full source_url copied exactly from the research - not a site name only. "
-        "Drop uncited claims. Never merge multiple unrelated facts into one claim. "
-        "Use compact profile fields as summaries derived from `claims`, not as "
-        "replacements for them."
-    )
-
-
-def company_profile_user_prompt(company_query: str, research_text: str) -> str:
-    return (
-        f"Company query: {company_query}\n\n"
-        f"Research notes:\n{research_text}\n\n"
-        "Return the structured profile with only sourced, relevant information. "
-        "Fill every field from the research: company_name; industry; "
-        "business_lines; key_customers; customer_segments; strategic_priorities; "
-        "recent_strategic_initiatives; geography_markets; operational_context; "
-        "regulatory_context; customer_market_pressure; growth_opportunities; "
-        "technology_transformation_context; claims. Be concise: 2-6 "
-        "items for compact list fields where the research supports them. Include "
-        "at least 15 claims. Each claims item must contain one factual claim, "
-        "source_url, and citation. Copy source_url exactly from the research text. "
-        "Drop facts without full URLs or citations. Do not invent missing facts."
-    )
-
-
 def company_context(profile: CompanyProfileOutput) -> str:
-    return "Known company profile (from prior step):\n" + json.dumps(
-        profile.model_dump(mode="json"),
+    resolution_json = json.dumps(
+        profile.company_resolution.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
+    )
+    return (
+        "Company profile (resolved identity + sourced research):\n\n"
+        "Resolved company identity (JSON):\n"
+        f"{resolution_json}\n\n"
+        "Sourced company research text:\n"
+        f"{profile.research_text}"
     )
 
 
 def pain_point_system_prompt() -> str:
     return (
-        "You are an analyst. Given an enriched structured company profile, extract "
-        "major pain points, industry gaps, unmet needs, and opportunity pressures "
-        "relevant to the company and its field.\n"
-        "Only include points supported by company_profile.claims and their evidence "
-        "URLs. Assign prominence 1-10 from the evidence strength and business "
-        "impact. Each pain point's sources must be full URL strings already "
-        "present in company_profile.claims.source_url. Do not add new web "
-        "research, invent unsupported industry generalizations, or cite URLs not "
-        "present in the profile."
+        "You are an analyst. Given a company_profile containing a resolved company "
+        "identity and sourced company research text, extract major pain points, "
+        "industry gaps, unmet needs, opportunity pressures, and opportunity "
+        "hypotheses relevant to the company and its field.\n"
+        "Only include pain points and opportunities supported by the supplied "
+        "company_profile research text or resolver evidence URLs. Assign pain point "
+        "prominence 1-10 from the evidence strength and business impact. Every "
+        "source must be a full URL string copied from the supplied inputs. Do not "
+        "add new web research, invent unsupported industry generalizations, or cite "
+        "URLs not present in the profile."
     )
 
 
@@ -177,12 +151,15 @@ def pain_point_user_prompt(
 ) -> str:
     return (
         f"{company_context(profile)}\n\n"
-        "Return 3-8 pain points derived only from this enriched company profile. "
-        "Use the operational_context, regulatory_context, "
-        "customer_market_pressure, growth_opportunities, "
-        "technology_transformation_context, strategic_priorities, and claims "
-        "fields directly. Be specific, avoid duplication, and copy each source URL "
-        "from company_profile.claims."
+        "Return 3-8 pain points and 3-8 opportunities derived only from this "
+        "company_profile. Use the sourced research sections about business lines, "
+        "customers, strategic priorities, operational pain points, regulatory "
+        "pressure, customer/market pressure, growth opportunities, and technology "
+        "transformation directly. Be specific, avoid duplication, and copy each "
+        "source URL from company_profile.company_resolution.evidence or "
+        "company_profile.research_text. Each opportunity must link to one or more "
+        "pain point titles and describe a different way to address or exploit the "
+        "pressure behind those pain points."
     )
 
 
@@ -223,9 +200,9 @@ def genai_use_cases_system_prompt(
         f"Every candidate must set ideation_lens exactly to `{ideation_lens}`. "
         f"Use exactly these IDs, one per candidate: {expected_ids}. Do not use "
         "any other ID format.\n"
-        "Ground every use case in company_profile.claims, pain points, business "
-        "lines, strategic priorities, and evidence URLs. Name concrete workflows, "
-        "data, users, and why_iconic.\n"
+        "Ground every use case in the resolved company identity, sourced company "
+        "research text, pain points, opportunities, and evidence URLs. Name "
+        "concrete workflows, data, users, and why_iconic.\n"
         "The core value must be GenAI-native: language/document reasoning, "
         "generation, tool orchestration, decision support, multimodal "
         "understanding, or workflow synthesis. Reframe ideas that could be done "
@@ -260,9 +237,9 @@ def genai_use_cases_user_prompt(
         ensure_ascii=False,
     )
     return (
-        "Company profile (JSON):\n"
+        "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
+        "Pain point and opportunity analysis (JSON):\n"
         f"{pain_json}\n\n"
         f"Output exactly 3 candidate use cases as the {ideation_lens}. Use "
         f"exactly these IDs: {expected_ids}. Each candidate's ideation_lens "
@@ -280,9 +257,9 @@ def genai_use_cases_user_prompt(
         "needed; do not invent target values or write claims like 'expected "
         "30%'. Each genai_solution must describe a concrete user workflow: who "
         "uses it, what they input, what the system generates, and what human "
-        "approval step exists. Use company_profile.claims, the company profile, "
-        "business lines, strategic priorities, pain points, and evidence URLs "
-        "directly. "
+        "approval step exists. Use company_profile.company_resolution, "
+        "company_profile.research_text, pain points, opportunities, business lines, "
+        "strategic priorities, and evidence URLs directly. "
     )
 
 
@@ -329,9 +306,9 @@ def use_case_deduplicator_user_prompt(
     )
     use_case_ids = ", ".join(use_case.id for use_case in use_cases)
     return (
-        "Company profile (JSON):\n"
+        "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
+        "Pain point and opportunity analysis (JSON):\n"
         f"{pain_json}\n\n"
         "Generated use cases to deduplicate (JSON):\n"
         f"{use_cases_json}\n\n"
@@ -380,9 +357,9 @@ def use_case_grader_user_prompt(
         ensure_ascii=False,
     )
     return (
-        "Company profile (JSON):\n"
+        "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
+        "Pain point and opportunity analysis (JSON):\n"
         f"{pain_json}\n\n"
         "Generated use cases to grade (JSON):\n"
         f"{use_cases_json}\n\n"
@@ -406,19 +383,30 @@ def markdown_report_evidence_brief(
     pain_points: PainPointProfilerOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
-    claim_lines_by_source: dict[str, list[str]] = {}
-    company_claim_lines: list[str] = []
-    for claim in company_profile.claims:
-        line = f"- {claim.claim} [source]({claim.source_url}) - {claim.citation}"
-        company_claim_lines.append(line)
-        claim_lines_by_source.setdefault(claim.source_url, []).append(line)
-
+    resolution = company_profile.company_resolution
+    resolution_lines = [
+        f"- Resolved company: {resolution.resolved_name}",
+        f"- Website: {resolution.website}",
+        f"- Headquarters country: {resolution.headquarters_country}",
+        f"- Primary industry: {resolution.primary_industry}",
+        f"- Ambiguity notes: {resolution.ambiguity_notes}",
+    ]
+    resolution_lines.extend(
+        f"- {item.claim} [source]({item.source})" for item in resolution.evidence
+    )
     pain_point_lines = [
         "- "
         f"{pain_point.title}: {pain_point.description} "
         f"(prominence {pain_point.prominence}/10) "
         f"{_source_links(pain_point.sources)}"
         for pain_point in pain_points.pain_points
+    ]
+    opportunity_lines = [
+        "- "
+        f"{opportunity.title}: {opportunity.description} "
+        f"(linked pain points: {', '.join(opportunity.linked_pain_points)}) "
+        f"{_source_links(opportunity.sources)}"
+        for opportunity in pain_points.opportunities
     ]
 
     use_case_sections: list[str] = []
@@ -460,32 +448,29 @@ def markdown_report_evidence_brief(
                 f"{target_direction}."
             )
 
-        lines.append("- Evidence matched to company claims:")
-        matched_evidence = [
-            line
+        lines.append("- Evidence sources:")
+        lines.extend(
+            f"- Evidence source [source]({source})"
             for source in use_case.evidence_sources
-            for line in claim_lines_by_source.get(source, [])
-        ]
-        if matched_evidence:
-            lines.extend(matched_evidence)
-        else:
-            lines.extend(
-                f"- Evidence source [source]({source})"
-                for source in use_case.evidence_sources
-            )
+        )
 
         use_case_sections.append("\n".join(lines))
 
-    company_claims_text = "\n".join(company_claim_lines)
+    resolution_text = "\n".join(resolution_lines)
     pain_points_text = "\n".join(pain_point_lines)
+    opportunities_text = "\n".join(opportunity_lines)
     use_cases_text = "\n\n".join(use_case_sections)
 
     return (
         "Citation-ready evidence brief:\n\n"
-        "## Company claims\n"
-        f"{company_claims_text}\n\n"
+        "## Resolved company identity\n"
+        f"{resolution_text}\n\n"
+        "## Sourced company research\n"
+        f"{company_profile.research_text}\n\n"
         "## Pain points\n"
         f"{pain_points_text}\n\n"
+        "## Opportunities linked to pain points\n"
+        f"{opportunities_text}\n\n"
         "## Selected use cases\n"
         f"{use_cases_text}"
     )
@@ -504,7 +489,8 @@ def markdown_reporter_system_prompt() -> str:
         f"{MARKDOWN_REPORT_TEMPLATE}\n"
         "```\n\n"
         "Use the selected top 3 in order; copy score.weighted_total into the "
-        "ranked table. Discuss Iconicness from use_case.why_iconic and "
+        "ranked table. Discuss pain points and opportunity themes from the "
+        "pain-point analysis. Discuss Iconicness from use_case.why_iconic and "
         "score.iconicness. In `Why Genai ?`, use genai_mechanism.\n"
         "Use only supplied facts and URLs. Cite factual claims and numbers with "
         "adjacent markdown links; ranks and copied scores are exempt. Do not "
@@ -540,9 +526,9 @@ def markdown_reporter_user_prompt(
     )
     return (
         f"{evidence_brief}\n\n"
-        "Company profile (JSON):\n"
+        "Company profile (resolved identity + sourced research JSON):\n"
         f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
+        "Pain point and opportunity analysis (JSON):\n"
         f"{pain_json}\n\n"
         "Selected top 3 use cases with scores (JSON):\n"
         f"{final_selection_json}\n\n"
