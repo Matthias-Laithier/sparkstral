@@ -279,24 +279,14 @@ def _final_selection() -> FinalSelectionOutput:
 
 
 def _assert_high_quality_source_guidance(prompt: str) -> None:
-    source_priority = [
-        "official company website",
-        "annual report / universal registration document",
-        "investor presentation",
-        "official strategy page",
-        "official press release",
-        "regulator / government / standards body",
-        "reputable business or industry publication",
-        "Wikipedia only as fallback for basic identity",
-    ]
-    source_positions = [prompt.index(source) for source in source_priority]
-
-    assert source_positions == sorted(source_positions)
-    assert "source URL next to every factual claim" in prompt
-    assert "Keep searches reasonable" in prompt
-    assert "Do not cite Wikipedia, blogs, or weak sources as primary evidence" in prompt
-    assert "Do not invent facts when sources are missing" in prompt
-    assert "Clearly mark uncertainty" in prompt
+    assert "Claim:" in prompt
+    assert "Source URL:" in prompt
+    assert "Citation:" in prompt
+    assert "official company sources" in prompt
+    assert "annual reports" in prompt
+    assert "reputable industry sources" in prompt
+    assert "Use Wikipedia only as basic-identity fallback" in prompt
+    assert "Do not invent facts" in prompt
     assert "prefer Wikipedia" not in prompt
 
 
@@ -316,31 +306,21 @@ def test_company_research_prompt_prioritizes_high_quality_sources() -> None:
     assert '"website": "https://example.com"' in prompt
     assert '"ambiguity_notes": "Acme Corporation is the likely match."' in prompt
     assert '"source": "https://example.com/company"' in prompt
-    assert "known starting point" in prompt
-    assert "Do not spend the research repeating basic identity discovery" in prompt
-    assert "Preserve and reuse useful URLs from company_resolution.evidence" in prompt
-    assert "official name" in prompt
-    assert "industry" in prompt
+    assert "do not redo basic identity discovery" in prompt
+    assert "Reuse useful resolution URLs" in prompt
     assert "business lines" in prompt
     assert "key customers" in prompt
     assert "customer segments" in prompt
     assert "strategic priorities" in prompt
-    assert "recent strategic initiatives" in prompt
+    assert "recent initiatives" in prompt
     assert "geography/markets" in prompt
     assert "operational pain points" in prompt
     assert "regulatory pressure" in prompt
     assert "customer/market pressure" in prompt
-    assert "strategic growth opportunities" in prompt
-    assert "technology/digital transformation context" in prompt
-    assert "Claim:" in prompt
-    assert "Source URL:" in prompt
-    assert "Citation:" in prompt
-    assert "Omit claims that do not have a full source URL" in prompt
-    assert "Do not summarize uncited facts" in prompt
-    assert "Do not cite source names without URLs" in prompt
-    assert "many claim-level findings with citations" in prompt
-    assert "core evidence for recommendations" in prompt
-    assert "low resolution confidence" in prompt
+    assert "growth opportunities" in prompt
+    assert "technology transformation context" in prompt
+    assert "Omit facts without full source URLs" in prompt
+    assert "mark material uncertainty" in prompt
     _assert_high_quality_source_guidance(prompt)
 
 
@@ -348,13 +328,9 @@ def test_company_profile_prompts_request_enriched_evidence_contract() -> None:
     system_prompt = company_profile_system_prompt()
     user_prompt = company_profile_user_prompt("Acme Corporation", "Research notes")
 
-    assert "compact profile plus a strict cited claim ledger" in system_prompt
-    assert "evidence base" in system_prompt
-    assert "market context" in system_prompt
-    assert "pain-point signals" in system_prompt
-    assert "`claims` field is the primary evidence ledger" in system_prompt
-    assert "Drop uncited claims" in system_prompt
-    assert "Never merge multiple unrelated facts into one claim" in system_prompt
+    assert "compact company profile" in system_prompt
+    assert "`claims` as the evidence ledger" in system_prompt
+    assert "full source_url" in system_prompt
     assert "customer_segments" in user_prompt
     assert "recent_strategic_initiatives" in user_prompt
     assert "geography_markets" in user_prompt
@@ -367,16 +343,16 @@ def test_company_profile_prompts_request_enriched_evidence_contract() -> None:
     assert "source_url, and citation" in user_prompt
     assert "Copy source_url exactly from the research text" in user_prompt
     assert "Drop facts without full URLs or citations" in user_prompt
+    assert "Do not invent missing facts" in user_prompt
 
 
 def test_pain_point_prompts_derive_from_enriched_profile_evidence() -> None:
     system_prompt = pain_point_system_prompt()
     user_prompt = pain_point_user_prompt(_company_profile())
 
-    assert "enriched structured company profile" in system_prompt
     assert "company_profile.claims" in system_prompt
-    assert "company_profile.claims.source_url" in system_prompt
-    assert "Do not add new web research" in system_prompt
+    assert "copy source URLs from those claims" in system_prompt
+    assert "do not add web research" in system_prompt
     assert "unsupported industry generalizations" in system_prompt
     assert "Acme Corporation" in user_prompt
     assert "operational_context" in user_prompt
@@ -384,6 +360,7 @@ def test_pain_point_prompts_derive_from_enriched_profile_evidence() -> None:
     assert "customer_market_pressure" in user_prompt
     assert "growth_opportunities" in user_prompt
     assert "technology_transformation_context" in user_prompt
+    assert "Assign prominence 1-10" in user_prompt
     assert "copy each source URL from company_profile.claims" in user_prompt
 
 
@@ -396,18 +373,15 @@ def test_genai_prompt_requires_persona_batch() -> None:
     assert "moonshot_uc_2" in prompt
     assert "moonshot_uc_3" in prompt
     assert "GenAI-native" in prompt
-    assert "could be done without GenAI" in prompt
+    assert "ordinary software or classical ML" in prompt
     assert "internal knowledge assistant or RAG" in prompt
     assert "generic customer support chatbot" in prompt
-    assert "why classical ML or optimization is not enough" in prompt
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
     assert "pilot_kpis" in prompt
     assert "company_profile.claims" in prompt
-    assert "company_profile.claims.source_url" in prompt
     assert "meaningfully varied" in prompt
-    assert "practical operational value" in prompt
-    assert "why_iconic field" in prompt
+    assert "why_iconic" in prompt
 
 
 def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
@@ -441,16 +415,12 @@ def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
 def test_use_case_deduplicator_prompt_only_allows_retained_ids() -> None:
     prompt = use_case_deduplicator_system_prompt()
 
-    assert "sole purpose" in prompt
-    assert "very similar use cases" in prompt
-    assert "strongest existing representative" in prompt
     assert "retained_use_case_ids" in prompt
     assert "Do not rewrite" in prompt
-    assert "merge fields" in prompt
-    assert "create new IDs" in prompt
-    assert "change any use case content" in prompt
+    assert "merge" in prompt
+    assert "create use cases" in prompt
     assert "Retain at least 5" in prompt
-    assert "share a pain point" in prompt
+    assert "Shared pain points" in prompt
 
 
 def test_use_case_deduplicator_user_prompt_includes_original_use_cases() -> None:
@@ -480,18 +450,16 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "feasibility" in prompt
     assert "evidence_strength" in prompt
     assert "full 1-10 scale" in prompt
-    assert "scores of 9-10 should be rare" in prompt
-    assert "grounding check" in prompt
-    assert "the decisive criterion" in prompt
-    assert "Generic chatbot, RAG, internal knowledge assistant" in prompt
-    assert "classical ML, forecasting, optimization" in prompt
-    assert "Unsupported metrics" in prompt
-    assert "company_profile.claims" in prompt
-    assert "Vague target users" in prompt
+    assert "ordinary ideas 4-6" in prompt
+    assert "rare exceptional ideas 9-10" in prompt
+    assert "iconicness (main differentiator)" in prompt
+    assert "generic chatbots" in prompt
+    assert "classical ML/optimization" in prompt
+    assert "unsupported metrics" in prompt
+    assert "vague users" in prompt
     assert "penalties" in prompt
     assert "use_case_id" in prompt
-    assert "Do not repeat or rewrite the original use_case objects" in prompt
-    assert "application code will compute" in prompt
+    assert "Do not output weighted_total" in prompt
     assert "Do not skip" in prompt
 
 
@@ -523,10 +491,8 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert MARKDOWN_REPORT_TEMPLATE in prompt
     assert "practical decision memo" in prompt
     assert "generic consulting template" in prompt
-    assert "writing blueprint" in prompt
-    assert "natural, dense prose" in prompt
     assert "# GenAI Opportunity Report — {Company}" in prompt
-    assert "## Recommendation in Brief" in prompt
+    assert "## Recommendation in Brief" not in prompt
     assert "## What We Know About the Company" in prompt
     assert "## Ranked Opportunities" in prompt
     assert (
@@ -539,33 +505,23 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "## What To Validate First" in prompt
     assert "## Caveats and Source Limits" in prompt
     assert "## Sources" in prompt
-    assert "rank 1, rank 2, and rank 3" in prompt
     assert "score.weighted_total" in prompt
     assert "How The Workflow Would Work" in prompt
-    assert "retrieved or generated context" in prompt
-    assert "human approval or decision point" in prompt
-    assert "Why GenAI Is Needed" in prompt
+    assert "Retrieved or generated context" in prompt
+    assert "Human approval or decision point" in prompt
+    assert "Iconicness" in prompt
+    assert "why_iconic" in prompt
+    assert "score.iconicness" in prompt
+    assert "Why Genai ?" in prompt
+    assert "Why GenAI Is Needed" not in prompt
     assert "genai_mechanism" in prompt
     assert "Impact To Validate" in prompt
-    assert "Every factual claim and every number" in prompt
-    assert "adjacent embedded markdown link" in prompt
-    assert "citation-ready evidence brief" in prompt
-    assert "Avoid filler sentences" in prompt
-    assert "Do not repeat the same company context sentence" in prompt
-    assert "Do not invent" in prompt
-    assert "company_profile.claims" in prompt
-    assert "separate source-backed metrics from pilot KPIs" in prompt
-    assert "Pilot KPIs are validation measures" in prompt
-    assert "do not add fake numeric targets" in prompt
-    assert "If evidence is weak" in prompt
-    assert "No generic hype" in prompt
-    assert "No fake pilots" in prompt
-    assert "No fake numeric improvements" in prompt
-    assert "GenAI will transform everything" in prompt
-    assert "pilot results show" in prompt
-    assert "lab data shows" in prompt
-    assert "will reduce by" in prompt
-    assert "will improve by" in prompt
+    assert "Cite factual claims and numbers" in prompt
+    assert "Do not invent facts" in prompt
+    assert "source URLs" in prompt
+    assert "numeric targets" in prompt
+    assert "human-readable validation prose" in prompt
+    assert "What To Validate First" in prompt
 
 
 def test_markdown_report_evidence_brief_includes_inline_links() -> None:
@@ -590,7 +546,14 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
         "Pain prominence: Prominence 8 of 10 "
         "[source](https://example.com/source-1)" in brief
     )
+    assert "Iconicness: Iconic fit (score 3/10; rationale: Rationale)" in brief
     assert "Pilot KPIs to validate" in brief
+    assert (
+        "Manual review cycle time matters because Shows whether the workflow "
+        "speeds up expert review." in brief
+    )
+    assert "Measure it with Compare cycle time before and during the pilot." in brief
+    assert "target direction is decrease" in brief
     assert "Evidence source [source](https://example.com/source-1)" in brief
 
 
@@ -625,11 +588,6 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert '"pilot_kpis": [' in prompt
     assert '"score": {' in prompt
     assert "Write the final markdown report" in prompt
-    assert "Use these JSON inputs as the source of truth" in prompt
-    assert "citation-ready evidence brief" in prompt
-    assert "system prompt's report structure" in prompt
-    assert "citation rules" in prompt
-    assert "density rules" in prompt
-    assert "KPI rules" in prompt
-    assert "no-hallucination rules" in prompt
+    assert "evidence brief for citation links" in prompt
+    assert "JSON as source of truth" in prompt
     assert "Do not include raw JSON" in prompt

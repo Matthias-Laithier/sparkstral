@@ -1,11 +1,5 @@
 # GenAI Opportunity Report — {Company}
 
-## Recommendation in Brief
-Start with the decision a client needs to make:
-- First pilot to run and the practical reason it should go first.
-- Why now, grounded in company facts and pain points with inline source links.
-- What would make the recommendation stronger if internal data were available.
-
 ## What We Know About the Company
 Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support.
 
@@ -20,20 +14,23 @@ Use only evidence that matters for the recommended opportunities. Write this as 
 ### The Opportunity
 Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and pain points.
 
+### Iconicness
+Explain what makes this use case memorable, company-specific, and strategically meaningful.
+
 ### How The Workflow Would Work
 1. User input:
 2. Retrieved or generated context:
 3. Generated output:
 4. Human approval or decision point:
 
-### Why GenAI Is Needed
+### Why Genai ?
 Use `genai_mechanism` to explain the mechanism, why ordinary software is not enough, and why classical ML or optimization is not enough.
 
 ### Data and Integration Needs
 Name the internal and external data, systems, and workflow handoffs required.
 
 ### Impact To Validate
-Separate source-backed metrics from pilot KPIs. Do not invent numeric targets.
+Separate source-backed metrics from pilot KPIs. Write pilot KPIs as human-readable sentences that explain what to measure, why it matters, the baseline needed, and the target direction. Do not invent numeric targets.
 
 ### Risks and Mitigations
 Pair each material risk with a practical mitigation.

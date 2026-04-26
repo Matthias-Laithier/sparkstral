@@ -399,7 +399,7 @@ def _markdown_report() -> MarkdownReport:
     return MarkdownReport(
         markdown=(
             "# GenAI Opportunity Report — Acme Corporation\n\n"
-            "## Recommendation in Brief\n\n"
+            "## What We Know About the Company\n\n"
             "Top three use cases are ready for client discussion."
         )
     )
@@ -617,7 +617,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert company_research_params == _company_resolution()
     assert company_profile_query == "Acme Corporation"
     assert result.final == markdown_report_result.markdown
-    assert "Recommendation in Brief" in result.final
+    assert "Recommendation in Brief" not in result.final
 
 
 @pytest.mark.asyncio
