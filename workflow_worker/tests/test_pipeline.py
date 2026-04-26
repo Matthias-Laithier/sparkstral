@@ -265,7 +265,11 @@ def _candidate_pool() -> GenAIUseCaseCandidatePool:
 
 def _genai_use_case_generation(count: int = 8) -> GenAIUseCaseGeneration:
     return GenAIUseCaseGeneration(
-        use_cases=[_candidate(index) for index in range(1, count + 1)]
+        ideation_brief=(
+            "Cover agentic tools, OCR on documents, RAG with citations, and "
+            "multimodal; reject generic KPI-only ideas."
+        ),
+        use_cases=[_candidate(index) for index in range(1, count + 1)],
     )
 
 
@@ -282,10 +286,10 @@ def _score(
     penalties: list[str] | None = None,
 ) -> UseCaseScore:
     computed_weighted_total = round(
-        0.40 * iconicness
-        + 0.25 * business_impact
-        + 0.15 * genai_fit
-        + 0.10 * company_relevance
+        0.30 * iconicness
+        + 0.28 * genai_fit
+        + 0.20 * business_impact
+        + 0.12 * company_relevance
         + 0.05 * feasibility
         + 0.05 * evidence_strength,
         2,
@@ -334,6 +338,7 @@ def _grade(
 
 def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
     return GradedUseCasePool(
+        grader_thinking="Skeptical: classical alternatives noted before scoring.",
         graded_use_cases=[
             GradedUseCase(
                 use_case=use_case,
@@ -344,7 +349,7 @@ def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
                 ),
             )
             for index, use_case in enumerate(use_cases)
-        ]
+        ],
     )
 
 
@@ -377,7 +382,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         company_resolution=_company_resolution(),
         research_text="company research",
     )
-    use_case_pool = GenAIUseCaseCandidatePool(use_cases=generated.use_cases)
 
     async def research_company_resolution(_params: object) -> ResearchResult:
         calls.append("research_company_resolution")
@@ -465,7 +469,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[3].data == use_case_pool.model_dump(mode="json")
+    assert result.outputs[3].data == generated.model_dump(mode="json")
     assert result.outputs[4].data == graded_candidates.model_dump(mode="json")
     assert result.outputs[5].data == {
         "final_top_3": final_selection.model_dump(mode="json")
@@ -540,7 +544,7 @@ def test_compute_weighted_total_uses_weighted_formula() -> None:
         weighted_total=1.0,
     )
 
-    assert compute_weighted_total(score) == 6.6
+    assert compute_weighted_total(score) == 6.32
 
 
 def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
@@ -629,10 +633,10 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
 
     assert [item.use_case.id for item in selected] == [
         "uc_6",
-        "uc_2",
         "uc_3",
         "uc_4",
         "uc_1",
+        "uc_2",
     ]
     assert len(selected) == 5
 
@@ -711,6 +715,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
 ) -> None:
     use_cases = [_candidate(index) for index in range(1, 7)]
     llm_result = UseCaseGradePool(
+        grader_thinking="Classical software could address thin chat patterns.",
         grades=[
             _grade(
                 "uc_2",
@@ -731,7 +736,7 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
                 evidence_strength=2,
             ),
             *[_grade(use_case.id) for use_case in use_cases[2:]],
-        ]
+        ],
     )
     response_model: type[Any] | None = None
 
@@ -749,13 +754,14 @@ async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
         )
     )
 
+    assert result.grader_thinking == llm_result.grader_thinking
     assert response_model is UseCaseGradePool
     assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
         "uc_2",
         "uc_1",
     ]
     assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
-        4.05,
+        4.07,
         2.0,
     ]
     assert result.graded_use_cases[0].use_case == use_cases[1]
@@ -897,6 +903,7 @@ def test_select_top_n_returns_top_three_by_score() -> None:
 @pytest.mark.asyncio
 async def test_select_final_top_3_activity_returns_selection() -> None:
     pool = GradedUseCasePool(
+        grader_thinking="Ordered by weighted score.",
         graded_use_cases=[
             GradedUseCase(
                 use_case=_candidate(index),
@@ -911,7 +918,7 @@ async def test_select_final_top_3_activity_returns_selection() -> None:
                 ),
             )
             for index in range(1, 6)
-        ]
+        ],
     )
 
     result = await activities.select_final_top_3(pool)
@@ -991,7 +998,10 @@ def test_genai_use_case_candidate_pool_requires_six_to_ten_items(count: int) -> 
 
 
 def test_genai_use_case_generation_accepts_six_to_ten() -> None:
-    GenAIUseCaseGeneration(use_cases=[_candidate(index) for index in range(1, 7)])
+    GenAIUseCaseGeneration(
+        ideation_brief="Plan pillars then six ideas.",
+        use_cases=[_candidate(index) for index in range(1, 7)],
+    )
 
 
 def test_genai_use_case_candidate_requires_genai_mechanism() -> None:
@@ -1088,18 +1098,19 @@ def test_use_case_grade_forbids_weighted_total() -> None:
 
 def test_use_case_grade_pool_requires_at_least_one_item() -> None:
     with pytest.raises(ValidationError):
-        UseCaseGradePool(grades=[])
+        UseCaseGradePool(grader_thinking="x", grades=[])
 
 
 def test_graded_use_case_pool_allows_generated_pool_grading() -> None:
     pool = GradedUseCasePool(
+        grader_thinking="Test grader preface.",
         graded_use_cases=[
             GradedUseCase(
                 use_case=_candidate(index),
                 score=_score(f"uc_{index}"),
             )
             for index in range(1, 9)
-        ]
+        ],
     )
 
     assert len(pool.graded_use_cases) == 8
@@ -1107,7 +1118,7 @@ def test_graded_use_case_pool_allows_generated_pool_grading() -> None:
 
 def test_graded_use_case_pool_requires_at_least_one_item() -> None:
     with pytest.raises(ValidationError):
-        GradedUseCasePool(graded_use_cases=[])
+        GradedUseCasePool(grader_thinking="x", graded_use_cases=[])
 
 
 @pytest.mark.parametrize("count", [2, 4])

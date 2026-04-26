@@ -71,7 +71,7 @@ async def run_sparkstral_pipeline(
     )
     generated = await generate_genai_use_cases(use_case_generation_input)
     use_cases = GenAIUseCaseCandidatePool(use_cases=generated.use_cases)
-    append_json(use_cases.model_dump(mode="json"))
+    append_json(generated.model_dump(mode="json"))
 
     await _send_status(status_callback, "Scoring opportunities...\n")
     graded_use_cases = await grade_use_cases(

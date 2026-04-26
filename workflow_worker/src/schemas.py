@@ -232,6 +232,14 @@ class GenAIUseCaseGeneration(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    ideation_brief: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Internal batch plan: coverage across GenAI pillars and anti-generic "
+            "guardrails, before the use case list. Not for client reports."
+        ),
+    )
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
         min_length=6,
@@ -276,6 +284,14 @@ class UseCaseGrade(BaseModel):
 class UseCaseGradePool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    grader_thinking: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Batch-level skepticism and replaceability analysis before per-use-case "
+            "grades. Not for client reports."
+        ),
+    )
     grades: list[UseCaseGrade] = Field(..., min_length=1)
 
 
@@ -289,6 +305,11 @@ class GradedUseCase(BaseModel):
 class GradedUseCasePool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    grader_thinking: str = Field(
+        ...,
+        min_length=1,
+        description="Echo of internal grader pre-analysis. Not for client reports.",
+    )
     graded_use_cases: list[GradedUseCase] = Field(..., min_length=1)
 
 

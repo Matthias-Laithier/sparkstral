@@ -242,6 +242,8 @@ def test_genai_use_cases_system_prompt_requires_diverse_batch() -> None:
     prompt = genai_use_cases_system_prompt()
 
     assert "6-10" in prompt or "6–10" in prompt
+    assert "ideation_brief" in prompt
+    assert "OCR" in prompt
     assert "grounded_consultant" in prompt
     assert "optimistic_stretch" in prompt
     assert "moonshot" in prompt
@@ -249,7 +251,8 @@ def test_genai_use_cases_system_prompt_requires_diverse_batch() -> None:
     assert "evidence_tight" in prompt
     assert "No two use cases may solve substantially the same" in prompt
     assert "GenAI-native" in prompt
-    assert "plain automation or classical ML" in prompt
+    assert "classical ML" in prompt
+    assert "classical optimization" in prompt
     assert "generic internal RAG assistants" in prompt
     assert "generic customer-support chatbots" in prompt
     assert "Do not invent numeric impact" in prompt
@@ -261,32 +264,31 @@ def test_genai_use_cases_user_prompt_includes_company_json() -> None:
     prompt = genai_use_cases_user_prompt(_company_profile())
 
     assert "between 6 and 10" in prompt
+    assert "ideation_brief" in prompt
     assert "use_cases" in prompt
     assert "company_signal_labels" in prompt
     assert "use_case_archetype" in prompt
     assert "genai_mechanism" in prompt
-    assert "who uses it" in prompt
-    assert "human approval step" in prompt
+    assert "modalities" in prompt
+    assert "model+tool loop" in prompt
+    assert "human approval" in prompt
     assert '"research_text":' in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     prompt = use_case_grader_system_prompt()
 
+    assert "grader_thinking" in prompt
     assert "company_relevance" in prompt
     assert "business_impact" in prompt
     assert "iconicness" in prompt
     assert "genai_fit" in prompt
     assert "feasibility" in prompt
     assert "evidence_strength" in prompt
-    assert "full 1-10 scale" in prompt
-    assert "ordinary ideas 4-6" in prompt
-    assert "rare exceptional ideas 9-10" in prompt
-    assert "iconicness (main differentiator)" in prompt
-    assert "generic chatbots" in prompt
-    assert "classical ML/optimization" in prompt
-    assert "unsupported metrics" in prompt
-    assert "vague users" in prompt
+    assert "1-10" in prompt
+    assert "3-5" in prompt
+    assert "skeptical" in prompt
+    assert "classical" in prompt
     assert "penalties" in prompt
     assert "use_case_id" in prompt
     assert "Do not output weighted_total" in prompt
@@ -301,12 +303,12 @@ def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
 
     assert "Generated use cases to grade (JSON)" in prompt
     assert '"id": "uc_1"' in prompt
-    assert "Return one grades item for every use case above" in prompt
+    assert "grader_thinking" in prompt
+    assert "`grades`" in prompt
     assert "use_case_id equal to the matching use_case.id" in prompt
     assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
-    assert "1-10 scale" in prompt
-    assert "company_relevance as a grounding check" in prompt
-    assert "iconicness as the main differentiator" in prompt
+    assert "1-10" in prompt
+    assert "adversarial" in prompt
     assert "Pain point and opportunity analysis" not in prompt
 
 
@@ -351,6 +353,8 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "source URLs" in prompt
     assert "numeric targets" in prompt
     assert "human-readable validation prose" in prompt
+    assert "ideation_brief" in prompt
+    assert "grader_thinking" in prompt
     assert "What To Validate First" in prompt
 
 
@@ -415,4 +419,6 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert "evidence brief for citation links" in prompt
     assert "JSON as source of truth" in prompt
     assert "Do not include raw JSON" in prompt
+    assert "ideation_brief" in prompt
+    assert "grader_thinking" in prompt
     assert "Pain point and opportunity analysis" not in prompt

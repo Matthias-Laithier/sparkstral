@@ -15,10 +15,10 @@ from src.utils import parse_chat_model
 
 def compute_weighted_total(score: UseCaseScore) -> float:
     return round(
-        0.40 * score.iconicness
-        + 0.25 * score.business_impact
-        + 0.15 * score.genai_fit
-        + 0.10 * score.company_relevance
+        0.30 * score.iconicness
+        + 0.28 * score.genai_fit
+        + 0.20 * score.business_impact
+        + 0.12 * score.company_relevance
         + 0.05 * score.feasibility
         + 0.05 * score.evidence_strength,
         2,
@@ -100,5 +100,6 @@ class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
             ],
         )
         return GradedUseCasePool(
-            graded_use_cases=build_graded_use_cases(result.grades, params.use_cases)
+            grader_thinking=result.grader_thinking,
+            graded_use_cases=build_graded_use_cases(result.grades, params.use_cases),
         )
