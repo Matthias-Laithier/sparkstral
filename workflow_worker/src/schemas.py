@@ -1,6 +1,6 @@
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CompanyInput(BaseModel):
@@ -125,6 +125,42 @@ class GenAIMechanism(BaseModel):
     why_classical_ml_or_optimization_is_not_enough: str
 
 
+class SourceBackedMetric(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(..., description="Name of the metric or benchmark.")
+    value: str = Field(
+        ...,
+        description=(
+            "Exact metric value, copied or faithfully summarized from a source."
+        ),
+    )
+    source_url: str = Field(..., description="Full URL supporting the metric.")
+    source_quote_or_evidence: str = Field(
+        ...,
+        description="Short explanation of what the source says.",
+    )
+    applies_to: Literal[
+        "company",
+        "industry",
+        "similar_case",
+        "regulation",
+        "market",
+        "technology_benchmark",
+    ]
+    confidence: Literal["low", "medium", "high"]
+
+
+class PilotKPI(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kpi: str
+    why_it_matters: str
+    measurement_method: str
+    target_direction: Literal["increase", "decrease", "maintain"]
+    baseline_needed: str
+
+
 class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -149,9 +185,23 @@ class GenAIUseCaseCandidate(BaseModel):
         ...,
         description="Data and systems needed to build and run it.",
     )
-    expected_impact: str = Field(
+    qualitative_impact: str = Field(
         ...,
-        description="Expected business or operational impact.",
+        description=(
+            "Qualitative business or operational impact, without invented numbers."
+        ),
+    )
+    source_backed_metrics: list[SourceBackedMetric] = Field(
+        ...,
+        description=(
+            "Metrics or benchmarks directly supported by evidence_sources; empty when "
+            "no sourced metric exists."
+        ),
+    )
+    pilot_kpis: list[PilotKPI] = Field(
+        ...,
+        min_length=2,
+        description="KPIs to validate in a pilot, without invented numeric targets.",
     )
     why_iconic: str
     feasibility_notes: str
@@ -167,6 +217,17 @@ class GenAIUseCaseCandidate(BaseModel):
     )
     evidence_sources: list[str] = Field(..., min_length=1)
     ideation_lens: str
+
+    @model_validator(mode="after")
+    def source_backed_metrics_use_candidate_evidence(self) -> Self:
+        evidence_sources = set(self.evidence_sources)
+        for metric in self.source_backed_metrics:
+            if metric.source_url not in evidence_sources:
+                raise ValueError(
+                    "source_backed_metrics.source_url must be present in "
+                    "evidence_sources"
+                )
+        return self
 
 
 class GenAIUseCaseCandidatePool(BaseModel):

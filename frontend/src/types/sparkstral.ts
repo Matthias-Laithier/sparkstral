@@ -31,6 +31,29 @@ export type PainPointBundleData = {
 	pain_points?: PainPointItem[];
 };
 
+export type SourceBackedMetric = {
+	label: string;
+	value: string;
+	source_url: string;
+	source_quote_or_evidence: string;
+	applies_to:
+		| "company"
+		| "industry"
+		| "similar_case"
+		| "regulation"
+		| "market"
+		| "technology_benchmark";
+	confidence: "low" | "medium" | "high";
+};
+
+export type PilotKPI = {
+	kpi: string;
+	why_it_matters: string;
+	measurement_method: string;
+	target_direction: "increase" | "decrease" | "maintain";
+	baseline_needed: string;
+};
+
 export type GenAIUseCaseItem = {
 	title: string;
 	target_users: string[];
@@ -38,7 +61,9 @@ export type GenAIUseCaseItem = {
 	why_this_company: string;
 	genai_solution: string;
 	required_data: string;
-	expected_impact: string;
+	qualitative_impact: string;
+	source_backed_metrics: SourceBackedMetric[];
+	pilot_kpis: PilotKPI[];
 	risks: string[];
 };
 

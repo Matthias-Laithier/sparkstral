@@ -23,7 +23,9 @@ from src.schemas import (
     MarkdownReportInput,
     PainPointItem,
     PainPointProfilerOutput,
+    PilotKPI,
     ResearchResult,
+    SourceBackedMetric,
     SparkstralWorkflowResult,
     UseCaseScore,
 )
@@ -95,8 +97,41 @@ def _genai_mechanism() -> GenAIMechanism:
     )
 
 
+def _source_backed_metric(source_url: str) -> SourceBackedMetric:
+    return SourceBackedMetric(
+        label="Pain prominence",
+        value="Prominence 8 of 10",
+        source_url=source_url,
+        source_quote_or_evidence="The source supports the pain point prominence.",
+        applies_to="company",
+        confidence="medium",
+    )
+
+
+def _pilot_kpis() -> list[PilotKPI]:
+    return [
+        PilotKPI(
+            kpi="Manual review cycle time",
+            why_it_matters="Shows whether the workflow speeds up expert review.",
+            measurement_method="Compare cycle time before and during the pilot.",
+            target_direction="decrease",
+            baseline_needed="Current median review cycle time.",
+        ),
+        PilotKPI(
+            kpi="Accepted recommendations",
+            why_it_matters="Shows whether generated outputs are useful to reviewers.",
+            measurement_method="Track reviewer acceptance rate during the pilot.",
+            target_direction="increase",
+            baseline_needed=(
+                "Current acceptance rate for manually drafted recommendations."
+            ),
+        ),
+    ]
+
+
 def _candidate(index: int) -> GenAIUseCaseCandidate:
     pain_point_index = ((index - 1) % 3) + 1
+    evidence_source = f"https://example.com/pain-{pain_point_index}"
     return GenAIUseCaseCandidate(
         id=f"uc-{index}",
         title=f"Use case {index}",
@@ -106,12 +141,14 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         genai_solution="Solution",
         genai_mechanism=_genai_mechanism(),
         required_data="Data",
-        expected_impact="Impact",
+        qualitative_impact="Qualitative impact",
+        source_backed_metrics=[_source_backed_metric(evidence_source)],
+        pilot_kpis=_pilot_kpis(),
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
         linked_pain_points=[f"Pain {pain_point_index}"],
-        evidence_sources=[f"https://example.com/pain-{pain_point_index}"],
+        evidence_sources=[evidence_source],
         ideation_lens=IDEATION_LENSES[(index - 1) % len(IDEATION_LENSES)],
     )
 
@@ -730,6 +767,47 @@ def test_genai_use_case_candidate_requires_genai_mechanism() -> None:
 
     with pytest.raises(ValidationError):
         GenAIUseCaseCandidate.model_validate(data)
+
+
+def test_genai_use_case_candidate_allows_empty_source_backed_metrics() -> None:
+    data = _candidate(1).model_dump()
+    data["source_backed_metrics"] = []
+
+    candidate = GenAIUseCaseCandidate.model_validate(data)
+
+    assert candidate.source_backed_metrics == []
+
+
+def test_genai_use_case_candidate_requires_two_pilot_kpis() -> None:
+    data = _candidate(1).model_dump()
+    data["pilot_kpis"] = data["pilot_kpis"][:1]
+
+    with pytest.raises(ValidationError):
+        GenAIUseCaseCandidate.model_validate(data)
+
+
+def test_genai_use_case_candidate_requires_metric_source_in_evidence() -> None:
+    data = _candidate(1).model_dump()
+    data["source_backed_metrics"][0]["source_url"] = "https://example.com/other"
+
+    with pytest.raises(ValidationError):
+        GenAIUseCaseCandidate.model_validate(data)
+
+
+def test_source_backed_metric_forbids_extra_fields() -> None:
+    data = _source_backed_metric("https://example.com/pain-1").model_dump()
+    data["unexpected"] = "ignored before strict schemas"
+
+    with pytest.raises(ValidationError):
+        SourceBackedMetric.model_validate(data)
+
+
+def test_pilot_kpi_restricts_target_direction() -> None:
+    data = _pilot_kpis()[0].model_dump()
+    data["target_direction"] = "double"
+
+    with pytest.raises(ValidationError):
+        PilotKPI.model_validate(data)
 
 
 def test_genai_mechanism_requires_at_least_one_mechanism() -> None:

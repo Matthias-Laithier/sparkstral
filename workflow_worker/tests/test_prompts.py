@@ -17,6 +17,8 @@ from src.schemas import (
     GradedUseCase,
     PainPointItem,
     PainPointProfilerOutput,
+    PilotKPI,
+    SourceBackedMetric,
     UseCaseScore,
 )
 
@@ -34,7 +36,40 @@ def _genai_mechanism() -> GenAIMechanism:
     )
 
 
+def _source_backed_metric(source_url: str) -> SourceBackedMetric:
+    return SourceBackedMetric(
+        label="Pain prominence",
+        value="Prominence 8 of 10",
+        source_url=source_url,
+        source_quote_or_evidence="The source supports the pain point prominence.",
+        applies_to="company",
+        confidence="medium",
+    )
+
+
+def _pilot_kpis() -> list[PilotKPI]:
+    return [
+        PilotKPI(
+            kpi="Manual review cycle time",
+            why_it_matters="Shows whether the workflow speeds up expert review.",
+            measurement_method="Compare cycle time before and during the pilot.",
+            target_direction="decrease",
+            baseline_needed="Current median review cycle time.",
+        ),
+        PilotKPI(
+            kpi="Accepted recommendations",
+            why_it_matters="Shows whether generated outputs are useful to reviewers.",
+            measurement_method="Track reviewer acceptance rate during the pilot.",
+            target_direction="increase",
+            baseline_needed=(
+                "Current acceptance rate for manually drafted recommendations."
+            ),
+        ),
+    ]
+
+
 def _candidate(index: int) -> GenAIUseCaseCandidate:
+    evidence_source = f"https://example.com/source-{index}"
     return GenAIUseCaseCandidate(
         id=f"uc-{index}",
         title=f"Use case {index}",
@@ -44,12 +79,14 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         genai_solution="Solution",
         genai_mechanism=_genai_mechanism(),
         required_data="Data",
-        expected_impact="Impact",
+        qualitative_impact="Qualitative impact",
+        source_backed_metrics=[_source_backed_metric(evidence_source)],
+        pilot_kpis=_pilot_kpis(),
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
         linked_pain_points=["Pain 1"],
-        evidence_sources=[f"https://example.com/source-{index}"],
+        evidence_sources=[evidence_source],
         ideation_lens="grounded consultant",
     )
 
@@ -139,6 +176,9 @@ def test_genai_prompt_requires_candidate_pool() -> None:
     assert "generic RAG" in prompt
     assert "generic chatbot" in prompt
     assert "why classical ML or optimization is not enough" in prompt
+    assert "Do not invent numeric impact" in prompt
+    assert "source_backed_metrics" in prompt
+    assert "pilot_kpis" in prompt
 
 
 def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
@@ -151,6 +191,10 @@ def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
     assert "what they input" in prompt
     assert "what the system generates" in prompt
     assert "human approval step" in prompt
+    assert "qualitative_impact" in prompt
+    assert "source_backed_metrics" in prompt
+    assert "pilot_kpis (2+)" in prompt
+    assert "do not invent target values" in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -182,6 +226,12 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "genai_mechanism" in prompt
     assert "source URLs" in prompt
     assert "Do not invent" in prompt
+    assert "Expected Impact and KPIs" in prompt
+    assert "source-backed metrics separately from pilot KPIs" in prompt
+    assert "pilot results show" in prompt
+    assert "lab data shows" in prompt
+    assert "will reduce by" in prompt
+    assert "will improve by" in prompt
 
 
 def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
@@ -198,10 +248,14 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert '"id": "uc-1"' in prompt
     assert '"genai_mechanism": {' in prompt
     assert '"document_understanding"' in prompt
+    assert '"qualitative_impact": "Qualitative impact"' in prompt
+    assert '"source_backed_metrics": [' in prompt
+    assert '"pilot_kpis": [' in prompt
     assert '"score": {' in prompt
     assert "Write the final client-ready markdown report" in prompt
     assert "Use these JSON inputs as the source of truth" in prompt
     assert "ranked recommendations table" in prompt
+    assert "Expected Impact and KPIs" in prompt
     assert "Why this is GenAI" in prompt
     assert "caveats" in prompt
     assert "do not include raw JSON" in prompt
