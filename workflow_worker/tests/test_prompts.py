@@ -1,8 +1,6 @@
 from datetime import date
 
 from src.prompts import (
-    final_reporter_system_prompt,
-    final_reporter_user_prompt,
     genai_use_cases_system_prompt,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
@@ -12,8 +10,6 @@ from src.prompts import (
 from src.schemas import (
     CompanyProfileOutput,
     EvidenceItem,
-    FinalReport,
-    FinalReportUseCase,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GradedUseCase,
@@ -104,41 +100,6 @@ def _final_selection() -> FinalSelectionOutput:
     return FinalSelectionOutput(selected=_graded_use_cases()[:3])
 
 
-def _final_report_use_case(item: GradedUseCase, rank: int) -> FinalReportUseCase:
-    use_case = item.use_case
-    return FinalReportUseCase(
-        rank=rank,
-        title=use_case.title,
-        one_liner=f"{use_case.title} one-liner",
-        target_users=use_case.target_users,
-        business_problem=use_case.business_problem,
-        why_this_company=use_case.why_this_company,
-        genai_solution=use_case.genai_solution,
-        required_data=use_case.required_data,
-        expected_impact=use_case.expected_impact,
-        why_iconic=use_case.why_iconic,
-        feasibility_notes=use_case.feasibility_notes,
-        risks=use_case.risks,
-        score=item.score,
-        source_urls=use_case.evidence_sources,
-    )
-
-
-def _final_report() -> FinalReport:
-    return FinalReport(
-        company_name="Acme Corporation",
-        executive_summary="Top three use cases are ready for client discussion.",
-        company_context="Acme is a manufacturing company focused on widgets.",
-        methodology="Candidates were generated, scored once, and selected.",
-        top_3_use_cases=[
-            _final_report_use_case(item, rank)
-            for rank, item in enumerate(_final_selection().selected, start=1)
-        ],
-        caveats=["Validate data access before implementation."],
-        source_urls=["https://example.com/company", "https://example.com/source-1"],
-    )
-
-
 def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
@@ -168,39 +129,6 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "Do not skip" in prompt
 
 
-def test_final_reporter_prompt_requires_client_ready_report() -> None:
-    prompt = final_reporter_system_prompt()
-
-    assert "client-ready" in prompt
-    assert "exactly 3 use cases" in prompt
-    assert "score breakdown" in prompt
-    assert "scoring" in prompt
-    assert "supplied artifacts" in prompt
-    assert "use-case generation" in prompt
-    assert "final top-3 selection" in prompt
-    assert "high-impact" in prompt
-    assert "iconic" in prompt
-    assert "source URLs" in prompt
-    assert "Do not write markdown" in prompt
-
-
-def test_final_reporter_user_prompt_includes_final_selection_json() -> None:
-    prompt = final_reporter_user_prompt(
-        _company_profile(),
-        _pain_points(),
-        _final_selection(),
-    )
-
-    assert "Final top 3 selected use cases with scores (JSON)" in prompt
-    assert '"id": "uc-1"' in prompt
-    assert '"score": {' in prompt
-    assert "Return exactly 3 top_3_use_cases" in prompt
-    assert "rank 1, rank 2, and rank 3" in prompt
-    assert "source_urls" in prompt
-    assert "methodology" in prompt
-    assert "single scoring pass" in prompt
-
-
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     prompt = markdown_reporter_system_prompt()
 
@@ -208,18 +136,30 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "`markdown` field" in prompt
     assert "complete markdown report" in prompt
     assert "finished consulting deliverable" in prompt
-    assert "rank order" in prompt
+    assert "selection methodology" in prompt
+    assert "ranked recommendations table" in prompt
+    assert "detailed sections for each of the 3 use cases" in prompt
+    assert "rank 1, rank 2, and rank 3" in prompt
     assert "score totals" in prompt
     assert "source URLs" in prompt
     assert "Do not invent" in prompt
 
 
-def test_markdown_reporter_user_prompt_includes_structured_report_json() -> None:
-    prompt = markdown_reporter_user_prompt(_final_report())
+def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
+    prompt = markdown_reporter_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        _final_selection(),
+    )
 
-    assert "Structured final report JSON" in prompt
+    assert "Company profile (JSON)" in prompt
+    assert "Pain point analysis (JSON)" in prompt
+    assert "Selected top 3 use cases with scores (JSON)" in prompt
     assert '"company_name": "Acme Corporation"' in prompt
-    assert '"top_3_use_cases": [' in prompt
+    assert '"id": "uc-1"' in prompt
+    assert '"score": {' in prompt
     assert "Write the final client-ready markdown report" in prompt
-    assert "Use the JSON as the source of truth" in prompt
+    assert "Use these JSON inputs as the source of truth" in prompt
+    assert "ranked recommendations table" in prompt
+    assert "caveats" in prompt
     assert "do not include raw JSON" in prompt

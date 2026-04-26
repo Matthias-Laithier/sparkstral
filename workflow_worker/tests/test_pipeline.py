@@ -4,8 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import final_reporter, grader, markdown_reporter
-from src.agents.final_reporter import FinalReporterAgent
+from src.agents import grader, markdown_reporter
 from src.agents.grader import UseCaseGraderAgent, compute_total_score
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.schemas import (
@@ -13,9 +12,6 @@ from src.schemas import (
     CompanyProfileOutput,
     CompanyResolutionOutput,
     EvidenceItem,
-    FinalReport,
-    FinalReportInput,
-    FinalReportUseCase,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
@@ -161,44 +157,6 @@ def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
     )
 
 
-def _final_report_use_case(item: GradedUseCase, rank: int) -> FinalReportUseCase:
-    use_case = item.use_case
-    return FinalReportUseCase(
-        rank=rank,
-        title=use_case.title,
-        one_liner=f"{use_case.title} one-liner",
-        target_users=use_case.target_users,
-        business_problem=use_case.business_problem,
-        why_this_company=use_case.why_this_company,
-        genai_solution=use_case.genai_solution,
-        required_data=use_case.required_data,
-        expected_impact=use_case.expected_impact,
-        why_iconic=use_case.why_iconic,
-        feasibility_notes=use_case.feasibility_notes,
-        risks=use_case.risks,
-        score=item.score,
-        source_urls=use_case.evidence_sources,
-    )
-
-
-def _final_report(final_selection: FinalSelectionOutput) -> FinalReport:
-    return FinalReport(
-        company_name="Acme Corporation",
-        executive_summary="Top three use cases are ready for client discussion.",
-        company_context="Acme is a manufacturing company focused on widgets.",
-        methodology=(
-            "Candidates were generated, scored once, and selected as the final "
-            "top three."
-        ),
-        top_3_use_cases=[
-            _final_report_use_case(item, rank)
-            for rank, item in enumerate(final_selection.selected, start=1)
-        ],
-        caveats=["Validate data access before implementation."],
-        source_urls=["https://example.com/company", "https://example.com/pain-1"],
-    )
-
-
 def _markdown_report() -> MarkdownReport:
     return MarkdownReport(
         markdown=(
@@ -218,14 +176,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
     final_selection_candidates: GradedUseCasePool | None = None
-    final_report_params: FinalReportInput | None = None
     markdown_report_params: MarkdownReportInput | None = None
     generated_candidates = _candidate_pool()
     graded_candidates = _graded_pool(generated_candidates.use_cases)
     final_selection = FinalSelectionOutput(
         selected=select_top_n(graded_candidates.graded_use_cases, 3)
     )
-    final_report_result = _final_report(final_selection)
     markdown_report_result = _markdown_report()
 
     async def research_company_resolution(_params: object) -> ResearchResult:
@@ -276,12 +232,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         final_selection_candidates = params
         return final_selection
 
-    async def write_final_report(params: FinalReportInput) -> FinalReport:
-        nonlocal final_report_params
-        calls.append("write_final_report")
-        final_report_params = params
-        return final_report_result
-
     async def write_markdown_report(params: MarkdownReportInput) -> MarkdownReport:
         nonlocal markdown_report_params
         calls.append("write_markdown_report")
@@ -303,7 +253,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
-    monkeypatch.setattr(pipeline, "write_final_report", write_final_report)
     monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
     result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
@@ -318,7 +267,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "generate_genai_use_cases",
         "grade_use_cases",
         "select_final_top_3",
-        "write_final_report",
         "write_markdown_report",
     ]
     assert [output.kind for output in result.outputs] == [
@@ -331,7 +279,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
@@ -340,25 +287,19 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert result.outputs[8].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[9].data == {
-        "final_report": final_report_result.model_dump(mode="json")
-    }
-    assert result.outputs[10].text == markdown_report_result.markdown
+    assert result.outputs[9].text == markdown_report_result.markdown
     assert generation_pain_points == PainPointProfilerOutput(
         pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
     )
     assert grading_use_cases == [generated_candidates.use_cases]
     assert grading_company_profiles == [_company_profile()]
     assert final_selection_candidates == graded_candidates
-    assert final_report_params == FinalReportInput(
+    assert markdown_report_params == MarkdownReportInput(
         company_profile=_company_profile(),
         pain_points=PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         ),
         final_selection=final_selection,
-    )
-    assert markdown_report_params == MarkdownReportInput(
-        final_report=final_report_result,
     )
     assert company_research_query == "Acme Corporation"
     assert company_profile_query == "Acme Corporation"
@@ -612,107 +553,12 @@ async def test_grade_use_cases_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
-async def test_final_reporter_agent_returns_structured_report(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = FinalSelectionOutput(
-        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
-    )
-    agent_result = _final_report(selected)
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> FinalReport:
-        return agent_result
-
-    monkeypatch.setattr(final_reporter, "parse_chat_model", parse_chat_model)
-
-    result = await FinalReporterAgent(client=object()).run(
-        FinalReportInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            final_selection=selected,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
-async def test_final_reporter_agent_rejects_wrong_rank_order(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = FinalSelectionOutput(
-        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
-    )
-    agent_result = _final_report(selected)
-    agent_result = agent_result.model_copy(
-        update={
-            "top_3_use_cases": [
-                agent_result.top_3_use_cases[0],
-                agent_result.top_3_use_cases[1].model_copy(update={"rank": 1}),
-                agent_result.top_3_use_cases[2],
-            ]
-        }
-    )
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> FinalReport:
-        return agent_result
-
-    monkeypatch.setattr(final_reporter, "parse_chat_model", parse_chat_model)
-
-    with pytest.raises(RuntimeError, match="ranked 1, 2, and 3"):
-        await FinalReporterAgent(client=object()).run(
-            FinalReportInput(
-                company_profile=_company_profile(),
-                pain_points=PainPointProfilerOutput(
-                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-                ),
-                final_selection=selected,
-            )
-        )
-
-
-@pytest.mark.asyncio
-async def test_write_final_report_activity_returns_agent_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = FinalSelectionOutput(
-        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
-    )
-    agent_result = _final_report(selected)
-
-    class FakeFinalReporterAgent:
-        def __init__(self, client: object) -> None:
-            self.client = client
-
-        async def run(self, _params: FinalReportInput) -> FinalReport:
-            return agent_result
-
-    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
-    monkeypatch.setattr(activities, "FinalReporterAgent", FakeFinalReporterAgent)
-
-    result = await activities.write_final_report(
-        FinalReportInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            final_selection=selected,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
 async def test_markdown_reporter_agent_returns_markdown_report(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
         selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
-    final_report = _final_report(selected)
     agent_result = _markdown_report()
     model_name = ""
 
@@ -729,7 +575,13 @@ async def test_markdown_reporter_agent_returns_markdown_report(
     monkeypatch.setattr(markdown_reporter, "parse_chat_model", parse_chat_model)
 
     result = await MarkdownReporterAgent(client=cast(Any, object())).run(
-        MarkdownReportInput(final_report=final_report)
+        MarkdownReportInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            final_selection=selected,
+        )
     )
 
     assert result == agent_result
@@ -743,7 +595,6 @@ async def test_write_markdown_report_activity_returns_agent_result(
     selected = FinalSelectionOutput(
         selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
-    final_report = _final_report(selected)
     agent_result = _markdown_report()
 
     class FakeMarkdownReporterAgent:
@@ -757,7 +608,13 @@ async def test_write_markdown_report_activity_returns_agent_result(
     monkeypatch.setattr(activities, "MarkdownReporterAgent", FakeMarkdownReporterAgent)
 
     result = await activities.write_markdown_report(
-        MarkdownReportInput(final_report=final_report)
+        MarkdownReportInput(
+            company_profile=_company_profile(),
+            pain_points=PainPointProfilerOutput(
+                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+            ),
+            final_selection=selected,
+        )
     )
 
     assert result == agent_result
@@ -918,78 +775,6 @@ def test_final_selection_output_forbids_extra_fields() -> None:
 
     with pytest.raises(ValidationError):
         FinalSelectionOutput.model_validate(data)
-
-
-@pytest.mark.parametrize("count", [2, 4])
-def test_final_report_requires_exactly_three_use_cases(count: int) -> None:
-    selection = FinalSelectionOutput(
-        selected=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
-            )
-            for index in range(1, 4)
-        ]
-    )
-    data = _final_report(selection).model_dump()
-    if count == 2:
-        data["top_3_use_cases"] = data["top_3_use_cases"][:2]
-    else:
-        data["top_3_use_cases"].append(data["top_3_use_cases"][0])
-
-    with pytest.raises(ValidationError):
-        FinalReport.model_validate(data)
-
-
-def test_final_report_forbids_extra_fields() -> None:
-    selection = FinalSelectionOutput(
-        selected=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
-            )
-            for index in range(1, 4)
-        ]
-    )
-    data = _final_report(selection).model_dump()
-    data["unexpected"] = "ignored before strict schemas"
-
-    with pytest.raises(ValidationError):
-        FinalReport.model_validate(data)
-
-
-def test_final_report_use_case_requires_source_urls() -> None:
-    selection = FinalSelectionOutput(
-        selected=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
-            )
-            for index in range(1, 4)
-        ]
-    )
-    data = _final_report(selection).top_3_use_cases[0].model_dump()
-    data["source_urls"] = []
-
-    with pytest.raises(ValidationError):
-        FinalReportUseCase.model_validate(data)
-
-
-def test_final_report_use_case_requires_allowed_rank() -> None:
-    selection = FinalSelectionOutput(
-        selected=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
-            )
-            for index in range(1, 4)
-        ]
-    )
-    data = _final_report(selection).top_3_use_cases[0].model_dump()
-    data["rank"] = 4
-
-    with pytest.raises(ValidationError):
-        FinalReportUseCase.model_validate(data)
 
 
 def test_markdown_report_forbids_extra_fields() -> None:

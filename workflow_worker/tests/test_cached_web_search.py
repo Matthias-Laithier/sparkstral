@@ -23,7 +23,6 @@ def _settings_kwargs(**overrides: Any) -> dict[str, Any]:
         "PAIN_POINT_PROFILER_AGENT_MODEL": "mistral-medium-latest",
         "GENAI_USE_CASES_MODEL": "mistral-medium-latest",
         "USE_CASE_GRADER_AGENT_MODEL": "mistral-medium-latest",
-        "FINAL_REPORTER_AGENT_MODEL": "mistral-medium-latest",
         "MARKDOWN_REPORTER_AGENT_MODEL": "mistral-medium-latest",
         "GENAI_USE_CASES_LLM_TEMPERATURE": 1.0,
         "LLM_MAX_TOKENS": 2048,

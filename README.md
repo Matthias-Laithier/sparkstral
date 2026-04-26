@@ -82,8 +82,7 @@ make check      # run all of the above
 | `COMPANY_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured company profile (`parse`) |
 | `PAIN_POINT_PROFILER_AGENT_MODEL` | Yes (worker) | Model for structured pain points (`parse`) |
 | `GENAI_USE_CASES_MODEL` | Yes (worker) | Model for structured GenAI use cases (`parse`) |
-| `FINAL_REPORTER_AGENT_MODEL` | Yes (worker) | Model for the structured final report JSON (`parse`) |
-| `MARKDOWN_REPORTER_AGENT_MODEL` | Yes (worker) | Model for the client-ready markdown report writer (`parse`) |
+| `MARKDOWN_REPORTER_AGENT_MODEL` | Yes (worker) | Model for the direct client-ready markdown report writer (`parse`) |
 | `LLM_MAX_TOKENS` | Yes (worker) | Max output tokens for every chat completion / parse call (e.g. `2048`) |
 | `LLM_TEMPERATURE` | Yes (worker) | Temperature for web search and structured profile/pain `parse` calls (e.g. `0`) |
 | `GENAI_USE_CASES_LLM_TEMPERATURE` | Yes (worker) | Temperature for GenAI use-case `parse` only (e.g. `1` for diversity) |

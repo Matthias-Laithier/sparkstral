@@ -3,7 +3,6 @@ from datetime import date
 
 from src.schemas import (
     CompanyProfileOutput,
-    FinalReport,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
     PainPointProfilerOutput,
@@ -260,28 +259,33 @@ def use_case_grader_user_prompt(
     )
 
 
-def final_reporter_system_prompt() -> str:
+def markdown_reporter_system_prompt() -> str:
     return (
-        "You are a senior GenAI strategy consultant writing the final client-ready "
-        "report from a completed use-case discovery workflow.\n"
-        "Return only structured data matching the requested schema. Do not write "
-        "markdown as the primary output.\n"
-        "The report must contain exactly 3 use cases, ranked 1-3 in the same order "
-        "as the final selection. Use concise, client-ready language for executives "
-        "and business owners.\n"
-        "Explain the methodology using only the supplied artifacts: company "
-        "research, pain-point profiling, use-case generation, scoring, and final "
-        "top-3 selection. "
-        "For every use case, include the score breakdown, why it is specific to "
-        "this company, why it is high-impact, why it is iconic, implementation "
-        "feasibility notes, risks, caveats, and source URLs.\n"
-        "Use only facts, source URLs, and scores from the supplied JSON. Do not "
-        "invent new source URLs. Source URLs must be full URL strings copied from "
-        "the inputs.\n"
+        "You are a senior GenAI strategy consultant writing the client-ready "
+        "markdown deliverable from a completed use-case discovery workflow.\n"
+        "Return only structured data matching the requested schema. The `markdown` "
+        "field must contain the complete markdown report.\n"
+        "Write polished, professional prose for executives and business owners. "
+        "Make the report feel like a finished consulting deliverable, not a raw "
+        "data dump. Use clear markdown structure with: title, executive summary, "
+        "company context, selection methodology, ranked recommendations table, "
+        "detailed sections for each of the 3 use cases, caveats, and sources.\n"
+        "Use the final selected top 3 use cases directly. Preserve their order as "
+        "rank 1, rank 2, and rank 3. Include score totals and important score "
+        "breakdowns in the ranked table or use-case sections. Make each use case "
+        "easy to scan with business problem, proposed GenAI solution, why it fits "
+        "the company, expected impact, required data, feasibility, risks, and "
+        "supporting sources.\n"
+        "Explain the selection methodology using only the supplied artifacts: "
+        "company research, pain-point profiling, use-case generation, scoring, "
+        "and final top-3 selection.\n"
+        "Use only facts, caveats, scores, and source URLs from the supplied JSON. "
+        "Do not invent new facts, metrics, timelines or source URLs. Keep source "
+        "URLs as full URLs copied from the input."
     )
 
 
-def final_reporter_user_prompt(
+def markdown_reporter_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
     final_selection: FinalSelectionOutput,
@@ -306,57 +310,16 @@ def final_reporter_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Final top 3 selected use cases with scores (JSON):\n"
+        "Selected top 3 use cases with scores (JSON):\n"
         f"{final_selection_json}\n\n"
-        "Write the final client-ready report. Return exactly 3 top_3_use_cases, "
-        "one for each selected use case, preserving the final-selection order as "
-        "rank 1, rank 2, and rank 3. For each report use case, copy the graded "
-        "score object into score, summarize the solution in a one_liner, copy or "
-        "condense target_users, business_problem, why_this_company, genai_solution, "
-        "required_data, expected_impact, why_iconic, feasibility_notes, and risks "
-        "from the selected use case, and set source_urls from its evidence_sources. "
-        "Also provide company_name, executive_summary, company_context, "
-        "methodology, caveats, and report-level source_urls. The methodology must "
-        "explain the single scoring pass and final selection. Do not add markdown "
-        "formatting or any Mistral/vendor-fit discussion."
-    )
-
-
-def markdown_reporter_system_prompt() -> str:
-    return (
-        "You are a senior GenAI strategy consultant writing the client-ready "
-        "markdown deliverable from an already structured final report JSON.\n"
-        "Return only structured data matching the requested schema. The `markdown` "
-        "field must contain the complete markdown report.\n"
-        "Write polished, professional prose for executives and business owners. "
-        "Make the report feel like a finished consulting deliverable, not a raw "
-        "data dump. Use clear markdown structure: title, executive summary, "
-        "company context, methodology, ranked recommendations, implementation "
-        "considerations, caveats, and sources.\n"
-        "Leverage the structure of the input JSON. Preserve the rank order and "
-        "include all three recommended use cases with their score totals and "
-        "important score breakdowns. Make each use case easy to scan with business "
-        "problem, proposed GenAI solution, why it fits the company, expected "
-        "impact, required data, feasibility, risks, and supporting sources.\n"
-        "Use only facts, caveats, scores, and source URLs from the supplied JSON. "
-        "Do not invent new facts, metrics, timelines or source URLs. Keep source "
-        "URLs as full URLs copied from the input."
-    )
-
-
-def markdown_reporter_user_prompt(final_report: FinalReport) -> str:
-    final_report_json = json.dumps(
-        final_report.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    return (
-        "Structured final report JSON:\n"
-        f"{final_report_json}\n\n"
         "Write the final client-ready markdown report in the `markdown` field. "
-        "Use the JSON as the source of truth. Start with a concise H1 title for "
-        "the company, then write a polished executive summary, company context, "
-        "methodology, ranked top-3 recommendations, caveats, and sources. "
+        "Use these JSON inputs as the source of truth. Start with a concise H1 "
+        "title for the company, then include an executive summary, company "
+        "context, selection methodology, a ranked recommendations table, detailed "
+        "sections for each of the 3 selected use cases, caveats, and sources. "
+        "For each use case, include the business problem, proposed GenAI solution, "
+        "why it fits the company, expected impact, required data, score, "
+        "feasibility, risks, and supporting source URLs. "
         "Use professional markdown formatting with headings, bullets, and tables "
         "where useful, but do not include raw JSON or unsupported claims."
     )

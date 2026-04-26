@@ -20,7 +20,11 @@ class MarkdownReporterAgent(BaseAgent[MarkdownReportInput, MarkdownReport]):
                 {"role": "system", "content": markdown_reporter_system_prompt()},
                 {
                     "role": "user",
-                    "content": markdown_reporter_user_prompt(params.final_report),
+                    "content": markdown_reporter_user_prompt(
+                        params.company_profile,
+                        params.pain_points,
+                        params.final_selection,
+                    ),
                 },
             ],
         )
