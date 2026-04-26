@@ -23,7 +23,6 @@ class FinalReporterAgent(BaseAgent[FinalReportInput, FinalReport]):
                     "content": final_reporter_user_prompt(
                         params.company_profile,
                         params.pain_points,
-                        params.opportunity_map,
                         params.final_selection,
                     ),
                 },

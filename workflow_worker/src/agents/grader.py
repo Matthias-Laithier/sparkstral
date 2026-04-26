@@ -51,7 +51,6 @@ class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
                     "content": use_case_grader_user_prompt(
                         params.company_profile,
                         params.pain_points,
-                        params.opportunity_map,
                         params.use_cases,
                     ),
                 },

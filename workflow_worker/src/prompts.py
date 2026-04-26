@@ -8,7 +8,6 @@ from src.schemas import (
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
-    OpportunityMapOutput,
     PainPointProfilerOutput,
     RedTeamOutput,
 )
@@ -138,69 +137,21 @@ def pain_point_user_prompt(
     )
 
 
-def opportunity_mapper_system_prompt() -> str:
-    return (
-        "You are a GenAI opportunity mapping strategist. Given a structured "
-        "company profile and structured pain-point analysis, map the company's "
-        "facts and pain points into 3-8 GenAI-shaped opportunity areas.\n"
-        "Do not produce final use cases yet. Stay one level higher than a "
-        "solution design: identify opportunity territories that could later "
-        "become use cases.\n"
-        "Avoid generic opportunities such as 'improve efficiency', 'automate "
-        "support', or 'increase productivity' unless they are made specific to "
-        "the company's business lines, pain points, data, and operating context.\n"
-        "For every opportunity, explain why it matters, why GenAI is suitable "
-        "rather than ordinary software or analytics, and which likely data "
-        "sources would be needed. Link each opportunity to at least one named "
-        "pain point from the input.\n"
-        "Evidence sources must be full URL strings taken only from the prior "
-        "company profile evidence or pain-point sources."
-    )
-
-
-def opportunity_mapper_user_prompt(
-    company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
-) -> str:
-    company_json = json.dumps(
-        company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    return (
-        "Company profile (JSON):\n"
-        f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
-        f"{pain_json}\n\n"
-        "Return an opportunity map with 3-8 opportunities and a concise summary. "
-        "Each opportunity must include: title; business_line; linked_pain_points "
-        "(1+ exact or clearly recognizable pain-point titles from the input); "
-        "why_it_matters; why_genai_is_suitable; likely_data_sources (1+); and "
-        "evidence_sources (1+ full URLs copied from the profile evidence or pain "
-        "point sources). Do not write final use cases or implementation plans."
-    )
-
-
 def genai_use_cases_system_prompt() -> str:
     return (
         "You are a principal GenAI strategy consultant. You receive a structured "
-        "company profile, structured pain-point analysis, and opportunity map. "
-        "Produce a candidate pool of 8-12 company-specific generative-AI use "
-        "cases that feel iconic for THIS company, not interchangeable with any "
-        "other business.\n"
+        "company profile and structured pain-point analysis. Produce a candidate "
+        "pool of 8-12 company-specific generative-AI use cases that feel iconic "
+        "for THIS company, not interchangeable with any other business.\n"
         "This is one ideation call. Do not create separate outputs or agents per "
         "lens. Use these ideation lenses across the pool: grounded consultant, "
         "moonshot strategist, operations expert, customer/partner expert, and "
         "risk/compliance expert. Every candidate must include its ideation_lens.\n"
-        "Each candidate must tie to the company profile, pain points, opportunity "
-        "map, industry, and strategic priorities. Be concrete: name workflows, "
-        "data, org roles, and what makes the solution distinctive. Link every "
-        "candidate to at least one opportunity title from the input.\n"
+        "Generate use cases directly from the company profile, pain points, "
+        "strategic priorities, business lines, and evidence URLs. Be concrete: "
+        "name workflows, data, org roles, and what makes the solution "
+        "distinctive. Link every candidate to at least one pain point title from "
+        "the input.\n"
         "STRICT: Do not propose overused, generic product ideas, including: "
         "generic customer support chatbot, internal knowledge assistant or RAG "
         "for documents, or generic marketing copy generators, unless the write-up "
@@ -208,15 +159,13 @@ def genai_use_cases_system_prompt() -> str:
         "Do not discuss vendor, model-provider, or "
         "platform fit. "
         "Preserve evidence: evidence_sources must be full URL strings copied "
-        "from prior company profile evidence, pain-point sources, or opportunity "
-        "evidence_sources."
+        "from company profile evidence or pain-point sources."
     )
 
 
 def genai_use_cases_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
-    opportunity_map: OpportunityMapOutput,
 ) -> str:
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
@@ -228,25 +177,18 @@ def genai_use_cases_user_prompt(
         indent=2,
         ensure_ascii=False,
     )
-    opportunity_json = json.dumps(
-        opportunity_map.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
     return (
         "Company profile (JSON):\n"
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Opportunity map (JSON):\n"
-        f"{opportunity_json}\n\n"
         "Output 8-12 candidate use cases. Each must have: id; title; "
         "target_users (1+); business_problem; why_this_company; genai_solution; "
         "required_data; expected_impact; why_iconic; feasibility_notes; risks "
-        "(1+); linked_opportunities (1+ opportunity titles from the input); "
-        "evidence_sources (1+ full URLs copied from prior inputs); and "
-        "ideation_lens. Use the opportunity map as the bridge from pain points "
-        "to candidates. Do not rank, score, or choose a final top 3."
+        "(1+); linked_pain_points (1+ exact or clearly recognizable pain-point "
+        "titles from the input); evidence_sources (1+ full URLs copied from "
+        "prior inputs); and ideation_lens. Use the company profile, business "
+        "lines, strategic priorities, pain points, and evidence URLs directly. "
     )
 
 
@@ -283,7 +225,7 @@ def deduper_user_prompt(candidates: GenAIUseCaseCandidatePool) -> str:
         "merge overlapping candidates by preserving the strongest details, "
         "including title specificity, target users, business problem, company fit, "
         "solution details, required data, expected impact, feasibility notes, "
-        "risks, linked opportunities, evidence source URLs, and ideation lens "
+        "risks, linked pain points, evidence source URLs, and ideation lens "
         "diversity. Keep the more company-specific candidate when deciding what "
         "survives. In removed_or_merged, list which candidate ids or titles were "
         "removed or merged and why."
@@ -293,9 +235,9 @@ def deduper_user_prompt(candidates: GenAIUseCaseCandidatePool) -> str:
 def use_case_grader_system_prompt() -> str:
     return (
         "You are a strict GenAI use-case grading analyst. Given a company profile, "
-        "pain-point analysis, opportunity map, and genai use-case idea pool, "
-        "grade every provided use case with an explicit rubric. Do not skip, merge, "
-        "rewrite, refine, red-team, or anything else.\n"
+        "pain-point analysis, and genai use-case idea pool, grade every provided "
+        "use case with an explicit rubric. Do not skip, merge, rewrite, refine, "
+        "red-team, or anything else.\n"
         "Score each rubric dimension from 1 (weak) to 5 (excellent):\n"
         "- company_relevance: how specifically the use case fits this company's "
         "business lines, priorities, users, and context.\n"
@@ -309,7 +251,7 @@ def use_case_grader_system_prompt() -> str:
         "- feasibility: whether required data, workflows, integration paths, "
         "change management, and risks look practical.\n"
         "- evidence_strength: how strongly the candidate is supported by supplied "
-        "company facts, pain points, opportunities, and source URLs.\n"
+        "company facts, pain points, and source URLs.\n"
         "Penalize generic candidates harshly. A generic chatbot, document search "
         "assistant, marketing generator, or broad productivity automation should "
         "score low unless the candidate is unmistakably grounded in the company's "
@@ -328,7 +270,6 @@ def use_case_grader_system_prompt() -> str:
 def use_case_grader_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
-    opportunity_map: OpportunityMapOutput,
     use_cases: list[GenAIUseCaseCandidate],
 ) -> str:
     company_json = json.dumps(
@@ -338,11 +279,6 @@ def use_case_grader_user_prompt(
     )
     pain_json = json.dumps(
         pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    opportunity_json = json.dumps(
-        opportunity_map.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -356,8 +292,6 @@ def use_case_grader_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Opportunity map (JSON):\n"
-        f"{opportunity_json}\n\n"
         "Deduplicated use cases to grade (JSON):\n"
         f"{use_cases_json}\n\n"
         "Return one graded_use_cases item for every use case above. Keep each "
@@ -397,7 +331,6 @@ def red_team_system_prompt() -> str:
 def red_team_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
-    opportunity_map: OpportunityMapOutput,
     selected_use_cases: list[GradedUseCase],
 ) -> str:
     company_json = json.dumps(
@@ -407,11 +340,6 @@ def red_team_user_prompt(
     )
     pain_json = json.dumps(
         pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    opportunity_json = json.dumps(
-        opportunity_map.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -425,8 +353,6 @@ def red_team_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Opportunity map (JSON):\n"
-        f"{opportunity_json}\n\n"
         "Initial top 5 selected use cases to red-team (JSON):\n"
         f"{selected_json}\n\n"
         "Return exactly 5 reviews: one per selected use case, using the matching "
@@ -448,8 +374,8 @@ def refiner_system_prompt() -> str:
         "Preserve evidence: every source URL from the original selected use case "
         "must remain in the refined use case's evidence_sources. You may copy "
         "additional source URLs only from the supplied company profile, pain "
-        "points, opportunity map, or selected use cases. Do not invent source "
-        "URLs or unsupported facts.\n"
+        "points, or selected use cases. Do not invent source URLs or unsupported "
+        "facts.\n"
         "For each item, set original_use_case_id to the original use_case.id, "
         "return a complete refined_use_case object, list concrete changes_made, "
         "and keep unresolved_concerns explicit when a criticism cannot be safely "
@@ -460,7 +386,6 @@ def refiner_system_prompt() -> str:
 def refiner_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
-    opportunity_map: OpportunityMapOutput,
     selected_use_cases: list[GradedUseCase],
     red_team: RedTeamOutput,
 ) -> str:
@@ -471,11 +396,6 @@ def refiner_user_prompt(
     )
     pain_json = json.dumps(
         pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    opportunity_json = json.dumps(
-        opportunity_map.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -494,8 +414,6 @@ def refiner_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Opportunity map (JSON):\n"
-        f"{opportunity_json}\n\n"
         "Initial top 5 selected use cases to refine (JSON):\n"
         f"{selected_json}\n\n"
         "Red-team review to address (JSON):\n"
@@ -519,7 +437,7 @@ def final_reporter_system_prompt() -> str:
         "as the final selection. Use concise, client-ready language for executives "
         "and business owners.\n"
         "Explain the methodology using only the supplied artifacts: company "
-        "research, pain-point profiling, opportunity mapping, scoring, "
+        "research, pain-point profiling, use-case generation, scoring, "
         "refinement, and final top-3 selection. "
         "For every use case, include the score breakdown, why it is specific to "
         "this company, why it is high-impact, why it is iconic, implementation "
@@ -533,7 +451,6 @@ def final_reporter_system_prompt() -> str:
 def final_reporter_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
-    opportunity_map: OpportunityMapOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
     company_json = json.dumps(
@@ -543,11 +460,6 @@ def final_reporter_user_prompt(
     )
     pain_json = json.dumps(
         pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    opportunity_json = json.dumps(
-        opportunity_map.model_dump(mode="json"),
         indent=2,
         ensure_ascii=False,
     )
@@ -561,8 +473,6 @@ def final_reporter_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Opportunity map (JSON):\n"
-        f"{opportunity_json}\n\n"
         "Final top 3 selected use cases with scores (JSON):\n"
         f"{final_selection_json}\n\n"
         "Write the final client-ready report. Return exactly 3 top_3_use_cases, "

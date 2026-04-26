@@ -21,7 +21,6 @@ def _settings_kwargs(**overrides: Any) -> dict[str, Any]:
         "COMPANY_RESOLVER_AGENT_MODEL": "mistral-medium-latest",
         "COMPANY_PROFILER_AGENT_MODEL": "mistral-medium-latest",
         "PAIN_POINT_PROFILER_AGENT_MODEL": "mistral-medium-latest",
-        "OPPORTUNITY_MAPPER_AGENT_MODEL": "mistral-medium-latest",
         "GENAI_USE_CASES_MODEL": "mistral-medium-latest",
         "USE_CASE_DEDUPER_AGENT_MODEL": "mistral-medium-latest",
         "USE_CASE_GRADER_AGENT_MODEL": "mistral-medium-latest",

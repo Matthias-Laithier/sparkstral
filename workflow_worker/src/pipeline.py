@@ -4,7 +4,6 @@ from src.activities import (
     deduplicate_use_cases,
     generate_genai_use_cases,
     grade_use_cases,
-    map_opportunities,
     red_team_use_cases,
     refine_use_cases,
     research_company,
@@ -29,7 +28,6 @@ from src.schemas import (
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
     MarkdownReportInput,
-    OpportunityMapInput,
     PainPointResearchInput,
     PainPointStructuringInput,
     PipelineOutput,
@@ -84,19 +82,10 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(pain_points.model_dump(mode="json"))
 
-    opportunity_map = await map_opportunities(
-        OpportunityMapInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-        )
-    )
-    append_json(opportunity_map.model_dump(mode="json"))
-
     use_cases = await generate_genai_use_cases(
         GenAIUseCaseCandidateInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
         )
     )
     append_json(use_cases.model_dump(mode="json"))
@@ -110,7 +99,6 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         GradeUseCasesInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
             use_cases=deduplicated_use_cases.use_cases,
         )
     )
@@ -123,7 +111,6 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         RedTeamInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
             selected_use_cases=initial_top_5.selected,
         )
     )
@@ -133,7 +120,6 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         RefineUseCasesInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
             selected_use_cases=initial_top_5.selected,
             red_team=red_team_review,
         )
@@ -147,7 +133,6 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         GradeUseCasesInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
             use_cases=refined_candidates,
         )
     )
@@ -160,7 +145,6 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
         FinalReportInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            opportunity_map=opportunity_map,
             final_selection=final_selection,
         )
     )

@@ -118,7 +118,10 @@ function MarkdownReport({ markdown }: { markdown: string }) {
 						/>
 					),
 					td: (props) => (
-						<td className="border border-slate-200 px-3 py-2 align-top" {...props} />
+						<td
+							className="border border-slate-200 px-3 py-2 align-top"
+							{...props}
+						/>
 					),
 					hr: (props) => <hr className="my-6 border-slate-200" {...props} />,
 				}}

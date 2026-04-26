@@ -124,9 +124,7 @@ class _Conversations:
         self.calls = 0
         self.last_kwargs: dict[str, Any] | None = None
 
-    async def start_async(
-        self, *_args: Any, **kwargs: Any
-    ) -> _ConversationResponse:
+    async def start_async(self, *_args: Any, **kwargs: Any) -> _ConversationResponse:
         self.calls += 1
         self.last_kwargs = kwargs
         outcome = self.outcomes.pop(0)

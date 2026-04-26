@@ -24,8 +24,6 @@ from src.schemas import (
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
-    OpportunityItem,
-    OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
     RedTeamOutput,
@@ -48,7 +46,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
-        linked_opportunities=["Opportunity"],
+        linked_pain_points=["Pain 1"],
         evidence_sources=[f"https://example.com/source-{index}"],
         ideation_lens="grounded consultant",
     )
@@ -83,25 +81,6 @@ def _pain_point(index: int) -> PainPointItem:
 def _pain_points() -> PainPointProfilerOutput:
     return PainPointProfilerOutput(
         pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-    )
-
-
-def _opportunity(index: int) -> OpportunityItem:
-    return OpportunityItem(
-        title=f"Opportunity {index}",
-        business_line="Widgets",
-        linked_pain_points=[f"Pain {index}"],
-        why_it_matters="Why it matters",
-        why_genai_is_suitable="GenAI can reason across unstructured records.",
-        likely_data_sources=["Work orders"],
-        evidence_sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _opportunity_map() -> OpportunityMapOutput:
-    return OpportunityMapOutput(
-        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
-        summary="Opportunity summary",
     )
 
 
@@ -260,7 +239,6 @@ def test_red_team_user_prompt_includes_selected_top_five_json() -> None:
     prompt = red_team_user_prompt(
         _company_profile(),
         _pain_points(),
-        _opportunity_map(),
         _graded_use_cases(),
     )
 
@@ -287,7 +265,6 @@ def test_refiner_user_prompt_includes_selected_use_cases_and_red_team_json() -> 
     prompt = refiner_user_prompt(
         _company_profile(),
         _pain_points(),
-        _opportunity_map(),
         _graded_use_cases(),
         _red_team_output(),
     )
@@ -323,7 +300,6 @@ def test_final_reporter_user_prompt_includes_final_selection_json() -> None:
     prompt = final_reporter_user_prompt(
         _company_profile(),
         _pain_points(),
-        _opportunity_map(),
         _final_selection(),
     )
 

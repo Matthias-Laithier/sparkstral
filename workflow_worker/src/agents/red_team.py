@@ -23,7 +23,6 @@ class RedTeamAgent(BaseAgent[RedTeamInput, RedTeamOutput]):
                     "content": red_team_user_prompt(
                         params.company_profile,
                         params.pain_points,
-                        params.opportunity_map,
                         params.selected_use_cases,
                     ),
                 },

@@ -103,32 +103,6 @@ class PainPointStructuringInput(BaseModel):
     research_text: str
 
 
-class OpportunityItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str
-    business_line: str
-    linked_pain_points: list[str] = Field(..., min_length=1)
-    why_it_matters: str
-    why_genai_is_suitable: str
-    likely_data_sources: list[str] = Field(..., min_length=1)
-    evidence_sources: list[str] = Field(..., min_length=1)
-
-
-class OpportunityMapOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    opportunities: list[OpportunityItem] = Field(..., min_length=3, max_length=8)
-    summary: str
-
-
-class OpportunityMapInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-
-
 class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -163,7 +137,11 @@ class GenAIUseCaseCandidate(BaseModel):
         min_length=1,
         description="Main risks (technical, compliance, org, model).",
     )
-    linked_opportunities: list[str] = Field(..., min_length=1)
+    linked_pain_points: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Pain point titles from PainPointProfilerOutput.",
+    )
     evidence_sources: list[str] = Field(..., min_length=1)
     ideation_lens: str
 
@@ -270,7 +248,6 @@ class FinalReportInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
-    opportunity_map: OpportunityMapOutput
     final_selection: FinalSelectionOutput
 
 
@@ -302,7 +279,6 @@ class RedTeamInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
-    opportunity_map: OpportunityMapOutput
     selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
 
 
@@ -326,7 +302,6 @@ class RefineUseCasesInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
-    opportunity_map: OpportunityMapOutput
     selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
     red_team: RedTeamOutput
 
@@ -336,7 +311,6 @@ class GradeUseCasesInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
-    opportunity_map: OpportunityMapOutput
     use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=1)
 
 
@@ -345,7 +319,6 @@ class GenAIUseCaseCandidateInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
-    opportunity_map: OpportunityMapOutput
 
 
 class PipelineOutput(BaseModel):

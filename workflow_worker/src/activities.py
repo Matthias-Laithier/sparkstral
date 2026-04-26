@@ -9,7 +9,6 @@ from src.agents.final_reporter import FinalReporterAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
-from src.agents.opportunity_mapper import OpportunityMapperAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
 from src.agents.red_team import RedTeamAgent
 from src.agents.refiner import UseCaseRefinerAgent
@@ -38,8 +37,6 @@ from src.schemas import (
     InitialSelectionOutput,
     MarkdownReport,
     MarkdownReportInput,
-    OpportunityMapInput,
-    OpportunityMapOutput,
     PainPointProfilerOutput,
     PainPointResearchInput,
     PainPointStructuringInput,
@@ -129,18 +126,6 @@ async def structure_pain_points(
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("pain point structuring failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def map_opportunities(
-    params: OpportunityMapInput,
-) -> OpportunityMapOutput:
-    client = get_mistral_client()
-    agent = OpportunityMapperAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("opportunity mapping failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

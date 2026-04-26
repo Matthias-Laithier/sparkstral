@@ -28,8 +28,6 @@ from src.schemas import (
     InitialSelectionOutput,
     MarkdownReport,
     MarkdownReportInput,
-    OpportunityItem,
-    OpportunityMapOutput,
     PainPointItem,
     PainPointProfilerOutput,
     RedTeamInput,
@@ -98,27 +96,8 @@ def _pain_point(index: int) -> PainPointItem:
     )
 
 
-def _opportunity(index: int) -> OpportunityItem:
-    return OpportunityItem(
-        title=f"Opportunity {index}",
-        business_line="Widgets",
-        linked_pain_points=[f"Pain {index}"],
-        why_it_matters="Why it matters",
-        why_genai_is_suitable="GenAI can reason across unstructured records.",
-        likely_data_sources=["Work orders"],
-        evidence_sources=[f"https://example.com/pain-{index}"],
-    )
-
-
-def _opportunity_map() -> OpportunityMapOutput:
-    return OpportunityMapOutput(
-        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
-        summary="Opportunity summary",
-    )
-
-
 def _candidate(index: int) -> GenAIUseCaseCandidate:
-    opportunity_index = ((index - 1) % 3) + 1
+    pain_point_index = ((index - 1) % 3) + 1
     return GenAIUseCaseCandidate(
         id=f"uc-{index}",
         title=f"Use case {index}",
@@ -131,8 +110,8 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         why_iconic="Iconic fit",
         feasibility_notes="Feasible with existing records",
         risks=["Risk"],
-        linked_opportunities=[f"Opportunity {opportunity_index}"],
-        evidence_sources=[f"https://example.com/pain-{opportunity_index}"],
+        linked_pain_points=[f"Pain {pain_point_index}"],
+        evidence_sources=[f"https://example.com/pain-{pain_point_index}"],
         ideation_lens=IDEATION_LENSES[(index - 1) % len(IDEATION_LENSES)],
     )
 
@@ -306,7 +285,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     calls: list[str] = []
     company_research_query = ""
     company_profile_query = ""
-    generation_opportunity_map: OpportunityMapOutput | None = None
+    generation_pain_points: PainPointProfilerOutput | None = None
     deduplication_candidates: GenAIUseCaseCandidatePool | None = None
     grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
@@ -415,14 +394,10 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         )
 
-    async def map_opportunities(_params: object) -> OpportunityMapOutput:
-        calls.append("map_opportunities")
-        return _opportunity_map()
-
     async def generate_genai_use_cases(params: Any) -> GenAIUseCaseCandidatePool:
-        nonlocal generation_opportunity_map
+        nonlocal generation_pain_points
         calls.append("generate_genai_use_cases")
-        generation_opportunity_map = params.opportunity_map
+        generation_pain_points = params.pain_points
         return generated_candidates
 
     async def deduplicate_use_cases(params: Any) -> DeduplicatedUseCasePool:
@@ -489,7 +464,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     monkeypatch.setattr(pipeline, "research_pain_points", research_pain_points)
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
-    monkeypatch.setattr(pipeline, "map_opportunities", map_opportunities)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
@@ -509,7 +483,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "structure_company_profile",
         "research_pain_points",
         "structure_pain_points",
-        "map_opportunities",
         "generate_genai_use_cases",
         "deduplicate_use_cases",
         "grade_use_cases",
@@ -537,34 +510,34 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[6].data == _opportunity_map().model_dump(mode="json")
-    assert result.outputs[7].data == generated_candidates.model_dump(mode="json")
-    assert result.outputs[8].data == deduplicated_candidates.model_dump(mode="json")
-    assert result.outputs[9].data == graded_candidates.model_dump(mode="json")
-    assert result.outputs[10].data == {
+    assert result.outputs[6].data == generated_candidates.model_dump(mode="json")
+    assert result.outputs[7].data == deduplicated_candidates.model_dump(mode="json")
+    assert result.outputs[8].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[9].data == {
         "initial_top_5": initial_selection.model_dump(mode="json")
     }
-    assert result.outputs[11].data == {
+    assert result.outputs[10].data == {
         "red_team_review": red_team_result.model_dump(mode="json")
     }
-    assert result.outputs[12].data == {
+    assert result.outputs[11].data == {
         "refined_use_cases": refined_result.model_dump(mode="json")
     }
-    assert result.outputs[13].data == {
+    assert result.outputs[12].data == {
         "final_grading": final_graded_candidates.model_dump(mode="json")
     }
-    assert result.outputs[14].data == {
+    assert result.outputs[13].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[15].data == {
+    assert result.outputs[14].data == {
         "final_report": final_report_result.model_dump(mode="json")
     }
-    assert result.outputs[16].text == markdown_report_result.markdown
-    assert generation_opportunity_map == _opportunity_map()
+    assert result.outputs[15].text == markdown_report_result.markdown
+    assert generation_pain_points == PainPointProfilerOutput(
+        pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
+    )
     assert deduplication_candidates == generated_candidates
     assert grading_use_cases == [deduplicated_candidates.use_cases, refined_candidates]
     assert grading_company_profiles == [_company_profile(), _company_profile()]
@@ -575,7 +548,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         pain_points=PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         ),
-        opportunity_map=_opportunity_map(),
         selected_use_cases=initial_selection.selected,
     )
     assert refiner_params == RefineUseCasesInput(
@@ -583,7 +555,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         pain_points=PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         ),
-        opportunity_map=_opportunity_map(),
         selected_use_cases=initial_selection.selected,
         red_team=red_team_result,
     )
@@ -592,7 +563,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         pain_points=PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
         ),
-        opportunity_map=_opportunity_map(),
         final_selection=final_selection,
     )
     assert markdown_report_params == MarkdownReportInput(
@@ -808,7 +778,6 @@ async def test_use_case_grader_agent_recomputes_total_without_sorting(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             use_cases=use_cases,
         )
     )
@@ -843,7 +812,6 @@ async def test_grade_use_cases_activity_returns_agent_result(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             use_cases=use_cases,
         )
     )
@@ -869,7 +837,6 @@ async def test_red_team_agent_returns_structured_review(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=selected,
         )
     )
@@ -905,7 +872,6 @@ async def test_red_team_agent_rejects_missing_selected_review(
                 pain_points=PainPointProfilerOutput(
                     pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
                 ),
-                opportunity_map=_opportunity_map(),
                 selected_use_cases=selected,
             )
         )
@@ -934,7 +900,6 @@ async def test_red_team_use_cases_activity_returns_agent_result(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=selected,
         )
     )
@@ -961,7 +926,6 @@ async def test_refiner_agent_returns_structured_refinements(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=selected,
             red_team=red_team_result,
         )
@@ -1006,7 +970,6 @@ async def test_refiner_agent_rejects_missing_selected_refinement(
                 pain_points=PainPointProfilerOutput(
                     pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
                 ),
-                opportunity_map=_opportunity_map(),
                 selected_use_cases=selected,
                 red_team=red_team_result,
             )
@@ -1050,7 +1013,6 @@ async def test_refiner_agent_rejects_missing_original_evidence_source(
                 pain_points=PainPointProfilerOutput(
                     pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
                 ),
-                opportunity_map=_opportunity_map(),
                 selected_use_cases=selected,
                 red_team=red_team_result,
             )
@@ -1081,7 +1043,6 @@ async def test_refine_use_cases_activity_returns_agent_result(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=selected,
             red_team=red_team_result,
         )
@@ -1110,7 +1071,6 @@ async def test_final_reporter_agent_returns_structured_report(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             final_selection=selected,
         )
     )
@@ -1148,7 +1108,6 @@ async def test_final_reporter_agent_rejects_wrong_rank_order(
                 pain_points=PainPointProfilerOutput(
                     pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
                 ),
-                opportunity_map=_opportunity_map(),
                 final_selection=selected,
             )
         )
@@ -1179,7 +1138,6 @@ async def test_write_final_report_activity_returns_agent_result(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             final_selection=selected,
         )
     )
@@ -1353,29 +1311,6 @@ def test_pain_point_profiler_requires_at_least_three_points() -> None:
         PainPointProfilerOutput(
             pain_points=[_pain_point(1), _pain_point(2)],
         )
-
-
-def test_opportunity_map_requires_at_least_three_opportunities() -> None:
-    with pytest.raises(ValidationError):
-        OpportunityMapOutput(
-            opportunities=[_opportunity(1), _opportunity(2)],
-            summary="Too few opportunities",
-        )
-
-
-@pytest.mark.parametrize(
-    "field_name",
-    ["linked_pain_points", "likely_data_sources", "evidence_sources"],
-)
-def test_opportunity_map_forbids_empty_required_lists(field_name: str) -> None:
-    data = OpportunityMapOutput(
-        opportunities=[_opportunity(1), _opportunity(2), _opportunity(3)],
-        summary="Opportunity summary",
-    ).model_dump()
-    data["opportunities"][0][field_name] = []
-
-    with pytest.raises(ValidationError):
-        OpportunityMapOutput.model_validate(data)
 
 
 @pytest.mark.parametrize("count", [7, 13])
@@ -1600,7 +1535,6 @@ def test_red_team_input_requires_exactly_five_selected_use_cases(count: int) -> 
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=[
                 GradedUseCase(
                     use_case=_candidate(index),
@@ -1639,7 +1573,6 @@ def test_refine_use_cases_input_requires_exactly_five_selected_use_cases(
             pain_points=PainPointProfilerOutput(
                 pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
             ),
-            opportunity_map=_opportunity_map(),
             selected_use_cases=selected,
             red_team=_red_team_output(valid_selected),
         )
@@ -1697,7 +1630,7 @@ def test_red_team_review_requires_allowed_verdict() -> None:
 
 @pytest.mark.parametrize(
     "field_name",
-    ["target_users", "risks", "linked_opportunities", "evidence_sources"],
+    ["target_users", "risks", "linked_pain_points", "evidence_sources"],
 )
 def test_genai_use_case_candidates_forbid_empty_required_lists(
     field_name: str,
