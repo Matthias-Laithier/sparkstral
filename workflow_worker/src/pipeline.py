@@ -1,7 +1,10 @@
+import asyncio
 from functools import partial
 
 from src.activities import (
-    generate_genai_use_cases,
+    generate_grounded_genai_use_cases,
+    generate_moonshot_genai_use_cases,
+    generate_why_not_genai_use_cases,
     grade_use_cases,
     research_company,
     research_company_resolution,
@@ -26,7 +29,11 @@ from src.schemas import (
     PipelineOutput,
     SparkstralWorkflowResult,
 )
-from src.utils import append_json_output, append_text_output
+from src.utils import (
+    append_json_output,
+    append_text_output,
+    merge_genai_use_case_batches,
+)
 
 
 async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowResult:
@@ -73,11 +80,21 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(pain_points.model_dump(mode="json"))
 
-    use_cases = await generate_genai_use_cases(
-        GenAIUseCaseCandidateInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-        )
+    use_case_generation_input = GenAIUseCaseCandidateInput(
+        company_profile=company_profile,
+        pain_points=pain_points,
+    )
+    grounded_use_cases, moonshot_use_cases, why_not_use_cases = await asyncio.gather(
+        generate_grounded_genai_use_cases(use_case_generation_input),
+        generate_moonshot_genai_use_cases(use_case_generation_input),
+        generate_why_not_genai_use_cases(use_case_generation_input),
+    )
+    use_cases = merge_genai_use_case_batches(
+        [
+            ("grounded_uc", grounded_use_cases),
+            ("moonshot_uc", moonshot_use_cases),
+            ("why_not_uc", why_not_use_cases),
+        ]
     )
     append_json(use_cases.model_dump(mode="json"))
 

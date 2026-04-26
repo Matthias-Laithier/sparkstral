@@ -5,6 +5,8 @@ from src.schemas import (
     CompanyProfileOutput,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
+    GenAIUseCaseIdPrefix,
+    GenAIUseCasePersona,
     PainPointProfilerOutput,
 )
 
@@ -133,16 +135,40 @@ def pain_point_user_prompt(
     )
 
 
-def genai_use_cases_system_prompt() -> str:
+PERSONA_GUIDANCE: dict[GenAIUseCasePersona, str] = {
+    "grounded consultant": (
+        "Stay practical, evidence-led, and implementation-aware. Prefer use cases "
+        "that a serious client team could pilot with known workflows, data, and "
+        "approval paths."
+    ),
+    "moonshot strategist": (
+        "Think ambitiously and optimistically about strategic advantage. Propose "
+        "ideas that are bold and memorable while still grounded in the supplied "
+        "company facts, pain points, and GenAI-native mechanisms."
+    ),
+    "why not? inventor": (
+        "Look for unusual, surprising, and novel ideas. Push beyond default "
+        "consulting recommendations, but keep every idea tied to the company's "
+        "real context and make feasibility tradeoffs explicit."
+    ),
+}
+
+
+def genai_use_cases_system_prompt(
+    ideation_lens: GenAIUseCasePersona,
+    id_prefix: GenAIUseCaseIdPrefix,
+) -> str:
+    expected_ids = ", ".join(f"{id_prefix}_{index}" for index in range(1, 4))
     return (
-        "You are a principal GenAI strategy consultant. You receive a structured "
-        "company profile and structured pain-point analysis. Produce a candidate "
-        "pool of 8-12 company-specific generative-AI use cases that feel iconic "
+        f"You are the {ideation_lens} GenAI use-case generator. "
+        f"{PERSONA_GUIDANCE[ideation_lens]}\n"
+        "You receive a structured company profile and structured pain-point "
+        "analysis. Produce exactly 3 company-specific generative-AI use cases "
+        "that feel iconic "
         "for THIS company, not interchangeable with any other business.\n"
-        "This is one ideation call. Do not create separate outputs or agents per "
-        "lens. Use these ideation lenses across the pool: grounded consultant, "
-        "moonshot strategist, operations expert, customer/partner expert, and "
-        "risk/compliance expert. Every candidate must include its ideation_lens.\n"
+        f"Every candidate must set ideation_lens exactly to `{ideation_lens}`. "
+        f"Use exactly these IDs, one per candidate: {expected_ids}. Do not use "
+        "any other ID format.\n"
         "Generate use cases directly from the company profile, pain points, "
         "strategic priorities, business lines, and evidence URLs. Be concrete: "
         "name workflows, data, org roles, and what makes the solution "
@@ -154,9 +180,7 @@ def genai_use_cases_system_prompt() -> str:
         "For each candidate, genai_mechanism must explain why GenAI is needed, "
         "why ordinary software is not enough, and why classical ML or "
         "optimization is not enough.\n"
-        "Reject or reframe ideas that are mainly predictive maintenance, "
-        "numerical forecasting, process optimization, control systems, "
-        "dashboards, generic RAG, or a generic chatbot. These can only be "
+        "Reject or reframe ideas that could be done without GenAI. These can only be "
         "accepted if the core value comes from a specific GenAI mechanism tied "
         "to the company's language, documents, decisions, multimodal inputs, "
         "tools, or workflows; otherwise replace them with a stronger "
@@ -183,7 +207,10 @@ def genai_use_cases_system_prompt() -> str:
 def genai_use_cases_user_prompt(
     company_profile: CompanyProfileOutput,
     pain_points: PainPointProfilerOutput,
+    ideation_lens: GenAIUseCasePersona,
+    id_prefix: GenAIUseCaseIdPrefix,
 ) -> str:
+    expected_ids = ", ".join(f"{id_prefix}_{index}" for index in range(1, 4))
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
         indent=2,
@@ -199,7 +226,9 @@ def genai_use_cases_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Output 8-12 candidate use cases. Each must have: id; title; "
+        f"Output exactly 3 candidate use cases as the {ideation_lens}. Use "
+        f"exactly these IDs: {expected_ids}. Each candidate's ideation_lens "
+        f"must be exactly `{ideation_lens}`. Each must have: id; title; "
         "target_users (1+); business_problem; why_this_company; genai_solution; "
         "genai_mechanism with mechanisms (1+) and the three why_* fields; "
         "required_data; qualitative_impact; source_backed_metrics; pilot_kpis "

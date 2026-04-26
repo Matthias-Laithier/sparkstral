@@ -2,35 +2,43 @@ from src.agents.base import BaseAgent
 from src.config import settings
 from src.prompts import genai_use_cases_system_prompt, genai_use_cases_user_prompt
 from src.schemas import (
-    GenAIUseCaseCandidateInput,
-    GenAIUseCaseCandidatePool,
+    GenAIUseCaseCandidateBatch,
+    GenAIUseCasePersonaInput,
 )
 from src.utils import parse_chat_model
 
 
 class GenAIUseCasesAgent(
-    BaseAgent[GenAIUseCaseCandidateInput, GenAIUseCaseCandidatePool]
+    BaseAgent[GenAIUseCasePersonaInput, GenAIUseCaseCandidateBatch]
 ):
     name = "genai-use-cases"
 
     async def run(
         self,
-        params: GenAIUseCaseCandidateInput,
-    ) -> GenAIUseCaseCandidatePool:
+        params: GenAIUseCasePersonaInput,
+    ) -> GenAIUseCaseCandidateBatch:
         return await parse_chat_model(
             self.client,
-            GenAIUseCaseCandidatePool,
-            phase="GenAI use-case generation",
+            GenAIUseCaseCandidateBatch,
+            phase=f"GenAI use-case generation ({params.ideation_lens})",
             model=settings.GENAI_USE_CASES_MODEL,
             max_tokens=settings.LLM_MAX_TOKENS,
             temperature=settings.GENAI_USE_CASES_LLM_TEMPERATURE,
             messages=[
-                {"role": "system", "content": genai_use_cases_system_prompt()},
+                {
+                    "role": "system",
+                    "content": genai_use_cases_system_prompt(
+                        params.ideation_lens,
+                        params.id_prefix,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": genai_use_cases_user_prompt(
                         params.company_profile,
                         params.pain_points,
+                        params.ideation_lens,
+                        params.id_prefix,
                     ),
                 },
             ],

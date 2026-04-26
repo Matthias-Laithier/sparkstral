@@ -162,21 +162,18 @@ def test_web_search_system_prompt_includes_current_date() -> None:
     assert "web search" in prompt
 
 
-def test_genai_prompt_requires_candidate_pool() -> None:
-    prompt = genai_use_cases_system_prompt()
+def test_genai_prompt_requires_persona_batch() -> None:
+    prompt = genai_use_cases_system_prompt("moonshot strategist", "moonshot_uc")
 
-    assert "8-12" in prompt
-    assert "candidate pool" in prompt
-    assert "grounded consultant" in prompt
+    assert "exactly 3" in prompt
     assert "moonshot strategist" in prompt
+    assert "moonshot_uc_1" in prompt
+    assert "moonshot_uc_2" in prompt
+    assert "moonshot_uc_3" in prompt
     assert "GenAI-native" in prompt
-    assert "predictive maintenance" in prompt
-    assert "numerical forecasting" in prompt
-    assert "process optimization" in prompt
-    assert "control systems" in prompt
-    assert "dashboards" in prompt
-    assert "generic RAG" in prompt
-    assert "generic chatbot" in prompt
+    assert "could be done without GenAI" in prompt
+    assert "internal knowledge assistant or RAG" in prompt
+    assert "generic customer support chatbot" in prompt
     assert "why classical ML or optimization is not enough" in prompt
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
@@ -184,8 +181,18 @@ def test_genai_prompt_requires_candidate_pool() -> None:
 
 
 def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
-    prompt = genai_use_cases_user_prompt(_company_profile(), _pain_points())
+    prompt = genai_use_cases_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        "why not? inventor",
+        "why_not_uc",
+    )
 
+    assert "exactly 3" in prompt
+    assert "why not? inventor" in prompt
+    assert "why_not_uc_1" in prompt
+    assert "why_not_uc_2" in prompt
+    assert "why_not_uc_3" in prompt
     assert "genai_mechanism" in prompt
     assert "mechanisms (1+)" in prompt
     assert "three why_* fields" in prompt

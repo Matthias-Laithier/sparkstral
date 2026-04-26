@@ -241,6 +241,25 @@ class GenAIUseCaseCandidatePool(BaseModel):
     )
 
 
+GenAIUseCasePersona = Literal[
+    "grounded consultant",
+    "moonshot strategist",
+    "why not? inventor",
+]
+GenAIUseCaseIdPrefix = Literal["grounded_uc", "moonshot_uc", "why_not_uc"]
+
+
+class GenAIUseCaseCandidateBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_cases: list[GenAIUseCaseCandidate] = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        description="Exactly 3 GenAI use cases from one generator persona.",
+    )
+
+
 class UseCaseScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -312,6 +331,15 @@ class GenAIUseCaseCandidateInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
+
+
+class GenAIUseCasePersonaInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    pain_points: PainPointProfilerOutput
+    ideation_lens: GenAIUseCasePersona
+    id_prefix: GenAIUseCaseIdPrefix
 
 
 class PipelineOutput(BaseModel):

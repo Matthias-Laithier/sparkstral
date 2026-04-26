@@ -22,8 +22,11 @@ from src.schemas import (
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
     FinalSelectionOutput,
+    GenAIUseCaseCandidateBatch,
     GenAIUseCaseCandidateInput,
-    GenAIUseCaseCandidatePool,
+    GenAIUseCaseIdPrefix,
+    GenAIUseCasePersona,
+    GenAIUseCasePersonaInput,
     GradedUseCasePool,
     GradeUseCasesInput,
     MarkdownReport,
@@ -116,15 +119,57 @@ async def structure_pain_points(
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def generate_genai_use_cases(
+async def generate_grounded_genai_use_cases(
     params: GenAIUseCaseCandidateInput,
-) -> GenAIUseCaseCandidatePool:
+) -> GenAIUseCaseCandidateBatch:
+    return await _generate_genai_use_case_batch(
+        params,
+        ideation_lens="grounded consultant",
+        id_prefix="grounded_uc",
+    )
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def generate_moonshot_genai_use_cases(
+    params: GenAIUseCaseCandidateInput,
+) -> GenAIUseCaseCandidateBatch:
+    return await _generate_genai_use_case_batch(
+        params,
+        ideation_lens="moonshot strategist",
+        id_prefix="moonshot_uc",
+    )
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
+async def generate_why_not_genai_use_cases(
+    params: GenAIUseCaseCandidateInput,
+) -> GenAIUseCaseCandidateBatch:
+    return await _generate_genai_use_case_batch(
+        params,
+        ideation_lens="why not? inventor",
+        id_prefix="why_not_uc",
+    )
+
+
+async def _generate_genai_use_case_batch(
+    params: GenAIUseCaseCandidateInput,
+    *,
+    ideation_lens: GenAIUseCasePersona,
+    id_prefix: GenAIUseCaseIdPrefix,
+) -> GenAIUseCaseCandidateBatch:
     client = get_mistral_client()
     agent = GenAIUseCasesAgent(client=client)
     try:
-        return await agent.run(params)
+        return await agent.run(
+            GenAIUseCasePersonaInput(
+                company_profile=params.company_profile,
+                pain_points=params.pain_points,
+                ideation_lens=ideation_lens,
+                id_prefix=id_prefix,
+            )
+        )
     except Exception as exc:
-        raise RuntimeError("GenAI use-case generation failed") from exc
+        raise RuntimeError(f"{ideation_lens} GenAI use-case generation failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
