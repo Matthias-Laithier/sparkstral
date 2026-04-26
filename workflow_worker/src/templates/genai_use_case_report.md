@@ -1,13 +1,10 @@
 # GenAI Opportunity Report — {Company}
 
 ## What We Know About the Company
-Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support.
-
-## Strategic signals from research
-Summarize the strongest pressures, priorities, and opportunities implied by the sourced company research—not a generic industry overview. Keep this evidence-led and use source links next to factual claims.
+Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support. Summarize pressures and priorities here (no separate section for them).
 
 ## Ranked Opportunities
-| Rank | Opportunity | Primary users | Weighted score | Decision rationale |
+| Rank | Opportunity | Primary users | Weighted score (/10) | Decision rationale |
 | --- | --- | --- | --- | --- |
 | 1 |  |  |  |  |
 | 2 |  |  |  |  |
@@ -15,7 +12,17 @@ Summarize the strongest pressures, priorities, and opportunities implied by the 
 
 ## 1. {Use Case Title}
 ### The Opportunity
-Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and the research-backed signals above.
+Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and the research-backed context above.
+
+### Scoring (1–10)
+| Dimension | Rationale | Score (/10) |
+| --- | --- | --- |
+| Company relevance |  |  |
+| Business impact |  |  |
+| Iconicness |  |  |
+| GenAI fit |  |  |
+| Feasibility |  |  |
+| Evidence strength |  |  |
 
 ### Iconicness
 Explain what makes this use case memorable, company-specific, and strategically meaningful.
@@ -42,7 +49,7 @@ Pair each material risk with a practical mitigation.
 List the specific claims and URLs used for this opportunity, with markdown links next to the claims.
 
 ## 2. {Use Case Title}
-Use the same natural flow as Use Case 1, but avoid repeating the same company context unless it directly changes this recommendation.
+Use the same natural flow as Use Case 1, including the Scoring table, but avoid repeating the same company context unless it directly changes this recommendation.
 
 ## 3. {Use Case Title}
 Use the same natural flow as Use Case 1, but make the distinct workflow, data needs, risks, and validation questions clear.

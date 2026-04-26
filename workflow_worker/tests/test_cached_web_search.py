@@ -80,7 +80,7 @@ async def test_cached_web_search_uses_tavily_advanced_search(
         {
             "api_key": "test-tavily-api-key",
             "query": "Acme",
-            "search_depth": "advanced",
+            "search_depth": "basic",
         }
     ]
     assert json.loads(raw) == {

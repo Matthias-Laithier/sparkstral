@@ -248,6 +248,25 @@ class GenAIUseCaseGeneration(BaseModel):
     )
 
 
+class DimensionRubricLine(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rationale: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "One short sentence explaining the following score. Listed before score "
+            "so generation commits to reasoning first."
+        ),
+    )
+    score: int = Field(
+        ...,
+        ge=1,
+        le=10,
+        description="1–10 for this rubric line.",
+    )
+
+
 class UseCaseScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -255,12 +274,12 @@ class UseCaseScore(BaseModel):
     strengths: list[str] = Field(..., min_length=1)
     weaknesses: list[str] = Field(..., min_length=1)
     rationale: str
-    company_relevance: int = Field(..., ge=1, le=10)
-    business_impact: int = Field(..., ge=1, le=10)
-    iconicness: int = Field(..., ge=1, le=10)
-    genai_fit: int = Field(..., ge=1, le=10)
-    feasibility: int = Field(..., ge=1, le=10)
-    evidence_strength: int = Field(..., ge=1, le=10)
+    company_relevance: DimensionRubricLine
+    business_impact: DimensionRubricLine
+    iconicness: DimensionRubricLine
+    genai_fit: DimensionRubricLine
+    feasibility: DimensionRubricLine
+    evidence_strength: DimensionRubricLine
     penalties: list[str]
     weighted_total: float = Field(..., ge=1, le=10)
 
@@ -272,12 +291,12 @@ class UseCaseGrade(BaseModel):
     strengths: list[str] = Field(..., min_length=1)
     weaknesses: list[str] = Field(..., min_length=1)
     rationale: str
-    company_relevance: int = Field(..., ge=1, le=10)
-    business_impact: int = Field(..., ge=1, le=10)
-    iconicness: int = Field(..., ge=1, le=10)
-    genai_fit: int = Field(..., ge=1, le=10)
-    feasibility: int = Field(..., ge=1, le=10)
-    evidence_strength: int = Field(..., ge=1, le=10)
+    company_relevance: DimensionRubricLine
+    business_impact: DimensionRubricLine
+    iconicness: DimensionRubricLine
+    genai_fit: DimensionRubricLine
+    feasibility: DimensionRubricLine
+    evidence_strength: DimensionRubricLine
     penalties: list[str]
 
 

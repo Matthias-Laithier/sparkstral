@@ -17,6 +17,7 @@ from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
+    DimensionRubricLine,
     EvidenceItem,
     FinalSelectionOutput,
     GenAIMechanism,
@@ -273,6 +274,13 @@ def _genai_use_case_generation(count: int = 8) -> GenAIUseCaseGeneration:
     )
 
 
+def _line(score: int, label: str) -> DimensionRubricLine:
+    return DimensionRubricLine(
+        rationale=f"Rationale for {label}.",
+        score=score,
+    )
+
+
 def _score(
     use_case_id: str,
     *,
@@ -299,12 +307,12 @@ def _score(
         strengths=["Strength"],
         weaknesses=["Weakness"],
         rationale="Rationale",
-        company_relevance=company_relevance,
-        business_impact=business_impact,
-        iconicness=iconicness,
-        genai_fit=genai_fit,
-        feasibility=feasibility,
-        evidence_strength=evidence_strength,
+        company_relevance=_line(company_relevance, "company_relevance"),
+        business_impact=_line(business_impact, "business_impact"),
+        iconicness=_line(iconicness, "iconicness"),
+        genai_fit=_line(genai_fit, "genai_fit"),
+        feasibility=_line(feasibility, "feasibility"),
+        evidence_strength=_line(evidence_strength, "evidence_strength"),
         penalties=[] if penalties is None else penalties,
         weighted_total=(
             computed_weighted_total if weighted_total is None else weighted_total
@@ -1082,7 +1090,9 @@ def test_genai_mechanism_restricts_mechanism_values() -> None:
 )
 def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
     data = _score("uc_1").model_dump()
-    data[field_name] = 11
+    line = dict(data[field_name])
+    line["score"] = 11
+    data[field_name] = line
 
     with pytest.raises(ValidationError):
         UseCaseScore.model_validate(data)

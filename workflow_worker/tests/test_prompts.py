@@ -16,6 +16,7 @@ from src.prompts import (
 from src.schemas import (
     CompanyProfileOutput,
     CompanyResolutionOutput,
+    DimensionRubricLine,
     EvidenceItem,
     FinalSelectionOutput,
     GenAIMechanism,
@@ -150,18 +151,22 @@ def _company_profile() -> CompanyProfileOutput:
     )
 
 
+def _rubric_line(score: int, label: str) -> DimensionRubricLine:
+    return DimensionRubricLine(rationale=f"Rationale for {label}.", score=score)
+
+
 def _score(use_case_id: str) -> UseCaseScore:
     return UseCaseScore(
         use_case_id=use_case_id,
         strengths=["Strength"],
         weaknesses=["Weakness"],
         rationale="Rationale",
-        company_relevance=3,
-        business_impact=3,
-        iconicness=3,
-        genai_fit=3,
-        feasibility=3,
-        evidence_strength=3,
+        company_relevance=_rubric_line(3, "company_relevance"),
+        business_impact=_rubric_line(3, "business_impact"),
+        iconicness=_rubric_line(3, "iconicness"),
+        genai_fit=_rubric_line(3, "genai_fit"),
+        feasibility=_rubric_line(3, "feasibility"),
+        evidence_strength=_rubric_line(3, "evidence_strength"),
         penalties=[],
         weighted_total=3.0,
     )
@@ -293,6 +298,8 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "use_case_id" in prompt
     assert "Do not output weighted_total" in prompt
     assert "Do not skip" in prompt
+    assert "DimensionRubricLine" in prompt
+    assert "autoregressive" in prompt
 
 
 def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
@@ -324,11 +331,11 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "# GenAI Opportunity Report — {Company}" in prompt
     assert "## Recommendation in Brief" not in prompt
     assert "## What We Know About the Company" in prompt
-    assert "## Strategic signals from research" in prompt
+    assert "## Strategic signals from research" not in prompt
     assert "## Ranked Opportunities" in prompt
     assert (
-        "| Rank | Opportunity | Primary users | Weighted score | Decision rationale |"
-        in prompt
+        "| Rank | Opportunity | Primary users | Weighted score (/10) | Decision "
+        "rationale |" in prompt
     )
     assert "## 1. {Use Case Title}" in prompt
     assert "## 2. {Use Case Title}" in prompt
@@ -337,13 +344,14 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "## Caveats and Source Limits" in prompt
     assert "## Sources" in prompt
     assert "score.weighted_total" in prompt
-    assert "strategic signals" in prompt
+    assert "/10" in prompt
+    assert "Scoring (1–10)" in prompt
     assert "How The Workflow Would Work" in prompt
     assert "Retrieved or generated context" in prompt
     assert "Human approval or decision point" in prompt
     assert "Iconicness" in prompt
     assert "why_iconic" in prompt
-    assert "score.iconicness" in prompt
+    assert "company_relevance.rationale" in prompt
     assert "Why Genai ?" in prompt
     assert "Why GenAI Is Needed" not in prompt
     assert "genai_mechanism" in prompt
@@ -373,12 +381,16 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     assert "## Pain points" not in brief
     assert "## Selected use cases" in brief
     assert "### Rank 1: Use case 1" in brief
-    assert "Weighted score: 3.0" in brief
+    assert "Weighted score: 3.0/10" in brief
     assert (
         "Pain prominence: Prominence 8 of 10 "
         "[source](https://example.com/source-1)" in brief
     )
-    assert "Iconicness: Iconic fit (score 3/10; rationale: Rationale)" in brief
+    assert "Iconicness (narrative for the report's Iconicness section): Iconic fit" in (
+        brief
+    )
+    assert "Grader rubric (rationale then score" in brief
+    assert "Rationale for iconicness. — 3/10" in brief
     assert "Pilot KPIs to validate" in brief
     assert (
         "Manual review cycle time matters because Shows whether the workflow "

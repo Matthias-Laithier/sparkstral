@@ -7,6 +7,7 @@ from src.schemas import (
     CompanyResolutionOutput,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
+    UseCaseScore,
 )
 
 MARKDOWN_REPORT_TEMPLATE = (
@@ -251,8 +252,14 @@ def use_case_grader_system_prompt() -> str:
         "Use penalties for vague users/workflows, ideas replaceable with classical "
         "alternatives (align with `genai_mechanism.why_classical_*` if present), "
         "and weak evidence. Weaknesses must name what a **skeptical CTO** would say.\n"
-        "Include per grade: strengths, weaknesses, rationale, penalties, and "
-        "use_case_id. Do not output weighted_total."
+        "For each of the six rubric fields (`company_relevance`, `business_impact`, "
+        "`iconicness`, `genai_fit`, `feasibility`, `evidence_strength`) output a "
+        "`DimensionRubricLine`: **rationale** first (one short sentence, substantive), "
+        "then **score** (1–10). Rationale before score in JSON matches autoregressive "
+        "reasoning—decide in words, then put a number. Each line's rationale must be "
+        "specific to that dimension, not a copy of the top-level `rationale`."
+        "Include per grade: strengths, weaknesses, top-level rationale, the six lines, "
+        "penalties, and `use_case_id`. Do not output weighted_total."
     )
 
 
@@ -280,13 +287,25 @@ def use_case_grader_user_prompt(
         "software or ML could do the job; (2) iconicness stays low without clear "
         "company anchors; (3) 'efficiency/KPI' alone is not enough for high scores."
         " Each item must use use_case_id equal to the matching use_case.id. Do not "
-        "repeat, copy, or rewrite any original use_case object. Grade strictly on "
-        "the 1-10 scale: company_relevance, business_impact, iconicness, genai_fit, "
-        "feasibility, evidence_strength. company_relevance = grounding; iconicness = "
-        "memorable, company-specific differentiator, not a consulting cliché. "
-        "Include strengths, weaknesses, rationale, and penalties; weaknesses must be "
-        "adversarial."
+        "repeat, copy, or rewrite any original use_case object. For each rubric line "
+        "set **rationale** (one short sentence) then **score** (1-10). Scales: "
+        "company_relevance = grounding; iconicness = memorable, company-specific "
+        "differentiator, not a consulting cliché. "
+        "Include strengths, weaknesses, top-level rationale, penalties, and the six "
+        "rubric lines; weaknesses must be adversarial."
     )
+
+
+def _grader_rubric_brief_lines(score: UseCaseScore) -> list[str]:
+    rows = [
+        (score.company_relevance, "Company relevance"),
+        (score.business_impact, "Business impact"),
+        (score.iconicness, "Iconicness"),
+        (score.genai_fit, "GenAI fit"),
+        (score.feasibility, "Feasibility"),
+        (score.evidence_strength, "Evidence strength"),
+    ]
+    return [f"  - {label}: {line.rationale} — {line.score}/10" for line, label in rows]
 
 
 def markdown_report_evidence_brief(
@@ -310,14 +329,13 @@ def markdown_report_evidence_brief(
         lines = [
             f"### Rank {rank}: {use_case.title}",
             f"- Target users: {', '.join(use_case.target_users)}",
-            f"- Weighted score: {item.score.weighted_total}",
+            f"- Weighted score: {item.score.weighted_total}/10",
             f"- Business problem: {use_case.business_problem}",
             f"- Company fit: {use_case.why_this_company}",
-            (
-                f"- Iconicness: {use_case.why_iconic} "
-                f"(score {item.score.iconicness}/10; rationale: "
-                f"{item.score.rationale})"
-            ),
+            f"- Iconicness (narrative for the report's Iconicness section): "
+            f"{use_case.why_iconic}",
+            "- Grader rubric (rationale then score; use in the Scoring subsection):",
+            *_grader_rubric_brief_lines(item.score),
             f"- Required data: {use_case.required_data}",
             "- Source-backed metrics:",
         ]
@@ -379,10 +397,18 @@ def markdown_reporter_system_prompt() -> str:
         "```markdown\n"
         f"{MARKDOWN_REPORT_TEMPLATE}\n"
         "```\n\n"
-        "Use the selected top 3 in order; copy score.weighted_total into the "
-        "ranked table. Summarize strategic signals and pressures using only the "
-        "company profile and sourced research (no separate pain-point JSON). "
-        "Discuss Iconicness from use_case.why_iconic and score.iconicness. "
+        "Use the selected top 3 in order. In the ranked table, format the composite "
+        "as score.weighted_total with a **/10** suffix (e.g. 7.20/10). Do not add a "
+        "separate 'Strategic signals' section: company context and pressures belong "
+        "only in `What We Know About the Company`, from the company profile and "
+        "sourced research (with links), not a second section.\n"
+        "In each of the three use-case detail sections, include `### Scoring (1–10)`: "
+        "a table with columns **Dimension**, **Rationale**, **Score (/10)**. Fill "
+        "rationale and score from each `DimensionRubricLine` in the JSON (e.g. "
+        "company_relevance.rationale, company_relevance.score). Do not invent those "
+        "lines. For `### Iconicness`, use use_case.why_iconic; do not substitute the "
+        "global score.rationale. Do not list `score.strengths` in the report unless "
+        "it fits naturally in prose. "
         "In `Why Genai ?`, use genai_mechanism.\n"
         "Use only supplied facts and URLs. Cite factual claims and numbers with "
         "adjacent markdown links; ranks and copied scores are exempt. Do not "

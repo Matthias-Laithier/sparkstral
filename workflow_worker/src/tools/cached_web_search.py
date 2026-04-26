@@ -62,7 +62,7 @@ async def _tavily_search(query: str) -> str:
         client = TavilyClient(api_key)
         return cast(
             dict[str, Any],
-            client.search(query=query, search_depth="advanced"),
+            client.search(query=query, search_depth="basic"),
         )
 
     return json.dumps(await asyncio.to_thread(search))

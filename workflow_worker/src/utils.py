@@ -88,14 +88,15 @@ def append_json_output(outputs: list[PipelineOutput], data: dict[str, Any]) -> N
 def _selection_key(
     item: GradedUseCase,
 ) -> tuple[float, int, int, int, int, int, int, str]:
+    s = item.score
     return (
-        -item.score.weighted_total,
-        -item.score.genai_fit,
-        -item.score.iconicness,
-        -item.score.business_impact,
-        -item.score.company_relevance,
-        -item.score.feasibility,
-        -item.score.evidence_strength,
+        -s.weighted_total,
+        -s.genai_fit.score,
+        -s.iconicness.score,
+        -s.business_impact.score,
+        -s.company_relevance.score,
+        -s.feasibility.score,
+        -s.evidence_strength.score,
         item.use_case.id,
     )
 
