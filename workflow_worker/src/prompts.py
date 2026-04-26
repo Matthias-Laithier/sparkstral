@@ -6,10 +6,7 @@ from src.schemas import (
     FinalReport,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
-    GenAIUseCaseCandidatePool,
-    GradedUseCase,
     PainPointProfilerOutput,
-    RedTeamOutput,
 )
 
 
@@ -192,50 +189,10 @@ def genai_use_cases_user_prompt(
     )
 
 
-def deduper_system_prompt() -> str:
-    return (
-        "You are a GenAI use-case deduplication editor. Given an 8-12 item "
-        "candidate pool generated from several ideation lenses, return a merged "
-        "pool of 6-10 candidates.\n"
-        "Remove near duplicates and merge overlapping candidates when they solve "
-        "the same business problem for the same users or workflow. When merging, "
-        "keep the strongest company-specific details from each candidate.\n"
-        "Prefer the more company-specific candidate over a generic one. Preserve "
-        "diversity across ideation_lens values where possible, while keeping the "
-        "best candidates.\n"
-        "Preserve evidence: every evidence_sources URL from merged candidates "
-        "that still supports the retained use case must be copied into the "
-        "retained candidate's evidence_sources. Do not invent new URLs.\n"
-        "Explain removed or merged candidates in removed_or_merged. The rationale "
-        "should summarize the deduplication logic. Do not grade, score, rank, or "
-        "write a final report."
-    )
-
-
-def deduper_user_prompt(candidates: GenAIUseCaseCandidatePool) -> str:
-    candidates_json = json.dumps(
-        candidates.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    return (
-        "Candidate use-case pool (JSON):\n"
-        f"{candidates_json}\n\n"
-        "Return a deduplicated pool with 6-10 use cases. Remove near duplicates; "
-        "merge overlapping candidates by preserving the strongest details, "
-        "including title specificity, target users, business problem, company fit, "
-        "solution details, required data, expected impact, feasibility notes, "
-        "risks, linked pain points, evidence source URLs, and ideation lens "
-        "diversity. Keep the more company-specific candidate when deciding what "
-        "survives. In removed_or_merged, list which candidate ids or titles were "
-        "removed or merged and why."
-    )
-
-
 def use_case_grader_system_prompt() -> str:
     return (
         "You are a strict GenAI use-case grading analyst. Given a company profile, "
-        "pain-point analysis, and genai use-case idea pool, grade every provided "
+        "pain-point analysis, and genai use-case candidate pool, grade every provided "
         "use case with an explicit rubric. Do not skip, merge, rewrite, refine, "
         "red-team, or anything else.\n"
         "Score each rubric dimension from 1 (weak) to 5 (excellent):\n"
@@ -292,7 +249,7 @@ def use_case_grader_user_prompt(
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
-        "Deduplicated use cases to grade (JSON):\n"
+        "Generated use cases to grade (JSON):\n"
         f"{use_cases_json}\n\n"
         "Return one graded_use_cases item for every use case above. Keep each "
         "original use_case object unchanged. For score.use_case_id, use the "
@@ -300,130 +257,6 @@ def use_case_grader_user_prompt(
         "company_relevance, business_impact, iconicness, genai_fit, feasibility, "
         "and evidence_strength. Include total, rationale, strengths, and "
         "weaknesses for each use case. Do not choose final recommendations."
-    )
-
-
-def red_team_system_prompt() -> str:
-    return (
-        "You are a strict red-team critic for GenAI use-case strategy. Given the "
-        "company context and the initial top 5 graded use cases, identify "
-        "weaknesses and required fixes before any refinement happens.\n"
-        "Do not rewrite, rename, merge, rank, refine, or improve the use cases. "
-        "Only critique them.\n"
-        "For each selected use case, return exactly one review with at least one "
-        "structured criticism. Every review's use_case_id must match one selected "
-        "use_case.id.\n"
-        "Criticize generic ideas harshly. Flag unsupported claims, weak or "
-        "unclear evidence, weak feasibility, vague implementation assumptions, "
-        "unclear business impact, unclear target users, and ideas that do not "
-        "really need GenAI beyond ordinary software, workflow automation, search, "
-        "or analytics.\n"
-        "Each criticism must include a concise title, concrete comment, severity, "
-        "and required_fix. The required_fix should state what must be addressed, "
-        "not provide rewritten copy.\n"
-        "Use verdict='keep' only when the use case is strong with minor fixes; "
-        "verdict='revise' when meaningful weaknesses must be fixed; and "
-        "verdict='discard' when the idea is generic, unsupported, infeasible, or "
-        "not a real GenAI use case.\n"
-    )
-
-
-def red_team_user_prompt(
-    company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
-    selected_use_cases: list[GradedUseCase],
-) -> str:
-    company_json = json.dumps(
-        company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    selected_json = json.dumps(
-        [use_case.model_dump(mode="json") for use_case in selected_use_cases],
-        indent=2,
-        ensure_ascii=False,
-    )
-    return (
-        "Company profile (JSON):\n"
-        f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
-        f"{pain_json}\n\n"
-        "Initial top 5 selected use cases to red-team (JSON):\n"
-        f"{selected_json}\n\n"
-        "Return exactly 5 reviews: one per selected use case, using the matching "
-        "use_case.id as use_case_id. Each review must include at least one "
-        "criticism and a verdict. Critique only: do not rewrite use cases and do "
-        "not create replacement ideas."
-    )
-
-
-def refiner_system_prompt() -> str:
-    return (
-        "You are a GenAI use-case refinement editor. Given company context, the "
-        "initial top 5 graded use cases, and red-team criticism, return exactly "
-        "5 refined use cases: one refinement per selected original.\n"
-        "Use the red-team feedback directly. Fix high-severity issues wherever "
-        "the supplied evidence and context support a safe fix. Make the company "
-        "fit more specific, the solution more feasible and concrete, and the "
-        "expected impact more operationally specific.\n"
-        "Preserve evidence: every source URL from the original selected use case "
-        "must remain in the refined use case's evidence_sources. You may copy "
-        "additional source URLs only from the supplied company profile, pain "
-        "points, or selected use cases. Do not invent source URLs or unsupported "
-        "facts.\n"
-        "For each item, set original_use_case_id to the original use_case.id, "
-        "return a complete refined_use_case object, list concrete changes_made, "
-        "and keep unresolved_concerns explicit when a criticism cannot be safely "
-        "fixed from the provided evidence."
-    )
-
-
-def refiner_user_prompt(
-    company_profile: CompanyProfileOutput,
-    pain_points: PainPointProfilerOutput,
-    selected_use_cases: list[GradedUseCase],
-    red_team: RedTeamOutput,
-) -> str:
-    company_json = json.dumps(
-        company_profile.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    pain_json = json.dumps(
-        pain_points.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    selected_json = json.dumps(
-        [use_case.model_dump(mode="json") for use_case in selected_use_cases],
-        indent=2,
-        ensure_ascii=False,
-    )
-    red_team_json = json.dumps(
-        red_team.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    return (
-        "Company profile (JSON):\n"
-        f"{company_json}\n\n"
-        "Pain point analysis (JSON):\n"
-        f"{pain_json}\n\n"
-        "Initial top 5 selected use cases to refine (JSON):\n"
-        f"{selected_json}\n\n"
-        "Red-team review to address (JSON):\n"
-        f"{red_team_json}\n\n"
-        "Return exactly 5 refined_use_cases: one per selected use case. Each "
-        "item must reference the matching original use_case.id in "
-        "original_use_case_id, include a complete refined_use_case object, list "
-        "changes_made, and include unresolved_concerns. Preserve all original "
-        "evidence_sources URLs in the refined use case, fix supported criticisms, "
-        "and leave unsafe or unsupported fixes as unresolved concerns."
     )
 
 
@@ -437,8 +270,8 @@ def final_reporter_system_prompt() -> str:
         "as the final selection. Use concise, client-ready language for executives "
         "and business owners.\n"
         "Explain the methodology using only the supplied artifacts: company "
-        "research, pain-point profiling, use-case generation, scoring, "
-        "refinement, and final top-3 selection. "
+        "research, pain-point profiling, use-case generation, scoring, and final "
+        "top-3 selection. "
         "For every use case, include the score breakdown, why it is specific to "
         "this company, why it is high-impact, why it is iconic, implementation "
         "feasibility notes, risks, caveats, and source URLs.\n"
@@ -484,8 +317,8 @@ def final_reporter_user_prompt(
         "from the selected use case, and set source_urls from its evidence_sources. "
         "Also provide company_name, executive_summary, company_context, "
         "methodology, caveats, and report-level source_urls. The methodology must "
-        "explain the scoring and refinement loop. Do not add markdown formatting "
-        "or any Mistral/vendor-fit discussion."
+        "explain the single scoring pass and final selection. Do not add markdown "
+        "formatting or any Mistral/vendor-fit discussion."
     )
 
 

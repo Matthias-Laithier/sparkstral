@@ -1,17 +1,11 @@
 from datetime import date
 
 from src.prompts import (
-    deduper_system_prompt,
-    deduper_user_prompt,
     final_reporter_system_prompt,
     final_reporter_user_prompt,
     genai_use_cases_system_prompt,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
-    red_team_system_prompt,
-    red_team_user_prompt,
-    refiner_system_prompt,
-    refiner_user_prompt,
     use_case_grader_system_prompt,
     web_search_system_prompt,
 )
@@ -22,13 +16,9 @@ from src.schemas import (
     FinalReportUseCase,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
-    GenAIUseCaseCandidatePool,
     GradedUseCase,
     PainPointItem,
     PainPointProfilerOutput,
-    RedTeamOutput,
-    RedTeamReview,
-    UseCaseCriticism,
     UseCaseScore,
 )
 
@@ -110,26 +100,6 @@ def _graded_use_cases() -> list[GradedUseCase]:
     ]
 
 
-def _red_team_output() -> RedTeamOutput:
-    return RedTeamOutput(
-        reviews=[
-            RedTeamReview(
-                use_case_id=f"uc-{index}",
-                criticisms=[
-                    UseCaseCriticism(
-                        title=f"Weakness {index}",
-                        comment="The expected impact is too vague.",
-                        severity="high" if index == 1 else "medium",
-                        required_fix="Make the impact concrete without new facts.",
-                    )
-                ],
-                verdict="revise",
-            )
-            for index in range(1, 6)
-        ]
-    )
-
-
 def _final_selection() -> FinalSelectionOutput:
     return FinalSelectionOutput(selected=_graded_use_cases()[:3])
 
@@ -159,7 +129,7 @@ def _final_report() -> FinalReport:
         company_name="Acme Corporation",
         executive_summary="Top three use cases are ready for client discussion.",
         company_context="Acme is a manufacturing company focused on widgets.",
-        methodology="Candidates were scored, red-teamed, refined, and selected.",
+        methodology="Candidates were generated, scored once, and selected.",
         top_3_use_cases=[
             _final_report_use_case(item, rank)
             for rank, item in enumerate(_final_selection().selected, start=1)
@@ -185,31 +155,6 @@ def test_genai_prompt_requires_candidate_pool() -> None:
     assert "moonshot strategist" in prompt
 
 
-def test_deduper_prompt_requires_merging_and_evidence_preservation() -> None:
-    prompt = deduper_system_prompt()
-
-    assert "6-10" in prompt
-    assert "near duplicates" in prompt
-    assert "merge" in prompt
-    assert "evidence_sources" in prompt
-    assert "ideation_lens" in prompt
-    assert "company-specific" in prompt
-    assert "Do not grade" in prompt
-
-
-def test_deduper_user_prompt_includes_candidate_json() -> None:
-    candidates = GenAIUseCaseCandidatePool(
-        use_cases=[_candidate(index) for index in range(1, 9)]
-    )
-
-    prompt = deduper_user_prompt(candidates)
-
-    assert "Candidate use-case pool (JSON)" in prompt
-    assert "https://example.com/source-1" in prompt
-    assert "removed_or_merged" in prompt
-    assert "6-10" in prompt
-
-
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     prompt = use_case_grader_system_prompt()
 
@@ -223,63 +168,6 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "Do not skip" in prompt
 
 
-def test_red_team_prompt_requires_critique_only() -> None:
-    prompt = red_team_system_prompt()
-
-    assert "red-team critic" in prompt
-    assert "Do not rewrite" in prompt
-    assert "generic ideas" in prompt
-    assert "unsupported claims" in prompt
-    assert "weak feasibility" in prompt
-    assert "unclear business impact" in prompt
-    assert "do not really need GenAI" in prompt
-
-
-def test_red_team_user_prompt_includes_selected_top_five_json() -> None:
-    prompt = red_team_user_prompt(
-        _company_profile(),
-        _pain_points(),
-        _graded_use_cases(),
-    )
-
-    assert "Initial top 5 selected use cases to red-team (JSON)" in prompt
-    assert '"id": "uc-1"' in prompt
-    assert '"id": "uc-5"' in prompt
-    assert "Return exactly 5 reviews" in prompt
-    assert "one per selected use case" in prompt
-    assert "do not rewrite use cases" in prompt
-
-
-def test_refiner_prompt_requires_red_team_driven_refinement() -> None:
-    prompt = refiner_system_prompt()
-
-    assert "red-team criticism" in prompt
-    assert "Fix high-severity issues" in prompt
-    assert "company fit more specific" in prompt
-    assert "expected impact more operationally specific" in prompt
-    assert "Preserve evidence" in prompt
-    assert "unresolved_concerns" in prompt
-
-
-def test_refiner_user_prompt_includes_selected_use_cases_and_red_team_json() -> None:
-    prompt = refiner_user_prompt(
-        _company_profile(),
-        _pain_points(),
-        _graded_use_cases(),
-        _red_team_output(),
-    )
-
-    assert "Initial top 5 selected use cases to refine (JSON)" in prompt
-    assert "Red-team review to address (JSON)" in prompt
-    assert '"id": "uc-1"' in prompt
-    assert '"use_case_id": "uc-5"' in prompt
-    assert "Return exactly 5 refined_use_cases" in prompt
-    assert "original_use_case_id" in prompt
-    assert "changes_made" in prompt
-    assert "unresolved_concerns" in prompt
-    assert "Preserve all original evidence_sources URLs" in prompt
-
-
 def test_final_reporter_prompt_requires_client_ready_report() -> None:
     prompt = final_reporter_system_prompt()
 
@@ -288,7 +176,7 @@ def test_final_reporter_prompt_requires_client_ready_report() -> None:
     assert "score breakdown" in prompt
     assert "scoring" in prompt
     assert "supplied artifacts" in prompt
-    assert "refinement" in prompt
+    assert "use-case generation" in prompt
     assert "final top-3 selection" in prompt
     assert "high-impact" in prompt
     assert "iconic" in prompt
@@ -310,7 +198,7 @@ def test_final_reporter_user_prompt_includes_final_selection_json() -> None:
     assert "rank 1, rank 2, and rank 3" in prompt
     assert "source_urls" in prompt
     assert "methodology" in prompt
-    assert "scoring and refinement loop" in prompt
+    assert "single scoring pass" in prompt
 
 
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:

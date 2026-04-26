@@ -4,14 +4,11 @@ import mistralai.workflows as workflows
 
 from src.agents.company_profiler import CompanyProfilerAgent
 from src.agents.company_resolver import CompanyResolverAgent
-from src.agents.deduper import UseCaseDeduperAgent
 from src.agents.final_reporter import FinalReporterAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import UseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.pain_point_profiler import PainPointProfilerAgent
-from src.agents.red_team import RedTeamAgent
-from src.agents.refiner import UseCaseRefinerAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
     company_research_prompt,
@@ -25,8 +22,6 @@ from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
     CompanyResolutionStructuringInput,
-    DeduplicatedUseCasePool,
-    DeduplicateUseCasesInput,
     FinalReport,
     FinalReportInput,
     FinalSelectionOutput,
@@ -34,16 +29,11 @@ from src.schemas import (
     GenAIUseCaseCandidatePool,
     GradedUseCasePool,
     GradeUseCasesInput,
-    InitialSelectionOutput,
     MarkdownReport,
     MarkdownReportInput,
     PainPointProfilerOutput,
     PainPointResearchInput,
     PainPointStructuringInput,
-    RedTeamInput,
-    RedTeamOutput,
-    RefinedUseCasePool,
-    RefineUseCasesInput,
     ResearchResult,
 )
 from src.utils import get_mistral_client, select_top_n
@@ -141,18 +131,6 @@ async def generate_genai_use_cases(
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def deduplicate_use_cases(
-    params: DeduplicateUseCasesInput,
-) -> DeduplicatedUseCasePool:
-    client = get_mistral_client()
-    agent = UseCaseDeduperAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("use-case deduplication failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def grade_use_cases(
     params: GradeUseCasesInput,
 ) -> GradedUseCasePool:
@@ -162,18 +140,6 @@ async def grade_use_cases(
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("use-case grading failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def select_initial_top_5(
-    params: GradedUseCasePool,
-) -> InitialSelectionOutput:
-    try:
-        return InitialSelectionOutput(
-            selected=select_top_n(params.graded_use_cases, 5),
-        )
-    except Exception as exc:
-        raise RuntimeError("initial top-5 selection failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
@@ -207,23 +173,3 @@ async def write_markdown_report(params: MarkdownReportInput) -> MarkdownReport:
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("markdown report writing failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
-    client = get_mistral_client()
-    agent = RedTeamAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("red-team review failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def refine_use_cases(params: RefineUseCasesInput) -> RefinedUseCasePool:
-    client = get_mistral_client()
-    agent = UseCaseRefinerAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("use-case refinement failed") from exc

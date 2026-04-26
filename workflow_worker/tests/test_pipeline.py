@@ -4,17 +4,14 @@ import pytest
 from pydantic import ValidationError
 
 from src import activities, pipeline
-from src.agents import final_reporter, grader, markdown_reporter, red_team, refiner
+from src.agents import final_reporter, grader, markdown_reporter
 from src.agents.final_reporter import FinalReporterAgent
 from src.agents.grader import UseCaseGraderAgent, compute_total_score
 from src.agents.markdown_reporter import MarkdownReporterAgent
-from src.agents.red_team import RedTeamAgent
-from src.agents.refiner import UseCaseRefinerAgent
 from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
-    DeduplicatedUseCasePool,
     EvidenceItem,
     FinalReport,
     FinalReportInput,
@@ -25,20 +22,12 @@ from src.schemas import (
     GradedUseCase,
     GradedUseCasePool,
     GradeUseCasesInput,
-    InitialSelectionOutput,
     MarkdownReport,
     MarkdownReportInput,
     PainPointItem,
     PainPointProfilerOutput,
-    RedTeamInput,
-    RedTeamOutput,
-    RedTeamReview,
-    RefinedUseCase,
-    RefinedUseCasePool,
-    RefineUseCasesInput,
     ResearchResult,
     SparkstralWorkflowResult,
-    UseCaseCriticism,
     UseCaseScore,
 )
 from src.utils import select_top_n
@@ -122,16 +111,6 @@ def _candidate_pool() -> GenAIUseCaseCandidatePool:
     )
 
 
-def _deduplicated_pool() -> DeduplicatedUseCasePool:
-    return DeduplicatedUseCasePool(
-        use_cases=[_candidate(index) for index in range(1, 7)],
-        removed_or_merged=["uc-7 merged into uc-2", "uc-8 removed as duplicate"],
-        rationale=(
-            "Merged overlapping candidates and kept the most company-specific set."
-        ),
-    )
-
-
 def _score(
     use_case_id: str,
     *,
@@ -182,56 +161,6 @@ def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
     )
 
 
-def _criticism(index: int = 1) -> UseCaseCriticism:
-    return UseCaseCriticism(
-        title=f"Weakness {index}",
-        comment="The claim is not sufficiently supported by the provided evidence.",
-        severity="medium",
-        required_fix="Add evidence that directly supports the claimed impact.",
-    )
-
-
-def _red_team_review(use_case_id: str, index: int = 1) -> RedTeamReview:
-    return RedTeamReview(
-        use_case_id=use_case_id,
-        criticisms=[_criticism(index)],
-        verdict="revise",
-    )
-
-
-def _red_team_output(selected_use_cases: list[GradedUseCase]) -> RedTeamOutput:
-    return RedTeamOutput(
-        reviews=[
-            _red_team_review(item.use_case.id, index)
-            for index, item in enumerate(selected_use_cases, start=1)
-        ]
-    )
-
-
-def _refined_use_case(item: GradedUseCase, index: int = 1) -> RefinedUseCase:
-    return RefinedUseCase(
-        original_use_case_id=item.use_case.id,
-        refined_use_case=item.use_case.model_copy(
-            update={
-                "title": f"Refined {item.use_case.title}",
-                "why_this_company": "Sharper company-specific fit",
-                "expected_impact": "More concrete operational impact",
-            }
-        ),
-        changes_made=[f"Addressed red-team weakness {index}"],
-        unresolved_concerns=[f"Concern {index} still needs validation"],
-    )
-
-
-def _refined_pool(selected_use_cases: list[GradedUseCase]) -> RefinedUseCasePool:
-    return RefinedUseCasePool(
-        refined_use_cases=[
-            _refined_use_case(item, index)
-            for index, item in enumerate(selected_use_cases, start=1)
-        ]
-    )
-
-
 def _final_report_use_case(item: GradedUseCase, rank: int) -> FinalReportUseCase:
     use_case = item.use_case
     return FinalReportUseCase(
@@ -258,8 +187,8 @@ def _final_report(final_selection: FinalSelectionOutput) -> FinalReport:
         executive_summary="Top three use cases are ready for client discussion.",
         company_context="Acme is a manufacturing company focused on widgets.",
         methodology=(
-            "Candidates were scored, narrowed to five, red-teamed, refined, "
-            "re-scored, and selected as the final top three."
+            "Candidates were generated, scored once, and selected as the final "
+            "top three."
         ),
         top_3_use_cases=[
             _final_report_use_case(item, rank)
@@ -286,80 +215,15 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     company_research_query = ""
     company_profile_query = ""
     generation_pain_points: PainPointProfilerOutput | None = None
-    deduplication_candidates: GenAIUseCaseCandidatePool | None = None
     grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
-    selection_candidates: GradedUseCasePool | None = None
     final_selection_candidates: GradedUseCasePool | None = None
-    red_team_params: RedTeamInput | None = None
-    refiner_params: RefineUseCasesInput | None = None
     final_report_params: FinalReportInput | None = None
     markdown_report_params: MarkdownReportInput | None = None
     generated_candidates = _candidate_pool()
-    deduplicated_candidates = _deduplicated_pool()
-    graded_candidates = _graded_pool(deduplicated_candidates.use_cases)
-    initial_selection = InitialSelectionOutput(
-        selected=graded_candidates.graded_use_cases[:5],
-    )
-    red_team_result = _red_team_output(initial_selection.selected)
-    refined_result = _refined_pool(initial_selection.selected)
-    refined_candidates = [
-        item.refined_use_case for item in refined_result.refined_use_cases
-    ]
-    final_graded_candidates = GradedUseCasePool(
-        graded_use_cases=[
-            GradedUseCase(
-                use_case=refined_candidates[0],
-                score=_score(refined_candidates[0].id),
-            ),
-            GradedUseCase(
-                use_case=refined_candidates[1],
-                score=_score(
-                    refined_candidates[1].id,
-                    company_relevance=5,
-                    business_impact=5,
-                ),
-            ),
-            GradedUseCase(
-                use_case=refined_candidates[2],
-                score=_score(
-                    refined_candidates[2].id,
-                    company_relevance=5,
-                    business_impact=5,
-                    iconicness=5,
-                    genai_fit=5,
-                    feasibility=5,
-                    evidence_strength=5,
-                ),
-            ),
-            GradedUseCase(
-                use_case=refined_candidates[3],
-                score=_score(
-                    refined_candidates[3].id,
-                    company_relevance=5,
-                    business_impact=5,
-                    iconicness=5,
-                    genai_fit=4,
-                    feasibility=4,
-                    evidence_strength=4,
-                ),
-            ),
-            GradedUseCase(
-                use_case=refined_candidates[4],
-                score=_score(
-                    refined_candidates[4].id,
-                    company_relevance=5,
-                    business_impact=5,
-                    iconicness=4,
-                    genai_fit=4,
-                    feasibility=4,
-                    evidence_strength=4,
-                ),
-            ),
-        ]
-    )
+    graded_candidates = _graded_pool(generated_candidates.use_cases)
     final_selection = FinalSelectionOutput(
-        selected=select_top_n(final_graded_candidates.graded_use_cases, 3)
+        selected=select_top_n(graded_candidates.graded_use_cases, 3)
     )
     final_report_result = _final_report(final_selection)
     markdown_report_result = _markdown_report()
@@ -400,45 +264,17 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         generation_pain_points = params.pain_points
         return generated_candidates
 
-    async def deduplicate_use_cases(params: Any) -> DeduplicatedUseCasePool:
-        nonlocal deduplication_candidates
-        calls.append("deduplicate_use_cases")
-        deduplication_candidates = params.candidates
-        return deduplicated_candidates
-
     async def grade_use_cases(params: Any) -> GradedUseCasePool:
         calls.append("grade_use_cases")
         grading_use_cases.append(params.use_cases)
         grading_company_profiles.append(params.company_profile)
-        if len(grading_use_cases) == 1:
-            return graded_candidates
-        return final_graded_candidates
-
-    async def select_initial_top_5(
-        params: GradedUseCasePool,
-    ) -> InitialSelectionOutput:
-        nonlocal selection_candidates
-        calls.append("select_initial_top_5")
-        selection_candidates = params
-        return initial_selection
+        return graded_candidates
 
     async def select_final_top_3(params: GradedUseCasePool) -> FinalSelectionOutput:
         nonlocal final_selection_candidates
         calls.append("select_final_top_3")
         final_selection_candidates = params
         return final_selection
-
-    async def red_team_use_cases(params: RedTeamInput) -> RedTeamOutput:
-        nonlocal red_team_params
-        calls.append("red_team_use_cases")
-        red_team_params = params
-        return red_team_result
-
-    async def refine_use_cases(params: RefineUseCasesInput) -> RefinedUseCasePool:
-        nonlocal refiner_params
-        calls.append("refine_use_cases")
-        refiner_params = params
-        return refined_result
 
     async def write_final_report(params: FinalReportInput) -> FinalReport:
         nonlocal final_report_params
@@ -465,12 +301,8 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "research_pain_points", research_pain_points)
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
-    monkeypatch.setattr(pipeline, "deduplicate_use_cases", deduplicate_use_cases)
     monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
-    monkeypatch.setattr(pipeline, "select_initial_top_5", select_initial_top_5)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
-    monkeypatch.setattr(pipeline, "red_team_use_cases", red_team_use_cases)
-    monkeypatch.setattr(pipeline, "refine_use_cases", refine_use_cases)
     monkeypatch.setattr(pipeline, "write_final_report", write_final_report)
     monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
@@ -484,11 +316,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "research_pain_points",
         "structure_pain_points",
         "generate_genai_use_cases",
-        "deduplicate_use_cases",
-        "grade_use_cases",
-        "select_initial_top_5",
-        "red_team_use_cases",
-        "refine_use_cases",
         "grade_use_cases",
         "select_final_top_3",
         "write_final_report",
@@ -505,59 +332,24 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
-        "json",
-        "json",
-        "json",
-        "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
     assert result.outputs[6].data == generated_candidates.model_dump(mode="json")
-    assert result.outputs[7].data == deduplicated_candidates.model_dump(mode="json")
-    assert result.outputs[8].data == graded_candidates.model_dump(mode="json")
-    assert result.outputs[9].data == {
-        "initial_top_5": initial_selection.model_dump(mode="json")
-    }
-    assert result.outputs[10].data == {
-        "red_team_review": red_team_result.model_dump(mode="json")
-    }
-    assert result.outputs[11].data == {
-        "refined_use_cases": refined_result.model_dump(mode="json")
-    }
-    assert result.outputs[12].data == {
-        "final_grading": final_graded_candidates.model_dump(mode="json")
-    }
-    assert result.outputs[13].data == {
+    assert result.outputs[7].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[8].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[14].data == {
+    assert result.outputs[9].data == {
         "final_report": final_report_result.model_dump(mode="json")
     }
-    assert result.outputs[15].text == markdown_report_result.markdown
+    assert result.outputs[10].text == markdown_report_result.markdown
     assert generation_pain_points == PainPointProfilerOutput(
         pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
     )
-    assert deduplication_candidates == generated_candidates
-    assert grading_use_cases == [deduplicated_candidates.use_cases, refined_candidates]
-    assert grading_company_profiles == [_company_profile(), _company_profile()]
-    assert selection_candidates == graded_candidates
-    assert final_selection_candidates == final_graded_candidates
-    assert red_team_params == RedTeamInput(
-        company_profile=_company_profile(),
-        pain_points=PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        ),
-        selected_use_cases=initial_selection.selected,
-    )
-    assert refiner_params == RefineUseCasesInput(
-        company_profile=_company_profile(),
-        pain_points=PainPointProfilerOutput(
-            pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-        ),
-        selected_use_cases=initial_selection.selected,
-        red_team=red_team_result,
-    )
+    assert grading_use_cases == [generated_candidates.use_cases]
+    assert grading_company_profiles == [_company_profile()]
+    assert final_selection_candidates == graded_candidates
     assert final_report_params == FinalReportInput(
         company_profile=_company_profile(),
         pain_points=PainPointProfilerOutput(
@@ -820,243 +612,11 @@ async def test_grade_use_cases_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
-async def test_red_team_agent_returns_structured_review(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    agent_result = _red_team_output(selected)
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RedTeamOutput:
-        return agent_result
-
-    monkeypatch.setattr(red_team, "parse_chat_model", parse_chat_model)
-
-    result = await RedTeamAgent(client=object()).run(
-        RedTeamInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=selected,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
-async def test_red_team_agent_rejects_missing_selected_review(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    agent_result = RedTeamOutput(
-        reviews=[
-            _red_team_review(item.use_case.id, index)
-            for index, item in enumerate(selected[:4], start=1)
-        ]
-        + [_red_team_review("uc-other", 5)]
-    )
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RedTeamOutput:
-        return agent_result
-
-    monkeypatch.setattr(red_team, "parse_chat_model", parse_chat_model)
-
-    with pytest.raises(
-        RuntimeError,
-        match="exactly one review per selected use case",
-    ):
-        await RedTeamAgent(client=object()).run(
-            RedTeamInput(
-                company_profile=_company_profile(),
-                pain_points=PainPointProfilerOutput(
-                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-                ),
-                selected_use_cases=selected,
-            )
-        )
-
-
-@pytest.mark.asyncio
-async def test_red_team_use_cases_activity_returns_agent_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    agent_result = _red_team_output(selected)
-
-    class FakeRedTeamAgent:
-        def __init__(self, client: object) -> None:
-            self.client = client
-
-        async def run(self, _params: RedTeamInput) -> RedTeamOutput:
-            return agent_result
-
-    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
-    monkeypatch.setattr(activities, "RedTeamAgent", FakeRedTeamAgent)
-
-    result = await activities.red_team_use_cases(
-        RedTeamInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=selected,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
-async def test_refiner_agent_returns_structured_refinements(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    red_team_result = _red_team_output(selected)
-    agent_result = _refined_pool(selected)
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
-        return agent_result
-
-    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
-
-    result = await UseCaseRefinerAgent(client=object()).run(
-        RefineUseCasesInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=selected,
-            red_team=red_team_result,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
-async def test_refiner_agent_rejects_missing_selected_refinement(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    red_team_result = _red_team_output(selected)
-    agent_result = RefinedUseCasePool(
-        refined_use_cases=[
-            _refined_use_case(item, index)
-            for index, item in enumerate(selected[:4], start=1)
-        ]
-        + [
-            RefinedUseCase(
-                original_use_case_id="uc-other",
-                refined_use_case=_candidate(6),
-                changes_made=["Changed unsupported details"],
-                unresolved_concerns=["Original candidate was not selected"],
-            )
-        ]
-    )
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
-        return agent_result
-
-    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
-
-    with pytest.raises(
-        RuntimeError,
-        match="exactly one item per selected use case",
-    ):
-        await UseCaseRefinerAgent(client=object()).run(
-            RefineUseCasesInput(
-                company_profile=_company_profile(),
-                pain_points=PainPointProfilerOutput(
-                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-                ),
-                selected_use_cases=selected,
-                red_team=red_team_result,
-            )
-        )
-
-
-@pytest.mark.asyncio
-async def test_refiner_agent_rejects_missing_original_evidence_source(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    red_team_result = _red_team_output(selected)
-    first_refined = _refined_use_case(selected[0])
-    first_refined = first_refined.model_copy(
-        update={
-            "refined_use_case": first_refined.refined_use_case.model_copy(
-                update={"evidence_sources": ["https://example.com/new-source"]}
-            )
-        }
-    )
-    agent_result = RefinedUseCasePool(
-        refined_use_cases=[first_refined]
-        + [
-            _refined_use_case(item, index)
-            for index, item in enumerate(selected[1:], start=2)
-        ]
-    )
-
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> RefinedUseCasePool:
-        return agent_result
-
-    monkeypatch.setattr(refiner, "parse_chat_model", parse_chat_model)
-
-    with pytest.raises(
-        RuntimeError,
-        match="preserve original evidence source URLs",
-    ):
-        await UseCaseRefinerAgent(client=object()).run(
-            RefineUseCasesInput(
-                company_profile=_company_profile(),
-                pain_points=PainPointProfilerOutput(
-                    pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-                ),
-                selected_use_cases=selected,
-                red_team=red_team_result,
-            )
-        )
-
-
-@pytest.mark.asyncio
-async def test_refine_use_cases_activity_returns_agent_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    red_team_result = _red_team_output(selected)
-    agent_result = _refined_pool(selected)
-
-    class FakeUseCaseRefinerAgent:
-        def __init__(self, client: object) -> None:
-            self.client = client
-
-        async def run(self, _params: RefineUseCasesInput) -> RefinedUseCasePool:
-            return agent_result
-
-    monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
-    monkeypatch.setattr(activities, "UseCaseRefinerAgent", FakeUseCaseRefinerAgent)
-
-    result = await activities.refine_use_cases(
-        RefineUseCasesInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=selected,
-            red_team=red_team_result,
-        )
-    )
-
-    assert result == agent_result
-
-
-@pytest.mark.asyncio
 async def test_final_reporter_agent_returns_structured_report(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
-        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
     agent_result = _final_report(selected)
 
@@ -1083,7 +643,7 @@ async def test_final_reporter_agent_rejects_wrong_rank_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
-        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
     agent_result = _final_report(selected)
     agent_result = agent_result.model_copy(
@@ -1118,7 +678,7 @@ async def test_write_final_report_activity_returns_agent_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
-        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
     agent_result = _final_report(selected)
 
@@ -1150,7 +710,7 @@ async def test_markdown_reporter_agent_returns_markdown_report(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
-        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
     final_report = _final_report(selected)
     agent_result = _markdown_report()
@@ -1181,7 +741,7 @@ async def test_write_markdown_report_activity_returns_agent_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     selected = FinalSelectionOutput(
-        selected=_graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:3]
+        selected=_graded_pool(_candidate_pool().use_cases).graded_use_cases[:3]
     )
     final_report = _final_report(selected)
     agent_result = _markdown_report()
@@ -1201,37 +761,6 @@ async def test_write_markdown_report_activity_returns_agent_result(
     )
 
     assert result == agent_result
-
-
-@pytest.mark.asyncio
-async def test_select_initial_top_5_activity_returns_selection() -> None:
-    pool = GradedUseCasePool(
-        graded_use_cases=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(
-                    f"uc-{index}",
-                    company_relevance=index if index <= 5 else 1,
-                    business_impact=3,
-                    iconicness=3,
-                    genai_fit=3,
-                    feasibility=3,
-                    evidence_strength=3,
-                ),
-            )
-            for index in range(1, 7)
-        ]
-    )
-
-    result = await activities.select_initial_top_5(pool)
-
-    assert [item.use_case.id for item in result.selected] == [
-        "uc-5",
-        "uc-4",
-        "uc-3",
-        "uc-2",
-        "uc-1",
-    ]
 
 
 @pytest.mark.asyncio
@@ -1323,26 +852,6 @@ def test_genai_use_case_candidate_pool_requires_eight_to_twelve_items(
         )
 
 
-@pytest.mark.parametrize("count", [5, 11])
-def test_deduplicated_use_case_pool_requires_six_to_ten_items(
-    count: int,
-) -> None:
-    with pytest.raises(ValidationError):
-        DeduplicatedUseCasePool(
-            use_cases=[_candidate(index) for index in range(1, count + 1)],
-            removed_or_merged=["Merged overlapping candidates"],
-            rationale="Deduplicated the candidate pool.",
-        )
-
-
-def test_deduplicated_use_case_pool_requires_merge_explanation() -> None:
-    data = _deduplicated_pool().model_dump()
-    del data["removed_or_merged"]
-
-    with pytest.raises(ValidationError):
-        DeduplicatedUseCasePool.model_validate(data)
-
-
 @pytest.mark.parametrize(
     "field_name",
     [
@@ -1362,53 +871,23 @@ def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
         UseCaseScore.model_validate(data)
 
 
-def test_graded_use_case_pool_allows_refined_top_five_grading() -> None:
+def test_graded_use_case_pool_allows_generated_pool_grading() -> None:
     pool = GradedUseCasePool(
         graded_use_cases=[
             GradedUseCase(
                 use_case=_candidate(index),
                 score=_score(f"uc-{index}"),
             )
-            for index in range(1, 6)
+            for index in range(1, 9)
         ]
     )
 
-    assert len(pool.graded_use_cases) == 5
+    assert len(pool.graded_use_cases) == 8
 
 
 def test_graded_use_case_pool_requires_at_least_one_item() -> None:
     with pytest.raises(ValidationError):
         GradedUseCasePool(graded_use_cases=[])
-
-
-@pytest.mark.parametrize("count", [4, 6])
-def test_initial_selection_output_requires_exactly_five_items(count: int) -> None:
-    with pytest.raises(ValidationError):
-        InitialSelectionOutput(
-            selected=[
-                GradedUseCase(
-                    use_case=_candidate(index),
-                    score=_score(f"uc-{index}"),
-                )
-                for index in range(1, count + 1)
-            ],
-        )
-
-
-def test_initial_selection_output_forbids_extra_fields() -> None:
-    data = InitialSelectionOutput(
-        selected=[
-            GradedUseCase(
-                use_case=_candidate(index),
-                score=_score(f"uc-{index}"),
-            )
-            for index in range(1, 6)
-        ],
-    ).model_dump()
-    data["unexpected"] = "ignored before strict schemas"
-
-    with pytest.raises(ValidationError):
-        InitialSelectionOutput.model_validate(data)
 
 
 @pytest.mark.parametrize("count", [2, 4])
@@ -1525,107 +1004,6 @@ def test_workflow_result_final_is_markdown_string() -> None:
     result = SparkstralWorkflowResult(outputs=[], final=_markdown_report().markdown)
 
     assert result.final.startswith("# Acme Corporation")
-
-
-@pytest.mark.parametrize("count", [4, 6])
-def test_red_team_input_requires_exactly_five_selected_use_cases(count: int) -> None:
-    with pytest.raises(ValidationError):
-        RedTeamInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=[
-                GradedUseCase(
-                    use_case=_candidate(index),
-                    score=_score(f"uc-{index}"),
-                )
-                for index in range(1, count + 1)
-            ],
-        )
-
-
-@pytest.mark.parametrize("count", [4, 6])
-def test_red_team_output_requires_exactly_five_reviews(count: int) -> None:
-    with pytest.raises(ValidationError):
-        RedTeamOutput(
-            reviews=[
-                _red_team_review(f"uc-{index}", index) for index in range(1, count + 1)
-            ]
-        )
-
-
-@pytest.mark.parametrize("count", [4, 6])
-def test_refine_use_cases_input_requires_exactly_five_selected_use_cases(
-    count: int,
-) -> None:
-    valid_selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-    selected = [
-        GradedUseCase(
-            use_case=_candidate(index),
-            score=_score(f"uc-{index}"),
-        )
-        for index in range(1, count + 1)
-    ]
-    with pytest.raises(ValidationError):
-        RefineUseCasesInput(
-            company_profile=_company_profile(),
-            pain_points=PainPointProfilerOutput(
-                pain_points=[_pain_point(1), _pain_point(2), _pain_point(3)]
-            ),
-            selected_use_cases=selected,
-            red_team=_red_team_output(valid_selected),
-        )
-
-
-@pytest.mark.parametrize("count", [4, 6])
-def test_refined_use_case_pool_requires_exactly_five_items(count: int) -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[:5]
-
-    with pytest.raises(ValidationError):
-        RefinedUseCasePool(
-            refined_use_cases=[
-                _refined_use_case(selected[(index - 1) % 5], index)
-                for index in range(1, count + 1)
-            ]
-        )
-
-
-def test_refined_use_case_requires_changes_made() -> None:
-    selected = _graded_pool(_deduplicated_pool().use_cases).graded_use_cases[0]
-
-    with pytest.raises(ValidationError):
-        RefinedUseCase(
-            original_use_case_id=selected.use_case.id,
-            refined_use_case=selected.use_case,
-            changes_made=[],
-            unresolved_concerns=[],
-        )
-
-
-def test_red_team_review_requires_criticism() -> None:
-    with pytest.raises(ValidationError):
-        RedTeamReview(
-            use_case_id="uc-1",
-            criticisms=[],
-            verdict="revise",
-        )
-
-
-def test_red_team_criticism_requires_allowed_severity() -> None:
-    data = _criticism().model_dump()
-    data["severity"] = "critical"
-
-    with pytest.raises(ValidationError):
-        UseCaseCriticism.model_validate(data)
-
-
-def test_red_team_review_requires_allowed_verdict() -> None:
-    data = _red_team_review("uc-1").model_dump()
-    data["verdict"] = "maybe"
-
-    with pytest.raises(ValidationError):
-        RedTeamReview.model_validate(data)
 
 
 @pytest.mark.parametrize(

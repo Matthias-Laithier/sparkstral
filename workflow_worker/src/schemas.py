@@ -157,20 +157,6 @@ class GenAIUseCaseCandidatePool(BaseModel):
     )
 
 
-class DeduplicateUseCasesInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    candidates: GenAIUseCaseCandidatePool
-
-
-class DeduplicatedUseCasePool(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=6, max_length=10)
-    removed_or_merged: list[str]
-    rationale: str
-
-
 class UseCaseScore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -198,12 +184,6 @@ class GradedUseCasePool(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     graded_use_cases: list[GradedUseCase] = Field(..., min_length=1)
-
-
-class InitialSelectionOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    selected: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
 
 
 class FinalSelectionOutput(BaseModel):
@@ -249,61 +229,6 @@ class FinalReportInput(BaseModel):
     company_profile: CompanyProfileOutput
     pain_points: PainPointProfilerOutput
     final_selection: FinalSelectionOutput
-
-
-class UseCaseCriticism(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str
-    comment: str
-    severity: Literal["low", "medium", "high"]
-    required_fix: str
-
-
-class RedTeamReview(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    use_case_id: str
-    criticisms: list[UseCaseCriticism] = Field(..., min_length=1)
-    verdict: Literal["keep", "revise", "discard"]
-
-
-class RedTeamOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    reviews: list[RedTeamReview] = Field(..., min_length=5, max_length=5)
-
-
-class RedTeamInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-    selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
-
-
-class RefinedUseCase(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    original_use_case_id: str
-    refined_use_case: GenAIUseCaseCandidate
-    changes_made: list[str] = Field(..., min_length=1)
-    unresolved_concerns: list[str]
-
-
-class RefinedUseCasePool(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    refined_use_cases: list[RefinedUseCase] = Field(..., min_length=5, max_length=5)
-
-
-class RefineUseCasesInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    pain_points: PainPointProfilerOutput
-    selected_use_cases: list[GradedUseCase] = Field(..., min_length=5, max_length=5)
-    red_team: RedTeamOutput
 
 
 class GradeUseCasesInput(BaseModel):

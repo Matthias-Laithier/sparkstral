@@ -1,16 +1,12 @@
 from functools import partial
 
 from src.activities import (
-    deduplicate_use_cases,
     generate_genai_use_cases,
     grade_use_cases,
-    red_team_use_cases,
-    refine_use_cases,
     research_company,
     research_company_resolution,
     research_pain_points,
     select_final_top_3,
-    select_initial_top_5,
     structure_company_profile,
     structure_company_resolution,
     structure_pain_points,
@@ -23,7 +19,6 @@ from src.schemas import (
     CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
-    DeduplicateUseCasesInput,
     FinalReportInput,
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
@@ -31,8 +26,6 @@ from src.schemas import (
     PainPointResearchInput,
     PainPointStructuringInput,
     PipelineOutput,
-    RedTeamInput,
-    RefineUseCasesInput,
     SparkstralWorkflowResult,
 )
 from src.utils import append_json_output, append_text_output
@@ -90,55 +83,16 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(use_cases.model_dump(mode="json"))
 
-    deduplicated_use_cases = await deduplicate_use_cases(
-        DeduplicateUseCasesInput(candidates=use_cases)
-    )
-    append_json(deduplicated_use_cases.model_dump(mode="json"))
-
     graded_use_cases = await grade_use_cases(
         GradeUseCasesInput(
             company_profile=company_profile,
             pain_points=pain_points,
-            use_cases=deduplicated_use_cases.use_cases,
+            use_cases=use_cases.use_cases,
         )
     )
     append_json(graded_use_cases.model_dump(mode="json"))
 
-    initial_top_5 = await select_initial_top_5(graded_use_cases)
-    append_json({"initial_top_5": initial_top_5.model_dump(mode="json")})
-
-    red_team_review = await red_team_use_cases(
-        RedTeamInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-            selected_use_cases=initial_top_5.selected,
-        )
-    )
-    append_json({"red_team_review": red_team_review.model_dump(mode="json")})
-
-    refined_use_cases = await refine_use_cases(
-        RefineUseCasesInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-            selected_use_cases=initial_top_5.selected,
-            red_team=red_team_review,
-        )
-    )
-    append_json({"refined_use_cases": refined_use_cases.model_dump(mode="json")})
-
-    refined_candidates = [
-        item.refined_use_case for item in refined_use_cases.refined_use_cases
-    ]
-    final_graded_use_cases = await grade_use_cases(
-        GradeUseCasesInput(
-            company_profile=company_profile,
-            pain_points=pain_points,
-            use_cases=refined_candidates,
-        )
-    )
-    append_json({"final_grading": final_graded_use_cases.model_dump(mode="json")})
-
-    final_selection = await select_final_top_3(final_graded_use_cases)
+    final_selection = await select_final_top_3(graded_use_cases)
     append_json({"final_top_3": final_selection.model_dump(mode="json")})
 
     final_report = await write_final_report(
