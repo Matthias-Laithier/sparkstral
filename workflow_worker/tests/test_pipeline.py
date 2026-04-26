@@ -5,7 +5,11 @@ from pydantic import ValidationError
 
 from src import activities, pipeline
 from src.agents import grader, markdown_reporter
-from src.agents.grader import UseCaseGraderAgent, compute_weighted_total
+from src.agents.grader import (
+    UseCaseGraderAgent,
+    build_graded_use_cases,
+    compute_weighted_total,
+)
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.schemas import (
     CompanyInput,
@@ -27,6 +31,8 @@ from src.schemas import (
     ResearchResult,
     SourceBackedMetric,
     SparkstralWorkflowResult,
+    UseCaseGrade,
+    UseCaseGradePool,
     UseCaseScore,
 )
 from src.utils import select_top_n
@@ -196,6 +202,30 @@ def _score(
             computed_weighted_total if weighted_total is None else weighted_total
         ),
     )
+
+
+def _grade(
+    use_case_id: str,
+    *,
+    company_relevance: int = 3,
+    business_impact: int = 3,
+    iconicness: int = 3,
+    genai_fit: int = 3,
+    feasibility: int = 3,
+    evidence_strength: int = 3,
+    penalties: list[str] | None = None,
+) -> UseCaseGrade:
+    score = _score(
+        use_case_id,
+        company_relevance=company_relevance,
+        business_impact=business_impact,
+        iconicness=iconicness,
+        genai_fit=genai_fit,
+        feasibility=feasibility,
+        evidence_strength=evidence_strength,
+        penalties=penalties,
+    )
+    return UseCaseGrade.model_validate(score.model_dump(exclude={"weighted_total"}))
 
 
 def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
@@ -515,54 +545,43 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_use_case_grader_agent_recomputes_weighted_total_without_sorting(
+async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     use_cases = [_candidate(index) for index in range(1, 7)]
-    llm_result = GradedUseCasePool(
-        graded_use_cases=[
-            GradedUseCase(
-                use_case=use_cases[0],
-                score=_score(
-                    "uc-1",
-                    company_relevance=2,
-                    business_impact=2,
-                    iconicness=2,
-                    genai_fit=2,
-                    feasibility=2,
-                    evidence_strength=2,
-                    weighted_total=5.0,
-                ),
+    llm_result = UseCaseGradePool(
+        grades=[
+            _grade(
+                "uc-2",
+                company_relevance=5,
+                business_impact=4,
+                iconicness=4,
+                genai_fit=4,
+                feasibility=4,
+                evidence_strength=3,
             ),
-            GradedUseCase(
-                use_case=use_cases[1],
-                score=_score(
-                    "uc-2",
-                    company_relevance=5,
-                    business_impact=4,
-                    iconicness=4,
-                    genai_fit=4,
-                    feasibility=4,
-                    evidence_strength=3,
-                    weighted_total=1.0,
-                ),
+            _grade(
+                "uc-1",
+                company_relevance=2,
+                business_impact=2,
+                iconicness=2,
+                genai_fit=2,
+                feasibility=2,
+                evidence_strength=2,
             ),
-            *[
-                GradedUseCase(
-                    use_case=use_case,
-                    score=_score(use_case.id),
-                )
-                for use_case in use_cases[2:]
-            ],
+            *[_grade(use_case.id) for use_case in use_cases[2:]],
         ]
     )
+    response_model: type[Any] | None = None
 
-    async def parse_chat_model(*_args: Any, **_kwargs: Any) -> GradedUseCasePool:
+    async def parse_chat_model(*args: Any, **_kwargs: Any) -> UseCaseGradePool:
+        nonlocal response_model
+        response_model = args[1]
         return llm_result
 
     monkeypatch.setattr(grader, "parse_chat_model", parse_chat_model)
 
-    result = await UseCaseGraderAgent(client=object()).run(
+    result = await UseCaseGraderAgent(client=cast(Any, object())).run(
         GradeUseCasesInput(
             company_profile=_company_profile(),
             pain_points=PainPointProfilerOutput(
@@ -572,14 +591,41 @@ async def test_use_case_grader_agent_recomputes_weighted_total_without_sorting(
         )
     )
 
+    assert response_model is UseCaseGradePool
     assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
-        "uc-1",
         "uc-2",
+        "uc-1",
     ]
     assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
-        2.0,
         4.2,
+        2.0,
     ]
+    assert result.graded_use_cases[0].use_case == use_cases[1]
+    assert result.graded_use_cases[1].use_case == use_cases[0]
+
+
+def test_build_graded_use_cases_rejects_unknown_grade_id() -> None:
+    with pytest.raises(ValueError, match="unknown use case ID: uc-missing"):
+        build_graded_use_cases(
+            [_grade("uc-1"), _grade("uc-missing")],
+            [_candidate(1), _candidate(2)],
+        )
+
+
+def test_build_graded_use_cases_rejects_duplicate_grade_id() -> None:
+    with pytest.raises(ValueError, match="duplicate use case ID: uc-1"):
+        build_graded_use_cases(
+            [_grade("uc-1"), _grade("uc-1")],
+            [_candidate(1)],
+        )
+
+
+def test_build_graded_use_cases_rejects_missing_grade_id() -> None:
+    with pytest.raises(ValueError, match="grades for use case IDs: uc-2"):
+        build_graded_use_cases(
+            [_grade("uc-1")],
+            [_candidate(1), _candidate(2)],
+        )
 
 
 @pytest.mark.asyncio
@@ -628,7 +674,7 @@ async def test_markdown_reporter_agent_returns_markdown_report(
         return agent_result
 
     monkeypatch.setattr(
-        markdown_reporter.settings,
+        cast(Any, markdown_reporter).settings,
         "MARKDOWN_REPORTER_AGENT_MODEL",
         "markdown-model",
     )
@@ -870,6 +916,19 @@ def test_use_case_score_bounds_rubric_fields(field_name: str) -> None:
 
     with pytest.raises(ValidationError):
         UseCaseScore.model_validate(data)
+
+
+def test_use_case_grade_forbids_weighted_total() -> None:
+    data = _grade("uc-1").model_dump()
+    data["weighted_total"] = 3.0
+
+    with pytest.raises(ValidationError):
+        UseCaseGrade.model_validate(data)
+
+
+def test_use_case_grade_pool_requires_at_least_one_item() -> None:
+    with pytest.raises(ValidationError):
+        UseCaseGradePool(grades=[])
 
 
 def test_graded_use_case_pool_allows_generated_pool_grading() -> None:

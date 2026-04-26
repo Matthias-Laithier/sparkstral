@@ -6,6 +6,7 @@ from src.prompts import (
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
     use_case_grader_system_prompt,
+    use_case_grader_user_prompt,
     web_search_system_prompt,
 )
 from src.schemas import (
@@ -213,8 +214,28 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "Unsupported metrics" in prompt
     assert "Vague target users" in prompt
     assert "penalties" in prompt
-    assert "application code will recompute" in prompt
+    assert "use_case_id" in prompt
+    assert "Do not repeat or rewrite the original use_case objects" in prompt
+    assert "Do not output weighted_total" in prompt
+    assert "application code will compute" in prompt
     assert "Do not skip" in prompt
+
+
+def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
+    prompt = use_case_grader_user_prompt(
+        _company_profile(),
+        _pain_points(),
+        [_candidate(1), _candidate(2)],
+    )
+
+    assert "Generated use cases to grade (JSON)" in prompt
+    assert '"id": "uc-1"' in prompt
+    assert "Return one grades item for every use case above" in prompt
+    assert "use_case_id equal to the matching use_case.id" in prompt
+    assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
+    assert "Do not output weighted_total" in prompt
+    assert "Return one graded_use_cases item" not in prompt
+    assert "Keep each original use_case object unchanged" not in prompt
 
 
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:

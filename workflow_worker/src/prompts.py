@@ -261,10 +261,10 @@ def use_case_grader_system_prompt() -> str:
         "Do not add any criterion beyond the stated ones. "
         "The rubric is only: company_relevance, business_impact, "
         "iconicness, genai_fit, feasibility, and evidence_strength.\n"
-        "For each score, include strengths, weaknesses, rationale, penalties, the "
-        "six rubric fields, and weighted_total. Set weighted_total to 1.0; "
-        "application code will recompute the authoritative weighted_total from the "
-        "six rubric fields."
+        "For each grade, include use_case_id, strengths, weaknesses, rationale, "
+        "penalties, and the six rubric fields. Do not repeat or rewrite the "
+        "original use_case objects. Do not output weighted_total; application "
+        "code will compute it from the six rubric fields."
     )
 
 
@@ -295,13 +295,14 @@ def use_case_grader_user_prompt(
         f"{pain_json}\n\n"
         "Generated use cases to grade (JSON):\n"
         f"{use_cases_json}\n\n"
-        "Return one graded_use_cases item for every use case above. Keep each "
-        "original use_case object unchanged. For score.use_case_id, use the "
-        "matching use_case.id. Grade strictly using only the six rubric fields: "
+        "Return one grades item for every use case above. Each item must use "
+        "use_case_id equal to the matching use_case.id. Do not repeat, copy, "
+        "or rewrite any original use_case object. Grade strictly using only "
+        "the six rubric fields: "
         "company_relevance, business_impact, iconicness, genai_fit, feasibility, "
         "and evidence_strength. Include strengths, weaknesses, rationale, "
-        "penalties, and weighted_total for each use case. Set weighted_total to "
-        "1.0 because code recomputes it. Do not choose final recommendations."
+        "and penalties for each use case. Do not output weighted_total because "
+        "code computes it. Do not choose final recommendations."
     )
 
 

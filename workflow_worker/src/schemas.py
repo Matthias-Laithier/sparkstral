@@ -258,6 +258,28 @@ class UseCaseScore(BaseModel):
     weighted_total: float = Field(..., ge=1, le=5)
 
 
+class UseCaseGrade(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    use_case_id: str
+    strengths: list[str] = Field(..., min_length=1)
+    weaknesses: list[str] = Field(..., min_length=1)
+    rationale: str
+    company_relevance: int = Field(..., ge=1, le=5)
+    business_impact: int = Field(..., ge=1, le=5)
+    iconicness: int = Field(..., ge=1, le=5)
+    genai_fit: int = Field(..., ge=1, le=5)
+    feasibility: int = Field(..., ge=1, le=5)
+    evidence_strength: int = Field(..., ge=1, le=5)
+    penalties: list[str]
+
+
+class UseCaseGradePool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    grades: list[UseCaseGrade] = Field(..., min_length=1)
+
+
 class GradedUseCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
