@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.0",
     "mistralai>=2.4.2",
-    "mistralai-workflows>=3.3.0",
+    "mistralai-workflows[mistralai]>=3.3.0",
     "pydantic-settings>=2.14.0",
     "tavily-python>=0.7.23",
 ]

@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from functools import partial
 
 from src.activities import (
@@ -33,12 +34,26 @@ from src.utils import (
     merge_genai_use_case_batches,
 )
 
+PipelineStatusCallback = Callable[[str], Awaitable[None]]
 
-async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowResult:
+
+async def _send_status(
+    status_callback: PipelineStatusCallback | None,
+    message: str,
+) -> None:
+    if status_callback is not None:
+        await status_callback(message)
+
+
+async def run_sparkstral_pipeline(
+    params: CompanyInput,
+    status_callback: PipelineStatusCallback | None = None,
+) -> SparkstralWorkflowResult:
     outputs: list[PipelineOutput] = []
     append_text = partial(append_text_output, outputs)
     append_json = partial(append_json_output, outputs)
 
+    await _send_status(status_callback, "Researching company context...\n")
     resolution_research = await research_company_resolution(
         CompanyResolutionInput(company_query=params.company_name)
     )
@@ -67,6 +82,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(pain_points.model_dump(mode="json"))
 
+    await _send_status(status_callback, "Generating candidate use cases...\n")
     use_case_generation_input = GenAIUseCaseCandidateInput(
         company_profile=company_profile,
         pain_points=pain_points,
@@ -83,6 +99,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
             ("why_not_uc", why_not_use_cases),
         ]
     )
+
     use_cases = await deduplicate_genai_use_cases(
         DeduplicateUseCasesInput(
             company_profile=company_profile,
@@ -92,6 +109,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(use_cases.model_dump(mode="json"))
 
+    await _send_status(status_callback, "Scoring opportunities...\n")
     graded_use_cases = await grade_use_cases(
         GradeUseCasesInput(
             company_profile=company_profile,
@@ -104,6 +122,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     final_selection = await select_final_top_3(graded_use_cases)
     append_json({"final_top_3": final_selection.model_dump(mode="json")})
 
+    await _send_status(status_callback, "Writing final report...\n")
     markdown_report = await write_markdown_report(
         MarkdownReportInput(
             company_profile=company_profile,

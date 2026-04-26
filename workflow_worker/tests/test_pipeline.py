@@ -571,7 +571,15 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
     monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
-    result = await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
+    status_messages = []
+
+    async def status_callback(message: str) -> None:
+        status_messages.append(message)
+
+    result = await pipeline.run_sparkstral_pipeline(
+        CompanyInput(company_name="Acme"),
+        status_callback=status_callback,
+    )
 
     assert calls == [
         "research_company_resolution",
@@ -585,6 +593,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "grade_use_cases",
         "select_final_top_3",
         "write_markdown_report",
+    ]
+    assert status_messages == [
+        "Researching company context...\n",
+        "Generating candidate use cases...\n",
+        "Scoring opportunities...\n",
+        "Writing final report...\n",
     ]
     assert [output.kind for output in result.outputs] == [
         "text",

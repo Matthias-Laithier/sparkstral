@@ -108,6 +108,8 @@ The workflow worker, FastAPI backend, and React frontend all start together via 
 {"company_name": "Mistral AI"}
 ```
 
+The registered workflow returns a `ChatAssistantWorkflowOutput`, so it is compatible with Le Chat publishing. After deploying or restarting the worker, publish the `DEPLOYMENT_NAME` workflow from Mistral Console to make it available in Le Chat; the input shape remains `{"company_name": "..."}`.
+
 Or programmatically (`workflow_identifier` must match `DEPLOYMENT_NAME` in `.env` and the registered worker workflow):
 
 ```python
