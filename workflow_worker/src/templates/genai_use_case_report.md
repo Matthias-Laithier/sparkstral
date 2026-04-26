@@ -4,7 +4,7 @@
 Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support. Summarize pressures and priorities here (no separate section for them).
 
 ## Ranked Opportunities
-| Rank | Opportunity | Primary users | Weighted score (/10) | Decision rationale |
+| Rank | Opportunity | Primary users | Fit score (/10) | Decision rationale |
 | --- | --- | --- | --- | --- |
 | 1 |  |  |  |  |
 | 2 |  |  |  |  |
@@ -33,8 +33,8 @@ Explain what makes this use case memorable, company-specific, and strategically 
 3. Generated output:
 4. Human approval or decision point:
 
-### Why Genai ?
-Use `genai_mechanism` to explain the mechanism, why ordinary software is not enough, and why classical ML or optimization is not enough.
+### Why GenAI Fits
+Use `genai_mechanism` to explain what GenAI adds, what classical systems should still handle, and where the human decision point remains.
 
 ### Data and Integration Needs
 Name the internal and external data, systems, and workflow handoffs required.
