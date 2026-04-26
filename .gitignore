@@ -69,12 +69,3 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 .codex
-
-# --- DB backups / dumps ---
-*.sql.backup
-*.dump
-/dumps/
-
-# --- Misc ---
-*.orig
-.turbo/

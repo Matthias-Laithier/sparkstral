@@ -155,7 +155,7 @@ def genai_use_cases_system_prompt() -> str:
         "'digital transformation', efficiency, a broad chatbot, generic RAG, "
         "a dashboard, or classical optimization with GenAI branding, drop it.\n"
         "Capability spread: include agentic tool use or orchestration, document or "
-        "multimodal understanding, grounded RAG, and long-context or multi-document "
+        "multimodal understanding, grounded RAG, embeddings, and long-context or multi-document "
         "synthesis across the batch. Avoid a batch of only chatbots or summaries.\n"
         "GenAI must add value through messy language, documents, images, conflicting "
         "context, retrieval with reasoning, tool use, structured drafting, or "
