@@ -8,7 +8,6 @@ from src.activities import (
     grade_use_cases,
     research_company,
     research_company_resolution,
-    research_pain_points,
     select_final_top_3,
     structure_company_profile,
     structure_company_resolution,
@@ -17,14 +16,12 @@ from src.activities import (
 )
 from src.schemas import (
     CompanyInput,
-    CompanyProfileInput,
     CompanyProfileStructuringInput,
     CompanyResolutionInput,
     CompanyResolutionStructuringInput,
     GenAIUseCaseCandidateInput,
     GradeUseCasesInput,
     MarkdownReportInput,
-    PainPointResearchInput,
     PainPointStructuringInput,
     PipelineOutput,
     SparkstralWorkflowResult,
@@ -54,9 +51,7 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(company_resolution.model_dump(mode="json"))
 
-    company_research = await research_company(
-        CompanyProfileInput(company_query=company_resolution.resolved_name)
-    )
+    company_research = await research_company(company_resolution)
     append_text(company_research.text)
 
     company_profile = await structure_company_profile(
@@ -67,15 +62,9 @@ async def run_sparkstral_pipeline(params: CompanyInput) -> SparkstralWorkflowRes
     )
     append_json(company_profile.model_dump(mode="json"))
 
-    pain_research = await research_pain_points(
-        PainPointResearchInput(company_profile=company_profile)
-    )
-    append_text(pain_research.text)
-
     pain_points = await structure_pain_points(
         PainPointStructuringInput(
             company_profile=company_profile,
-            research_text=pain_research.text,
         )
     )
     append_json(pain_points.model_dump(mode="json"))

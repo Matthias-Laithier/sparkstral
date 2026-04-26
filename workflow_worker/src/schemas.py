@@ -1,6 +1,6 @@
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class CompanyInput(BaseModel):
@@ -13,10 +13,6 @@ class CompanyResolutionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_query: str
-
-
-class CompanyProfileInput(BaseModel):
-    company_query: str = Field(..., description="Raw company name entered by the user.")
 
 
 class ResearchResult(BaseModel):
@@ -33,6 +29,24 @@ class EvidenceItem(BaseModel):
         ...,
         description="URL string (https recommended) supporting the claim.",
     )
+
+
+class CompanyEvidenceClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    claim: str = Field(..., description="Concise factual claim from company research.")
+    source_url: str = Field(..., description="Full http(s) URL supporting the claim.")
+    citation: str = Field(
+        ...,
+        description="Short quote, citation, or faithful detail from the source.",
+    )
+
+    @field_validator("source_url")
+    @classmethod
+    def source_url_must_be_full_url(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("source_url must start with http:// or https://")
+        return value
 
 
 class CompanyResolutionOutput(BaseModel):
@@ -58,10 +72,18 @@ class CompanyProfileOutput(BaseModel):
 
     company_name: str
     industry: str
-    business_lines: list[str]
-    key_customers: list[str]
-    strategic_priorities: list[str]
-    evidence: list[EvidenceItem] = Field(..., min_length=1)
+    business_lines: list[str] = Field(..., min_length=1)
+    key_customers: list[str] = Field(..., min_length=1)
+    customer_segments: list[str] = Field(..., min_length=1)
+    strategic_priorities: list[str] = Field(..., min_length=1)
+    recent_strategic_initiatives: list[str] = Field(..., min_length=1)
+    geography_markets: list[str] = Field(..., min_length=1)
+    operational_context: list[str] = Field(..., min_length=1)
+    regulatory_context: list[str] = Field(..., min_length=1)
+    customer_market_pressure: list[str] = Field(..., min_length=1)
+    growth_opportunities: list[str] = Field(..., min_length=1)
+    technology_transformation_context: list[str] = Field(..., min_length=1)
+    claims: list[CompanyEvidenceClaim] = Field(..., min_length=15)
     notes: str = Field(
         ...,
         description="Optional caveats about the extracted profile.",
@@ -94,13 +116,8 @@ class PainPointProfilerOutput(BaseModel):
     pain_points: list[PainPointItem] = Field(..., min_length=3, max_length=8)
 
 
-class PainPointResearchInput(BaseModel):
-    company_profile: CompanyProfileOutput
-
-
 class PainPointStructuringInput(BaseModel):
     company_profile: CompanyProfileOutput
-    research_text: str
 
 
 class GenAIMechanism(BaseModel):

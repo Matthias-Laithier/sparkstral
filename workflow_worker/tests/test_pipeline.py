@@ -14,6 +14,7 @@ from src.agents.grader import (
 )
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.schemas import (
+    CompanyEvidenceClaim,
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
@@ -75,19 +76,114 @@ def _company_resolution() -> CompanyResolutionOutput:
     )
 
 
+def _company_claim(
+    claim: str,
+    source_url: str,
+    citation: str,
+) -> CompanyEvidenceClaim:
+    return CompanyEvidenceClaim(
+        claim=claim,
+        source_url=source_url,
+        citation=citation,
+    )
+
+
+def _company_claims() -> list[CompanyEvidenceClaim]:
+    return [
+        _company_claim(
+            "Acme Corporation is a manufacturing company",
+            "https://example.com/company",
+            "Company overview identifies Acme as a manufacturer.",
+        ),
+        _company_claim(
+            "Acme makes widgets",
+            "https://example.com/products",
+            "Products page describes Acme's widget business.",
+        ),
+        _company_claim(
+            "Acme serves industrial buyers",
+            "https://example.com/customers",
+            "Customer page names industrial buyers.",
+        ),
+        _company_claim(
+            "Acme prioritizes operational efficiency",
+            "https://example.com/strategy",
+            "Strategy page lists operational efficiency as a priority.",
+        ),
+        _company_claim(
+            "Acme launched a factory modernization initiative",
+            "https://example.com/initiative",
+            "Press release announces factory modernization.",
+        ),
+        _company_claim(
+            "Acme operates in North America",
+            "https://example.com/markets",
+            "Markets page lists North America.",
+        ),
+        _company_claim(
+            "Acme faces supply chain delays",
+            "https://example.com/pain-1",
+            "Annual report notes supply chain delays.",
+        ),
+        _company_claim(
+            "New safety rules affect Acme's plants",
+            "https://example.com/pain-2",
+            "Regulator page describes new safety rules.",
+        ),
+        _company_claim(
+            "Customers expect faster configuration support",
+            "https://example.com/pain-3",
+            "Industry publication reports faster configuration expectations.",
+        ),
+        _company_claim(
+            "Acme has an aftermarket service expansion opportunity",
+            "https://example.com/growth",
+            "Investor presentation highlights aftermarket service expansion.",
+        ),
+        _company_claim(
+            "Acme is modernizing factory systems",
+            "https://example.com/digital",
+            "Digital page describes factory system modernization.",
+        ),
+        _company_claim(
+            "Acme tracks on-time delivery as a customer metric",
+            "https://example.com/metrics",
+            "Annual report references on-time delivery.",
+        ),
+        _company_claim(
+            "Acme sells through distributor partners",
+            "https://example.com/partners",
+            "Partner page describes distributor channels.",
+        ),
+        _company_claim(
+            "Acme focuses on configurable industrial products",
+            "https://example.com/configurable-products",
+            "Products page describes configurable industrial products.",
+        ),
+        _company_claim(
+            "Acme is investing in quality management",
+            "https://example.com/quality",
+            "Strategy update describes quality management investment.",
+        ),
+    ]
+
+
 def _company_profile() -> CompanyProfileOutput:
     return CompanyProfileOutput(
         company_name="Acme Corporation",
         industry="Manufacturing",
         business_lines=["Widgets"],
         key_customers=["Industrial buyers"],
+        customer_segments=["Industrial buyers"],
         strategic_priorities=["Operational efficiency"],
-        evidence=[
-            EvidenceItem(
-                claim="Acme makes widgets",
-                source="https://example.com/company",
-            )
-        ],
+        recent_strategic_initiatives=["Factory modernization"],
+        geography_markets=["North America"],
+        operational_context=["Supply chain delays"],
+        regulatory_context=["New safety rules"],
+        customer_market_pressure=["Customers expect faster configuration support"],
+        growth_opportunities=["Aftermarket service expansion"],
+        technology_transformation_context=["Factory modernization"],
+        claims=_company_claims(),
         notes="No caveats.",
     )
 
@@ -292,8 +388,8 @@ def _graded_pool(use_cases: list[GenAIUseCaseCandidate]) -> GradedUseCasePool:
 def _markdown_report() -> MarkdownReport:
     return MarkdownReport(
         markdown=(
-            "# Acme Corporation GenAI Opportunity Report\n\n"
-            "## Executive Summary\n\n"
+            "# GenAI Opportunity Report — Acme Corporation\n\n"
+            "## Recommendation in Brief\n\n"
             "Top three use cases are ready for client discussion."
         )
     )
@@ -302,7 +398,7 @@ def _markdown_report() -> MarkdownReport:
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    company_research_query = ""
+    company_research_params: CompanyResolutionOutput | None = None
     company_profile_query = ""
     generation_pain_points: list[PainPointProfilerOutput] = []
     in_flight_generators = 0
@@ -331,9 +427,9 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         return _company_resolution()
 
     async def research_company(params: Any) -> ResearchResult:
-        nonlocal company_research_query
+        nonlocal company_research_params
         calls.append("research_company")
-        company_research_query = params.company_query
+        company_research_params = params
         return ResearchResult(text="company research")
 
     async def structure_company_profile(params: Any) -> CompanyProfileOutput:
@@ -341,10 +437,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         calls.append("structure_company_profile")
         company_profile_query = params.company_query
         return _company_profile()
-
-    async def research_pain_points(_params: object) -> ResearchResult:
-        calls.append("research_pain_points")
-        return ResearchResult(text="pain research")
 
     async def structure_pain_points(_params: object) -> PainPointProfilerOutput:
         calls.append("structure_pain_points")
@@ -421,7 +513,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(
         pipeline, "structure_company_profile", structure_company_profile
     )
-    monkeypatch.setattr(pipeline, "research_pain_points", research_pain_points)
     monkeypatch.setattr(pipeline, "structure_pain_points", structure_pain_points)
     monkeypatch.setattr(
         pipeline, "generate_grounded_genai_use_cases", generate_grounded_genai_use_cases
@@ -443,7 +534,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "structure_company_resolution",
         "research_company",
         "structure_company_profile",
-        "research_pain_points",
         "structure_pain_points",
         "generate_grounded_genai_use_cases",
         "generate_moonshot_genai_use_cases",
@@ -457,7 +547,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "text",
         "json",
-        "text",
         "json",
         "json",
         "json",
@@ -465,12 +554,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[6].data == generated_candidates.model_dump(mode="json")
-    assert result.outputs[7].data == graded_candidates.model_dump(mode="json")
-    assert result.outputs[8].data == {
+    assert result.outputs[5].data == generated_candidates.model_dump(mode="json")
+    assert result.outputs[6].data == graded_candidates.model_dump(mode="json")
+    assert result.outputs[7].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[9].text == markdown_report_result.markdown
+    assert result.outputs[8].text == markdown_report_result.markdown
     assert (
         generation_pain_points
         == [
@@ -491,10 +580,10 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         ),
         final_selection=final_selection,
     )
-    assert company_research_query == "Acme Corporation"
+    assert company_research_params == _company_resolution()
     assert company_profile_query == "Acme Corporation"
     assert result.final == markdown_report_result.markdown
-    assert "Executive Summary" in result.final
+    assert "Recommendation in Brief" in result.final
 
 
 @pytest.mark.asyncio
@@ -517,10 +606,6 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         calls.append("structure_company_profile")
         raise RuntimeError("model failed")
 
-    async def research_pain_points(_params: object) -> ResearchResult:
-        calls.append("research_pain_points")
-        return ResearchResult(text="should not run")
-
     monkeypatch.setattr(
         pipeline, "research_company_resolution", research_company_resolution
     )
@@ -531,7 +616,6 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(
         pipeline, "structure_company_profile", structure_company_profile
     )
-    monkeypatch.setattr(pipeline, "research_pain_points", research_pain_points)
 
     with pytest.raises(RuntimeError, match="model failed"):
         await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
@@ -1063,6 +1147,22 @@ def test_company_profile_output_forbids_extra_fields() -> None:
         CompanyProfileOutput.model_validate(data)
 
 
+def test_company_profile_output_requires_rich_claim_ledger() -> None:
+    data = _company_profile().model_dump()
+    data["claims"] = data["claims"][:14]
+
+    with pytest.raises(ValidationError):
+        CompanyProfileOutput.model_validate(data)
+
+
+def test_company_evidence_claim_requires_full_source_url() -> None:
+    data = _company_claims()[0].model_dump()
+    data["source_url"] = "example.com/company"
+
+    with pytest.raises(ValidationError):
+        CompanyEvidenceClaim.model_validate(data)
+
+
 def test_pain_point_profiler_requires_at_least_three_points() -> None:
     with pytest.raises(ValidationError):
         PainPointProfilerOutput(
@@ -1247,7 +1347,7 @@ def test_markdown_report_forbids_extra_fields() -> None:
 def test_workflow_result_final_is_markdown_string() -> None:
     result = SparkstralWorkflowResult(outputs=[], final=_markdown_report().markdown)
 
-    assert result.final.startswith("# Acme Corporation")
+    assert result.final.startswith("# GenAI Opportunity Report — Acme Corporation")
 
 
 @pytest.mark.parametrize(

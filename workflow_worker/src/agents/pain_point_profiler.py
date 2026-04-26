@@ -27,7 +27,6 @@ class PainPointProfilerAgent(
                     "role": "user",
                     "content": pain_point_user_prompt(
                         params.company_profile,
-                        params.research_text,
                     ),
                 },
             ],

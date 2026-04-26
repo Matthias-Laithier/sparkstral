@@ -1,14 +1,20 @@
 import json
 from datetime import date
+from pathlib import Path
 
 from src.schemas import (
     CompanyProfileOutput,
+    CompanyResolutionOutput,
     FinalSelectionOutput,
     GenAIUseCaseCandidate,
     GenAIUseCaseIdPrefix,
     GenAIUseCasePersona,
     PainPointProfilerOutput,
 )
+
+MARKDOWN_REPORT_TEMPLATE = (
+    Path(__file__).parent / "templates" / "genai_use_case_report.md"
+).read_text(encoding="utf-8")
 
 
 def web_search_system_prompt(today: date) -> str:
@@ -21,14 +27,49 @@ def web_search_system_prompt(today: date) -> str:
     )
 
 
-def company_research_prompt(company_query: str) -> str:
+def company_research_prompt(company_resolution: CompanyResolutionOutput) -> str:
+    resolution_json = json.dumps(
+        company_resolution.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+    )
     return (
-        f"Research this company: {company_query}\n\n"
-        "Gather: official or common company name; primary industry; 2-5 business "
-        "lines; key customers or segments if public; 2-5 strategic priorities; "
-        "include the source URL next to each fact.\n"
-        "Use few sources: prefer Wikipedia, plus at most one or two other reliable "
-        "pages."
+        "Research this resolved company comprehensively: "
+        f"{company_resolution.resolved_name}\n\n"
+        "Structured company resolution from the previous step (JSON):\n"
+        f"{resolution_json}\n\n"
+        "Use the structured company resolution as the known starting point. Treat "
+        "official name/resolved_name, website, headquarters_country, "
+        "primary_industry, "
+        "ambiguity_notes, confidence, and evidence URLs as already acquired "
+        "identity context. Do not spend the research repeating basic identity "
+        "discovery unless the resolution evidence is weak or ambiguous.\n"
+        "Preserve and reuse useful URLs from company_resolution.evidence and the "
+        "official website when they support later profile claims. Search for the "
+        "missing context needed for a client-style GenAI recommendation workflow: "
+        "business lines; key customers; customer segments; strategic priorities; "
+        "recent strategic initiatives; geography/markets; operational pain "
+        "points; regulatory pressure; customer/market pressure; strategic growth "
+        "opportunities; and technology/digital transformation context. Put the "
+        "source URL next to every factual claim.\n"
+        "Format every research bullet exactly with: Claim: one concise factual "
+        "claim; Source URL: one full http(s) URL; Citation: a short quote, page "
+        "title, section name, or faithful source detail supporting the claim. "
+        "Omit claims that do not have a full source URL. Do not summarize uncited "
+        "facts. Do not cite source names without URLs.\n"
+        "Prefer sources in this order: official company website; annual report / "
+        "universal registration document; investor presentation; official "
+        "strategy page; official press release; regulator / government / "
+        "standards body; reputable business or industry publication; Wikipedia "
+        "only as fallback for basic identity, never as core evidence for "
+        "recommendations.\n"
+        "Keep searches reasonable: use several high-quality sources that cover the "
+        "company and its market, not broad low-value browsing. Prefer many "
+        "claim-level findings with citations over a shallow summary. Do not cite "
+        "Wikipedia, blogs, or weak sources as primary evidence if official or "
+        "reputable sources exist. Do not invent facts when sources are missing. "
+        "Clearly mark uncertainty, including uncertainty from ambiguity_notes or "
+        "low resolution confidence."
     )
 
 
@@ -78,10 +119,17 @@ def company_resolution_user_prompt(company_query: str, research_text: str) -> st
 def company_profile_system_prompt() -> str:
     return (
         "You are a data extraction assistant. Given research notes about a company, "
-        "extract and return a structured profile.\n"
-        "Only include information supported by the research.\n"
-        "For every evidence item, `source` must be a full URL (https preferred), "
-        "from the research - not a site name only."
+        "extract and return a compact profile plus a strict cited claim ledger "
+        "that subsequent strategy steps can use as their evidence base.\n"
+        "Only include information supported by the research. Capture company "
+        "profile facts, market context, pain-point signals, regulatory context, "
+        "growth opportunities, and technology transformation context when "
+        "supported.\n"
+        "The `claims` field is the primary evidence ledger. Every claim must have "
+        "a full source_url copied exactly from the research - not a site name only. "
+        "Drop uncited claims. Never merge multiple unrelated facts into one claim. "
+        "Use compact profile fields as summaries derived from `claims`, not as "
+        "replacements for them."
     )
 
 
@@ -89,9 +137,17 @@ def company_profile_user_prompt(company_query: str, research_text: str) -> str:
     return (
         f"Company query: {company_query}\n\n"
         f"Research notes:\n{research_text}\n\n"
-        "Return the structured profile with only the most relevant information. "
-        "Be concise: 2-5 items each for business_lines, key_customers, and "
-        "strategic_priorities."
+        "Return the structured profile with only sourced, relevant information. "
+        "Fill every field from the research: company_name; industry; "
+        "business_lines; key_customers; customer_segments; strategic_priorities; "
+        "recent_strategic_initiatives; geography_markets; operational_context; "
+        "regulatory_context; customer_market_pressure; growth_opportunities; "
+        "technology_transformation_context; claims; notes. Be concise: 2-6 "
+        "items for compact list fields where the research supports them. Include "
+        "at least 15 claims. Each claims item must contain one factual claim, "
+        "source_url, and citation. Copy source_url exactly from the research text. "
+        "Drop facts without full URLs or citations. Do not invent missing facts; "
+        "put uncertainty or gaps in notes."
     )
 
 
@@ -103,35 +159,31 @@ def company_context(profile: CompanyProfileOutput) -> str:
     )
 
 
-def pain_point_research_prompt(profile: CompanyProfileOutput) -> str:
-    return (
-        "Search the web for major pain points, unmet needs, and structural "
-        "challenges in the company's field.\n\n"
-        f"{company_context(profile)}\n\n"
-        "Use few sources: prefer Wikipedia, plus at most one or two other reliable "
-        "pages.\n"
-        "Include the full URL for each finding you cite."
-    )
-
-
 def pain_point_system_prompt() -> str:
     return (
-        "You are an analyst. Given research notes, extract major pain points, "
-        "industry gaps, or unmet needs relevant to the company and its field.\n"
-        "Only include points supported by the research. Assign prominence 1-10 "
-        "from the evidence strength and business impact. Each pain point's "
-        "sources must be full URL strings from the research."
+        "You are an analyst. Given an enriched structured company profile, extract "
+        "major pain points, industry gaps, unmet needs, and opportunity pressures "
+        "relevant to the company and its field.\n"
+        "Only include points supported by company_profile.claims and their evidence "
+        "URLs. Assign prominence 1-10 from the evidence strength and business "
+        "impact. Each pain point's sources must be full URL strings already "
+        "present in company_profile.claims.source_url. Do not add new web "
+        "research, invent unsupported industry generalizations, or cite URLs not "
+        "present in the profile."
     )
 
 
 def pain_point_user_prompt(
     profile: CompanyProfileOutput,
-    research_text: str,
 ) -> str:
     return (
         f"{company_context(profile)}\n\n"
-        f"Research notes:\n{research_text}\n\n"
-        "Return 3-8 pain points. Be specific and avoid duplication."
+        "Return 3-8 pain points derived only from this enriched company profile. "
+        "Use the operational_context, regulatory_context, "
+        "customer_market_pressure, growth_opportunities, "
+        "technology_transformation_context, strategic_priorities, and claims "
+        "fields directly. Be specific, avoid duplication, and copy each source URL "
+        "from company_profile.claims."
     )
 
 
@@ -169,11 +221,11 @@ def genai_use_cases_system_prompt(
         f"Every candidate must set ideation_lens exactly to `{ideation_lens}`. "
         f"Use exactly these IDs, one per candidate: {expected_ids}. Do not use "
         "any other ID format.\n"
-        "Generate use cases directly from the company profile, pain points, "
-        "strategic priorities, business lines, and evidence URLs. Be concrete: "
-        "name workflows, data, org roles, and what makes the solution "
-        "distinctive. Link every candidate to at least one pain point title from "
-        "the input.\n"
+        "Generate use cases directly from the company profile, "
+        "company_profile.claims, pain points, strategic priorities, business "
+        "lines, and evidence URLs. Be concrete: name workflows, data, org roles, "
+        "and what makes the solution distinctive. Link every candidate to at "
+        "least one pain point title from the input.\n"
         "Every use case must be explicitly GenAI-native. The core value must "
         "come from language/document reasoning, generation, tool orchestration, "
         "decision support, multimodal understanding, or workflow synthesis. "
@@ -192,7 +244,7 @@ def genai_use_cases_system_prompt(
         "Do not discuss vendor, model-provider, or "
         "platform fit. "
         "Preserve evidence: evidence_sources must be full URL strings copied "
-        "from company profile evidence or pain-point sources.\n"
+        "from company_profile.claims.source_url or pain-point sources.\n"
         "Do not invent numeric impact, expected percentage improvements, ROI, "
         "pilot results, lab results, or deployment outcomes. Only put numbers "
         "in source_backed_metrics when the metric value is directly supported "
@@ -242,8 +294,9 @@ def genai_use_cases_user_prompt(
         "needed; do not invent target values or write claims like 'expected "
         "30%'. Each genai_solution must describe a concrete user workflow: who "
         "uses it, what they input, what the system generates, and what human "
-        "approval step exists. Use the company profile, business lines, "
-        "strategic priorities, pain points, and evidence URLs directly. "
+        "approval step exists. Use company_profile.claims, the company profile, "
+        "business lines, strategic priorities, pain points, and evidence URLs "
+        "directly. "
     )
 
 
@@ -269,8 +322,8 @@ def use_case_grader_system_prompt() -> str:
         "software or analytics.\n"
         "- feasibility: whether required data, workflows, integration paths, "
         "change management, and risks look practical.\n"
-        "- evidence_strength: how strongly the candidate is supported by supplied "
-        "company facts, pain points, and source URLs.\n"
+        "- evidence_strength: how strongly the candidate is supported by "
+        "company_profile.claims, pain points, and source URLs.\n"
         "Penalize generic candidates harshly. Generic chatbot, RAG, internal "
         "knowledge assistant, document search, marketing generator, or broad "
         "productivity automation ideas should score low unless they are deeply and "
@@ -334,36 +387,145 @@ def use_case_grader_user_prompt(
     )
 
 
+def _source_links(sources: list[str]) -> str:
+    return " ".join(f"[source]({source})" for source in sources)
+
+
+def markdown_report_evidence_brief(
+    company_profile: CompanyProfileOutput,
+    pain_points: PainPointProfilerOutput,
+    final_selection: FinalSelectionOutput,
+) -> str:
+    claim_lines_by_source: dict[str, list[str]] = {}
+    company_claim_lines: list[str] = []
+    for claim in company_profile.claims:
+        line = f"- {claim.claim} [source]({claim.source_url}) - {claim.citation}"
+        company_claim_lines.append(line)
+        claim_lines_by_source.setdefault(claim.source_url, []).append(line)
+
+    pain_point_lines = [
+        "- "
+        f"{pain_point.title}: {pain_point.description} "
+        f"(prominence {pain_point.prominence}/10) "
+        f"{_source_links(pain_point.sources)}"
+        for pain_point in pain_points.pain_points
+    ]
+
+    use_case_sections: list[str] = []
+    for rank, item in enumerate(final_selection.selected, start=1):
+        use_case = item.use_case
+        lines = [
+            f"### Rank {rank}: {use_case.title}",
+            f"- Target users: {', '.join(use_case.target_users)}",
+            f"- Weighted score: {item.score.weighted_total}",
+            f"- Business problem: {use_case.business_problem}",
+            f"- Company fit: {use_case.why_this_company}",
+            f"- Required data: {use_case.required_data}",
+            "- Source-backed metrics:",
+        ]
+        if use_case.source_backed_metrics:
+            lines.extend(
+                "- "
+                f"{metric.label}: {metric.value} "
+                f"[source]({metric.source_url}) - "
+                f"{metric.source_quote_or_evidence}"
+                for metric in use_case.source_backed_metrics
+            )
+        else:
+            lines.append("- None provided in the source-backed metric fields.")
+
+        lines.append("- Pilot KPIs to validate:")
+        lines.extend(
+            "- "
+            f"{kpi.kpi}: measure via {kpi.measurement_method}; "
+            f"baseline needed: {kpi.baseline_needed}; "
+            f"target direction: {kpi.target_direction}"
+            for kpi in use_case.pilot_kpis
+        )
+
+        lines.append("- Evidence matched to company claims:")
+        matched_evidence = [
+            line
+            for source in use_case.evidence_sources
+            for line in claim_lines_by_source.get(source, [])
+        ]
+        if matched_evidence:
+            lines.extend(matched_evidence)
+        else:
+            lines.extend(
+                f"- Evidence source [source]({source})"
+                for source in use_case.evidence_sources
+            )
+
+        use_case_sections.append("\n".join(lines))
+
+    company_claims_text = "\n".join(company_claim_lines)
+    pain_points_text = "\n".join(pain_point_lines)
+    use_cases_text = "\n\n".join(use_case_sections)
+
+    return (
+        "Citation-ready evidence brief:\n\n"
+        "## Company claims\n"
+        f"{company_claims_text}\n\n"
+        "## Pain points\n"
+        f"{pain_points_text}\n\n"
+        "## Selected use cases\n"
+        f"{use_cases_text}"
+    )
+
+
 def markdown_reporter_system_prompt() -> str:
     return (
-        "You are a senior GenAI strategy consultant writing the client-ready "
-        "markdown deliverable from a completed use-case discovery workflow.\n"
+        "You are writing a client-facing GenAI opportunity report from a completed "
+        "use-case discovery workflow. Write like a practical decision memo for "
+        "the company's leadership team, not like a generic consulting template.\n"
         "Return only structured data matching the requested schema. The `markdown` "
         "field must contain the complete markdown report.\n"
-        "Write polished, professional prose for executives and business owners. "
-        "Make the report feel like a finished consulting deliverable, not a raw "
-        "data dump. Use clear markdown structure with: title, executive summary, "
-        "company context, selection methodology, ranked recommendations table, "
-        "detailed sections for each of the 3 use cases, caveats, and sources.\n"
+        "Use the markdown template below as a writing blueprint. Keep the major "
+        "section order and ranked opportunities table, but write natural, dense "
+        "prose inside each section. Do not leave placeholder text or blank form "
+        "rows in the final markdown.\n\n"
+        "Markdown report template:\n"
+        "```markdown\n"
+        f"{MARKDOWN_REPORT_TEMPLATE}\n"
+        "```\n\n"
         "Use the final selected top 3 use cases directly. Preserve their order as "
-        "rank 1, rank 2, and rank 3. Include weighted scores and important score "
-        "breakdowns in the ranked table or use-case sections. Make each use case "
-        "easy to scan with business problem, proposed GenAI solution, why it fits "
-        "the company, a section titled `Expected Impact and KPIs`, required data, "
-        "feasibility, risks, and supporting sources. In `Expected Impact and "
-        "KPIs`, render source-backed metrics separately from pilot KPIs. If "
-        "source_backed_metrics is empty, do not write any metric as a factual "
-        "expected result; use the qualitative impact and pilot KPIs as the "
-        "validation plan. For each use case, include a short section titled "
-        "`Why this is GenAI` that uses the use case's genai_mechanism values: "
-        "the mechanisms, why GenAI is needed, why classical software is not "
-        "enough, and why classical ML or optimization is not enough.\n"
-        "Explain the selection methodology using only the supplied artifacts: "
-        "company research, pain-point profiling, use-case generation, scoring, "
-        "and final top-3 selection.\n"
-        "Use only facts, caveats, scores, and source URLs from the supplied JSON. "
-        "Do not invent new facts, metrics, timelines or source URLs. Keep source "
-        "URLs as full URLs copied from the input. Do not write these phrases "
+        "rank 1, rank 2, and rank 3. Put score.weighted_total in the ranked "
+        "opportunities table as the weighted score. Briefly explain the scoring "
+        "rubric using only these dimensions: company relevance, business impact, "
+        "iconicness, GenAI fit, feasibility, and evidence strength.\n"
+        "For each use case, write `How The Workflow Would Work` with four "
+        "numbered steps: user input; retrieved or generated context; generated "
+        "output; and human approval or decision point. Make the workflow specific "
+        "enough that a pilot team could understand what would be built.\n"
+        "In `Why GenAI Is Needed`, use the use case's genai_mechanism values: the "
+        "mechanisms, why GenAI is needed, why classical software is not enough, "
+        "and why classical ML or optimization is not enough.\n"
+        "In `Impact To Validate`, separate source-backed metrics from pilot "
+        "KPIs. Source-backed metrics may be stated as factual only when present "
+        "in source_backed_metrics and must include an adjacent markdown link to "
+        "source_backed_metrics.source_url. Pilot KPIs are validation measures; "
+        "do not write them as proven results and do not add fake numeric targets.\n"
+        "Every factual claim and every number in the markdown report must have an "
+        "adjacent embedded markdown link to the source URL supporting that claim, "
+        "using only URLs from company_profile.claims, pain-point sources, "
+        "source_backed_metrics.source_url, or evidence_sources. The only numbers "
+        "that do not need external source links are ranks and scores copied from "
+        "the final_selection JSON.\n"
+        "Use the citation-ready evidence brief before the raw JSON when choosing "
+        "which claims to write. Each paragraph should contain concrete company "
+        "facts, workflow artifacts, users, data, metrics, risks, or caveats from "
+        "the supplied inputs. Avoid filler sentences that would apply to any "
+        "company. Do not repeat the same company context sentence across all "
+        "three use cases; each use case should add new detail.\n"
+        "Use only facts, caveats, scores, company_profile.claims, pain points, "
+        "selected use cases, and source URLs from the supplied JSON. Do not invent "
+        "new facts, metrics, timelines, ROI, pilot designs, deployment status, or "
+        "source URLs. If evidence is weak, public-source-only, or missing internal "
+        "data, say so in the relevant section and in Caveats.\n"
+        "No generic hype. No fake pilots. No fake numeric improvements. Do not "
+        "write broad claims such as 'GenAI will transform everything'. Prefer "
+        "concrete workflows over abstract strategy. Do not write these phrases "
         "unless the claim is directly supported by source_backed_metrics: "
         "'pilot results show', 'lab data shows', 'expected 30%', "
         "'will reduce by', or 'will improve by'."
@@ -375,6 +537,11 @@ def markdown_reporter_user_prompt(
     pain_points: PainPointProfilerOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
+    evidence_brief = markdown_report_evidence_brief(
+        company_profile,
+        pain_points,
+        final_selection,
+    )
     company_json = json.dumps(
         company_profile.model_dump(mode="json"),
         indent=2,
@@ -391,24 +558,16 @@ def markdown_reporter_user_prompt(
         ensure_ascii=False,
     )
     return (
+        f"{evidence_brief}\n\n"
         "Company profile (JSON):\n"
         f"{company_json}\n\n"
         "Pain point analysis (JSON):\n"
         f"{pain_json}\n\n"
         "Selected top 3 use cases with scores (JSON):\n"
         f"{final_selection_json}\n\n"
-        "Write the final client-ready markdown report in the `markdown` field. "
-        "Use these JSON inputs as the source of truth. Start with a concise H1 "
-        "title for the company, then include an executive summary, company "
-        "context, selection methodology, a ranked recommendations table, detailed "
-        "sections for each of the 3 selected use cases, caveats, and sources. "
-        "For each use case, include the business problem, proposed GenAI solution, "
-        "why it fits the company, `Expected Impact and KPIs`, required data, "
-        "score, feasibility, risks, a short `Why this is GenAI` section based "
-        "on genai_mechanism, and supporting source URLs. In `Expected Impact "
-        "and KPIs`, show source_backed_metrics separately from pilot_kpis; "
-        "pilot KPIs describe what to validate and must not be written as proven "
-        "results. "
-        "Use professional markdown formatting with headings, bullets, and tables "
-        "where useful, but do not include raw JSON or unsupported claims."
+        "Write the final markdown report in the `markdown` field. Use these JSON "
+        "inputs as the source of truth, and use the citation-ready evidence brief "
+        "above as the easiest source for inline markdown links. Follow the "
+        "system prompt's report structure, citation rules, density rules, KPI "
+        "rules, and no-hallucination rules. Do not include raw JSON."
     )

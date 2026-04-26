@@ -1,16 +1,25 @@
 from datetime import date
 
 from src.prompts import (
+    MARKDOWN_REPORT_TEMPLATE,
+    company_profile_system_prompt,
+    company_profile_user_prompt,
+    company_research_prompt,
     genai_use_cases_system_prompt,
     genai_use_cases_user_prompt,
+    markdown_report_evidence_brief,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
+    pain_point_system_prompt,
+    pain_point_user_prompt,
     use_case_grader_system_prompt,
     use_case_grader_user_prompt,
     web_search_system_prompt,
 )
 from src.schemas import (
+    CompanyEvidenceClaim,
     CompanyProfileOutput,
+    CompanyResolutionOutput,
     EvidenceItem,
     FinalSelectionOutput,
     GenAIMechanism,
@@ -22,6 +31,24 @@ from src.schemas import (
     SourceBackedMetric,
     UseCaseScore,
 )
+
+
+def _company_resolution() -> CompanyResolutionOutput:
+    return CompanyResolutionOutput(
+        input_name="Acme",
+        resolved_name="Acme Corporation",
+        website="https://example.com",
+        headquarters_country="United States",
+        primary_industry="Manufacturing",
+        ambiguity_notes="Acme Corporation is the likely match.",
+        confidence=0.9,
+        evidence=[
+            EvidenceItem(
+                claim="Acme Corporation is a manufacturing company",
+                source="https://example.com/company",
+            )
+        ],
+    )
 
 
 def _genai_mechanism() -> GenAIMechanism:
@@ -92,19 +119,114 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
     )
 
 
+def _company_claim(
+    claim: str,
+    source_url: str,
+    citation: str,
+) -> CompanyEvidenceClaim:
+    return CompanyEvidenceClaim(
+        claim=claim,
+        source_url=source_url,
+        citation=citation,
+    )
+
+
+def _company_claims() -> list[CompanyEvidenceClaim]:
+    return [
+        _company_claim(
+            "Acme makes widgets",
+            "https://example.com/company",
+            "Company page describes widget products.",
+        ),
+        _company_claim(
+            "Acme serves industrial buyers",
+            "https://example.com/customers",
+            "Customer page names industrial buyers.",
+        ),
+        _company_claim(
+            "Acme prioritizes operational efficiency",
+            "https://example.com/strategy",
+            "Strategy page lists operational efficiency.",
+        ),
+        _company_claim(
+            "Acme launched a factory modernization initiative",
+            "https://example.com/initiative",
+            "Press release announces modernization.",
+        ),
+        _company_claim(
+            "Acme operates in North America",
+            "https://example.com/markets",
+            "Markets page lists North America.",
+        ),
+        _company_claim(
+            "Acme faces supply chain delays",
+            "https://example.com/pain-1",
+            "Annual report notes supply chain delays.",
+        ),
+        _company_claim(
+            "New safety rules affect Acme's plants",
+            "https://example.com/pain-2",
+            "Regulator page describes new safety rules.",
+        ),
+        _company_claim(
+            "Customers expect faster configuration support",
+            "https://example.com/pain-3",
+            "Publication reports faster configuration expectations.",
+        ),
+        _company_claim(
+            "Acme has an aftermarket service expansion opportunity",
+            "https://example.com/growth",
+            "Investor presentation highlights aftermarket service expansion.",
+        ),
+        _company_claim(
+            "Acme is modernizing factory systems",
+            "https://example.com/digital",
+            "Digital page describes factory system modernization.",
+        ),
+        _company_claim(
+            "Acme tracks on-time delivery as a customer metric",
+            "https://example.com/metrics",
+            "Annual report references on-time delivery.",
+        ),
+        _company_claim(
+            "Acme sells through distributor partners",
+            "https://example.com/partners",
+            "Partner page describes distributor channels.",
+        ),
+        _company_claim(
+            "Acme focuses on configurable industrial products",
+            "https://example.com/configurable-products",
+            "Products page describes configurable industrial products.",
+        ),
+        _company_claim(
+            "Acme is investing in quality management",
+            "https://example.com/quality",
+            "Strategy update describes quality management investment.",
+        ),
+        _company_claim(
+            "Acme Corporation is the official company name",
+            "https://example.com/about",
+            "About page uses Acme Corporation as the official name.",
+        ),
+    ]
+
+
 def _company_profile() -> CompanyProfileOutput:
     return CompanyProfileOutput(
         company_name="Acme Corporation",
         industry="Manufacturing",
         business_lines=["Widgets"],
         key_customers=["Industrial buyers"],
+        customer_segments=["Industrial buyers"],
         strategic_priorities=["Operational efficiency"],
-        evidence=[
-            EvidenceItem(
-                claim="Acme makes widgets",
-                source="https://example.com/company",
-            )
-        ],
+        recent_strategic_initiatives=["Factory modernization"],
+        geography_markets=["North America"],
+        operational_context=["Supply chain delays"],
+        regulatory_context=["New safety rules"],
+        customer_market_pressure=["Customers expect faster configuration support"],
+        growth_opportunities=["Aftermarket service expansion"],
+        technology_transformation_context=["Factory modernization"],
+        claims=_company_claims(),
         notes="No caveats.",
     )
 
@@ -155,11 +277,113 @@ def _final_selection() -> FinalSelectionOutput:
     return FinalSelectionOutput(selected=_graded_use_cases()[:3])
 
 
+def _assert_high_quality_source_guidance(prompt: str) -> None:
+    source_priority = [
+        "official company website",
+        "annual report / universal registration document",
+        "investor presentation",
+        "official strategy page",
+        "official press release",
+        "regulator / government / standards body",
+        "reputable business or industry publication",
+        "Wikipedia only as fallback for basic identity",
+    ]
+    source_positions = [prompt.index(source) for source in source_priority]
+
+    assert source_positions == sorted(source_positions)
+    assert "source URL next to every factual claim" in prompt
+    assert "Keep searches reasonable" in prompt
+    assert "Do not cite Wikipedia, blogs, or weak sources as primary evidence" in prompt
+    assert "Do not invent facts when sources are missing" in prompt
+    assert "Clearly mark uncertainty" in prompt
+    assert "prefer Wikipedia" not in prompt
+
+
 def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
     assert "2026-04-25" in prompt
     assert "web search" in prompt
+
+
+def test_company_research_prompt_prioritizes_high_quality_sources() -> None:
+    prompt = company_research_prompt(_company_resolution())
+
+    assert "Research this resolved company comprehensively: Acme Corporation" in prompt
+    assert "Structured company resolution from the previous step" in prompt
+    assert '"resolved_name": "Acme Corporation"' in prompt
+    assert '"website": "https://example.com"' in prompt
+    assert '"ambiguity_notes": "Acme Corporation is the likely match."' in prompt
+    assert '"source": "https://example.com/company"' in prompt
+    assert "known starting point" in prompt
+    assert "Do not spend the research repeating basic identity discovery" in prompt
+    assert "Preserve and reuse useful URLs from company_resolution.evidence" in prompt
+    assert "official name" in prompt
+    assert "industry" in prompt
+    assert "business lines" in prompt
+    assert "key customers" in prompt
+    assert "customer segments" in prompt
+    assert "strategic priorities" in prompt
+    assert "recent strategic initiatives" in prompt
+    assert "geography/markets" in prompt
+    assert "operational pain points" in prompt
+    assert "regulatory pressure" in prompt
+    assert "customer/market pressure" in prompt
+    assert "strategic growth opportunities" in prompt
+    assert "technology/digital transformation context" in prompt
+    assert "Claim:" in prompt
+    assert "Source URL:" in prompt
+    assert "Citation:" in prompt
+    assert "Omit claims that do not have a full source URL" in prompt
+    assert "Do not summarize uncited facts" in prompt
+    assert "Do not cite source names without URLs" in prompt
+    assert "many claim-level findings with citations" in prompt
+    assert "core evidence for recommendations" in prompt
+    assert "low resolution confidence" in prompt
+    _assert_high_quality_source_guidance(prompt)
+
+
+def test_company_profile_prompts_request_enriched_evidence_contract() -> None:
+    system_prompt = company_profile_system_prompt()
+    user_prompt = company_profile_user_prompt("Acme Corporation", "Research notes")
+
+    assert "compact profile plus a strict cited claim ledger" in system_prompt
+    assert "evidence base" in system_prompt
+    assert "market context" in system_prompt
+    assert "pain-point signals" in system_prompt
+    assert "`claims` field is the primary evidence ledger" in system_prompt
+    assert "Drop uncited claims" in system_prompt
+    assert "Never merge multiple unrelated facts into one claim" in system_prompt
+    assert "customer_segments" in user_prompt
+    assert "recent_strategic_initiatives" in user_prompt
+    assert "geography_markets" in user_prompt
+    assert "operational_context" in user_prompt
+    assert "regulatory_context" in user_prompt
+    assert "customer_market_pressure" in user_prompt
+    assert "growth_opportunities" in user_prompt
+    assert "technology_transformation_context" in user_prompt
+    assert "at least 15 claims" in user_prompt
+    assert "source_url, and citation" in user_prompt
+    assert "Copy source_url exactly from the research text" in user_prompt
+    assert "Drop facts without full URLs or citations" in user_prompt
+
+
+def test_pain_point_prompts_derive_from_enriched_profile_evidence() -> None:
+    system_prompt = pain_point_system_prompt()
+    user_prompt = pain_point_user_prompt(_company_profile())
+
+    assert "enriched structured company profile" in system_prompt
+    assert "company_profile.claims" in system_prompt
+    assert "company_profile.claims.source_url" in system_prompt
+    assert "Do not add new web research" in system_prompt
+    assert "unsupported industry generalizations" in system_prompt
+    assert "Acme Corporation" in user_prompt
+    assert "operational_context" in user_prompt
+    assert "regulatory_context" in user_prompt
+    assert "customer_market_pressure" in user_prompt
+    assert "growth_opportunities" in user_prompt
+    assert "technology_transformation_context" in user_prompt
+    assert "copy each source URL from company_profile.claims" in user_prompt
 
 
 def test_genai_prompt_requires_persona_batch() -> None:
@@ -178,6 +402,8 @@ def test_genai_prompt_requires_persona_batch() -> None:
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
     assert "pilot_kpis" in prompt
+    assert "company_profile.claims" in prompt
+    assert "company_profile.claims.source_url" in prompt
 
 
 def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
@@ -204,6 +430,8 @@ def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
     assert "source_backed_metrics" in prompt
     assert "pilot_kpis (2+)" in prompt
     assert "do not invent target values" in prompt
+    assert "company_profile.claims" in prompt
+    assert '"claims": [' in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -219,6 +447,7 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "Generic chatbot, RAG, internal knowledge assistant" in prompt
     assert "classical ML, forecasting, optimization" in prompt
     assert "Unsupported metrics" in prompt
+    assert "company_profile.claims" in prompt
     assert "Vague target users" in prompt
     assert "penalties" in prompt
     assert "use_case_id" in prompt
@@ -246,25 +475,81 @@ def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     prompt = markdown_reporter_system_prompt()
 
-    assert "client-ready" in prompt
     assert "`markdown` field" in prompt
     assert "complete markdown report" in prompt
-    assert "finished consulting deliverable" in prompt
-    assert "selection methodology" in prompt
-    assert "ranked recommendations table" in prompt
-    assert "detailed sections for each of the 3 use cases" in prompt
+    assert "Markdown report template" in prompt
+    assert MARKDOWN_REPORT_TEMPLATE in prompt
+    assert "practical decision memo" in prompt
+    assert "generic consulting template" in prompt
+    assert "writing blueprint" in prompt
+    assert "natural, dense prose" in prompt
+    assert "# GenAI Opportunity Report — {Company}" in prompt
+    assert "## Recommendation in Brief" in prompt
+    assert "## What We Know About the Company" in prompt
+    assert "## Ranked Opportunities" in prompt
+    assert (
+        "| Rank | Opportunity | Primary users | Weighted score | Decision rationale |"
+        in prompt
+    )
+    assert "## 1. {Use Case Title}" in prompt
+    assert "## 2. {Use Case Title}" in prompt
+    assert "## 3. {Use Case Title}" in prompt
+    assert "## What To Validate First" in prompt
+    assert "## Caveats and Source Limits" in prompt
+    assert "## Sources" in prompt
     assert "rank 1, rank 2, and rank 3" in prompt
-    assert "weighted scores" in prompt
-    assert "Why this is GenAI" in prompt
+    assert "score.weighted_total" in prompt
+    assert "How The Workflow Would Work" in prompt
+    assert "retrieved or generated context" in prompt
+    assert "human approval or decision point" in prompt
+    assert "Why GenAI Is Needed" in prompt
     assert "genai_mechanism" in prompt
-    assert "source URLs" in prompt
+    assert "Impact To Validate" in prompt
+    assert "Every factual claim and every number" in prompt
+    assert "adjacent embedded markdown link" in prompt
+    assert "citation-ready evidence brief" in prompt
+    assert "Avoid filler sentences" in prompt
+    assert "Do not repeat the same company context sentence" in prompt
     assert "Do not invent" in prompt
-    assert "Expected Impact and KPIs" in prompt
-    assert "source-backed metrics separately from pilot KPIs" in prompt
+    assert "company_profile.claims" in prompt
+    assert "separate source-backed metrics from pilot KPIs" in prompt
+    assert "Pilot KPIs are validation measures" in prompt
+    assert "do not add fake numeric targets" in prompt
+    assert "If evidence is weak" in prompt
+    assert "No generic hype" in prompt
+    assert "No fake pilots" in prompt
+    assert "No fake numeric improvements" in prompt
+    assert "GenAI will transform everything" in prompt
     assert "pilot results show" in prompt
     assert "lab data shows" in prompt
     assert "will reduce by" in prompt
     assert "will improve by" in prompt
+
+
+def test_markdown_report_evidence_brief_includes_inline_links() -> None:
+    brief = markdown_report_evidence_brief(
+        _company_profile(),
+        _pain_points(),
+        _final_selection(),
+    )
+
+    assert "Citation-ready evidence brief" in brief
+    assert "## Company claims" in brief
+    assert "Acme makes widgets [source](https://example.com/company)" in brief
+    assert "## Pain points" in brief
+    assert (
+        "Pain 1: Description (prominence 8/10) "
+        "[source](https://example.com/pain-1)" in brief
+    )
+    assert "## Selected use cases" in brief
+    assert "### Rank 1: Use case 1" in brief
+    assert "Weighted score: 3.0" in brief
+    assert (
+        "Pain prominence: Prominence 8 of 10 "
+        "[source](https://example.com/source-1)" in brief
+    )
+    assert "Pilot KPIs to validate" in brief
+    assert "Evidence source [source](https://example.com/source-1)" in brief
 
 
 def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
@@ -277,18 +562,32 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert "Company profile (JSON)" in prompt
     assert "Pain point analysis (JSON)" in prompt
     assert "Selected top 3 use cases with scores (JSON)" in prompt
+    assert "Citation-ready evidence brief" in prompt
+    assert "Acme makes widgets [source](https://example.com/company)" in prompt
+    assert (
+        "Pain 1: Description (prominence 8/10) "
+        "[source](https://example.com/pain-1)" in prompt
+    )
+    assert (
+        "Pain prominence: Prominence 8 of 10 "
+        "[source](https://example.com/source-1)" in prompt
+    )
     assert '"company_name": "Acme Corporation"' in prompt
     assert '"id": "uc-1"' in prompt
     assert '"genai_mechanism": {' in prompt
     assert '"document_understanding"' in prompt
     assert '"qualitative_impact": "Qualitative impact"' in prompt
+    assert '"claims": [' in prompt
+    assert '"source_url": "https://example.com/pain-1"' in prompt
     assert '"source_backed_metrics": [' in prompt
     assert '"pilot_kpis": [' in prompt
     assert '"score": {' in prompt
-    assert "Write the final client-ready markdown report" in prompt
+    assert "Write the final markdown report" in prompt
     assert "Use these JSON inputs as the source of truth" in prompt
-    assert "ranked recommendations table" in prompt
-    assert "Expected Impact and KPIs" in prompt
-    assert "Why this is GenAI" in prompt
-    assert "caveats" in prompt
-    assert "do not include raw JSON" in prompt
+    assert "citation-ready evidence brief" in prompt
+    assert "system prompt's report structure" in prompt
+    assert "citation rules" in prompt
+    assert "density rules" in prompt
+    assert "KPI rules" in prompt
+    assert "no-hallucination rules" in prompt
+    assert "Do not include raw JSON" in prompt
