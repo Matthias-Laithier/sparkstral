@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from src.agents.base import BaseAgent
 from src.config import settings
 from src.prompts import web_search_system_prompt
-from src.tools.cached_web_search import CACHED_WEB_SEARCH_TOOL, cached_web_search
+from src.tools.provider_web_search import WEB_SEARCH_TOOL, web_search
 from src.utils import with_llm_retries
 
 
@@ -39,7 +39,7 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
                 lambda: self.client.chat.complete_async(
                     model=settings.WEB_SEARCH_MODEL,
                     messages=messages,
-                    tools=[cast(Any, CACHED_WEB_SEARCH_TOOL)],
+                    tools=[cast(Any, WEB_SEARCH_TOOL)],
                     tool_choice="auto",
                     max_tokens=settings.LLM_MAX_TOKENS,
                     temperature=settings.LLM_TEMPERATURE,
@@ -62,9 +62,9 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
                 return WebSearchOutput(text=text)
 
             for tc in msg.tool_calls:
-                if tc.function.name == "cached_web_search":
+                if tc.function.name == "web_search":
                     args = json.loads(cast(str, tc.function.arguments))
-                    result = await cached_web_search(args.get("query", ""))
+                    result = await web_search(args.get("query", ""))
                 else:
                     result = f"Unknown tool: {tc.function.name}"
 

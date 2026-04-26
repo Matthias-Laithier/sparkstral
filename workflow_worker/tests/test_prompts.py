@@ -6,11 +6,11 @@ from src.prompts import (
     company_research_prompt,
     genai_use_cases_system_prompt,
     genai_use_cases_user_prompt,
+    grade_single_use_case_user_prompt,
     markdown_report_evidence_brief,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
     use_case_grader_system_prompt,
-    use_case_grader_user_prompt,
     web_search_system_prompt,
 )
 from src.schemas import (
@@ -50,11 +50,13 @@ def _genai_mechanism() -> GenAIMechanism:
     return GenAIMechanism(
         mechanisms=["document_understanding", "structured_generation"],
         why_genai_is_needed="The workflow needs document reasoning and generation.",
-        why_classical_software_is_not_enough=(
-            "Rules alone cannot synthesize messy operational context."
+        genai_advantage_over_classical_software=(
+            "Rule-based systems can cover routing, while GenAI adds document "
+            "reasoning over messy operational context."
         ),
-        why_classical_ml_or_optimization_is_not_enough=(
-            "A predictor or optimizer would not draft grounded recommendations."
+        genai_advantage_over_classical_ml=(
+            "Classical ML can rank known patterns, while GenAI drafts grounded "
+            "recommendations with explanations."
         ),
     )
 
@@ -262,50 +264,56 @@ def test_genai_use_cases_system_prompt_requires_diverse_batch() -> None:
 
     assert "6-10" in prompt or "6–10" in prompt
     assert "ideation_brief" in prompt
-    assert "practical, stretch, and distinctive" in prompt
-    assert "OCR" in prompt
+    assert "client-workshop-worthy" in prompt
+    assert "what you rejected as too generic" in prompt
+    assert "reusable anchor types" in prompt
+    assert "Do not steer toward any preselected idea" in prompt
+    assert "Discard candidates" in prompt
+    assert "below 7/10 on iconicness" in prompt
+    assert "peer-company template" in prompt
+    assert "'digital transformation'" in prompt
+    assert "broad chatbot" in prompt
+    assert "generic RAG" in prompt
+    assert "classical optimization with GenAI branding" in prompt
+    assert "agentic tool use" in prompt
+    assert "document or multimodal understanding" in prompt
+    assert "grounded RAG" in prompt
+    assert "long-context or multi-document" in prompt
     assert "grounded_consultant" in prompt
     assert "optimistic_stretch" in prompt
     assert "moonshot" in prompt
     assert "novel_surprise" in prompt
     assert "evidence_tight" in prompt
-    assert "No two use cases may solve substantially the same" in prompt
-    assert "GenAI-native" in prompt
-    assert "classical ML" in prompt
-    assert "classical optimization" in prompt
-    assert "generic internal RAG assistants" in prompt
-    assert "generic customer-support chatbots" in prompt
-    assert "Do not invent numeric impact" in prompt
-    assert "Prefer evidence backed by `direct` support" in prompt
-    assert "`background_only`, `uncertain`, and `partial` evidence" in prompt
     assert (
-        "Do not frame real-time operational optimization as primarily GenAI" in prompt
+        "No two use cases may share the same users, problem, and core GenAI "
+        "workflow" in prompt
     )
-    assert "classical systems that should remain responsible" in prompt
-    assert "company_signal_labels" in prompt
+    assert "classical software or ML should still handle" in prompt
+    assert "Do not invent numeric impact" in prompt
+    assert "source_backed_metrics" in prompt
     assert "why_iconic" in prompt
-    assert "Reject any title that would still work after swapping in a peer" in prompt
-    assert "Iconicness is created here, not in the final report" in prompt
-    assert "iconic but still plausible" in prompt
 
 
 def test_genai_use_cases_user_prompt_includes_company_json() -> None:
     prompt = genai_use_cases_user_prompt(_company_profile())
 
-    assert "between 6 and 10" in prompt
+    assert "6-10 `use_cases`" in prompt
     assert "ideation_brief" in prompt
     assert "use_cases" in prompt
     assert "company_signal_labels" in prompt
     assert "use_case_archetype" in prompt
     assert "genai_mechanism" in prompt
+    assert "genai_advantage_over_classical_software" in prompt
+    assert "genai_advantage_over_classical_ml" in prompt
     assert "modalities" in prompt
     assert "model+tool loop" in prompt
     assert "human approval" in prompt
     assert '"research_text":' in prompt
-    assert "Title and why_iconic must carry the iconicness" in prompt
-    assert "need the report writer to add branding later" in prompt
-    assert "Use source role and support directness" in prompt
-    assert "main support for a top candidate" in prompt
+    assert "Candidate inclusion test" in prompt
+    assert "title names a company anchor" in prompt
+    assert "non-transferability argument" in prompt
+    assert "expert judgment" in prompt
+    assert "URLs only from those inputs" in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -325,39 +333,40 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "penalties" in prompt
     assert "use_case_id" in prompt
     assert "Do not output weighted_total" in prompt
-    assert "Do not skip" in prompt
+    assert "Do not rewrite, merge, skip" in prompt
     assert "DimensionRubricLine" in prompt
-    assert "autoregressive" in prompt
-    assert "Cap iconicness at 5" in prompt
-    assert "non-transferable company anchors" in prompt
-    assert "overlap across the candidate batch" in prompt
-    assert "Compare every use case against the full batch" in prompt
+    assert "cap iconicness at 5" in prompt
+    assert "Report-worthy test" in prompt
+    assert "peer-company template" in prompt
+    assert "constrain adjacent scores" in prompt
+    assert "generic value" in prompt
+    assert "classical automation in disguise" in prompt
+    assert "weak anchors" in prompt
+    assert "thin chatbot" in prompt
+    assert "human-reviewable decisions" in prompt
+    assert "Compare peer summaries" in prompt
     assert "name the overlapping use_case_id in penalties" in prompt
-    assert "real-time operational optimization as primarily GenAI" in prompt
-    assert "what GenAI adds from what classical controls" in prompt
-    assert "`background_only`, `uncertain`, or `partial` sources" in prompt
+    assert "adversarial weaknesses" in prompt
 
 
-def test_use_case_grader_user_prompt_requests_score_only_output() -> None:
-    prompt = use_case_grader_user_prompt(
+def test_grade_single_use_case_user_prompt_requests_score_only_output() -> None:
+    prompt = grade_single_use_case_user_prompt(
         _company_profile(),
-        [_candidate(1), _candidate(2)],
+        _candidate(1),
+        ["uc_2: Use case 2 — Problem"],
     )
 
-    assert "Generated use cases to grade (JSON)" in prompt
+    assert "Generated use case to grade (JSON)" in prompt
+    assert "Peer use-case summaries for overlap checking only" in prompt
     assert '"id": "uc_1"' in prompt
-    assert "grader_thinking" in prompt
-    assert "`grades`" in prompt
-    assert "use_case_id equal to the matching use_case.id" in prompt
-    assert "Do not repeat, copy, or rewrite any original use_case object" in prompt
-    assert "1-10" in prompt
-    assert "adversarial" in prompt
-    assert "sourced company anchors in both the title and why_iconic" in prompt
-    assert "would still work for a peer" in prompt
-    assert "near-duplicate ideas you have already seen" in prompt
-    assert "overlapping use_case_id named in penalties" in prompt
-    assert "weak source roles" in prompt
-    assert "`partial`/`background` support" in prompt
+    assert "uc_2: Use case 2" in prompt
+    assert "supplied use_case.id" in prompt
+    assert "Do not repeat or rewrite the original use_case object" in prompt
+    assert "report-worthy test" in prompt
+    assert "read naturally for a peer" in prompt
+    assert "keep iconicness low" in prompt
+    assert "avoid compensating with high adjacent scores" in prompt
+    assert "Name overlapping peer use_case_ids in penalties" in prompt
     assert "Pain point and opportunity analysis" not in prompt
 
 
@@ -389,37 +398,39 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "one-decimal Fit score" in prompt
     assert "7.4/10" in prompt
     assert "not 7.35/10" in prompt
-    assert "If two displayed Fit scores tie" in prompt
     assert "/10" in prompt
+    assert "distinctive" in prompt
+    assert "weak iconicness" in prompt
     assert "Scoring (1–10)" in prompt
     assert "How The Workflow Would Work" in prompt
     assert "Retrieved or generated context" in prompt
     assert "Human approval or decision point" in prompt
     assert "Iconicness" in prompt
     assert "why_iconic" in prompt
-    assert "do not upgrade a generic use case" in prompt
-    assert "reflect that honestly" in prompt
-    assert "company_relevance.rationale" in prompt
+    assert "Do not upgrade a generic use case" in prompt
+    assert "reflect low iconicness honestly" in prompt
+    assert "DimensionRubricLine" in prompt
     assert "Why GenAI Fits" in prompt
     assert "Why Genai ?" not in prompt
     assert "Why GenAI Is Needed" not in prompt
     assert "what GenAI adds" in prompt
     assert "what classical systems should still handle" in prompt
-    assert "Avoid absolute requirement language" in prompt
+    assert "Avoid absolute claims" in prompt
     assert "genai_mechanism" in prompt
     assert "Impact To Validate" in prompt
     assert "Cite factual claims and numbers" in prompt
     assert "Do not invent facts" in prompt
     assert "source URLs" in prompt
-    assert "neutral citation labels only" in prompt
-    assert "[source](URL)" in prompt
-    assert "never use a generated source title" in prompt
+    assert "neutral markdown links like [source](URL)" in prompt
     assert "Caveats and Source Limits" in prompt
     assert "numeric targets" in prompt
     assert "human-readable validation prose" in prompt
     assert "ideation_brief" in prompt
     assert "grader_thinking" in prompt
+    assert "raw JSON" in prompt
     assert "What To Validate First" in prompt
+    assert "'classical software cannot handle X'" in prompt
+    assert "domain allowlists, blocklists, regexes" in prompt
 
 
 def test_markdown_report_evidence_brief_includes_inline_links() -> None:

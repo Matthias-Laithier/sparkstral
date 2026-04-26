@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-import src.tools.cached_web_search as search_tool
+import src.tools.provider_web_search as search_tool
 from src.config import Settings, settings
 
 
@@ -12,7 +12,6 @@ def _settings_kwargs(**overrides: Any) -> dict[str, Any]:
     values: dict[str, Any] = {
         "MISTRAL_API_KEY": "test-mistral-api-key",
         "DEPLOYMENT_NAME": "test-deployment",
-        "BACKEND_BASE_URL": "http://backend:8000",
         "SERPER_API_KEY": "test-serper-api-key",
         "TAVILY_API_KEY": "test-tavily-api-key",
         "WEB_SEARCH_PROVIDER": "serper",
@@ -41,7 +40,7 @@ def test_settings_requires_tavily_key_for_tavily_provider() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cached_web_search_uses_tavily_advanced_search(
+async def test_web_search_tavily_calls_tavily_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, str]] = []
@@ -74,7 +73,7 @@ async def test_cached_web_search_uses_tavily_advanced_search(
     monkeypatch.setattr(settings, "TAVILY_API_KEY", "test-tavily-api-key")
     monkeypatch.setattr(search_tool, "TavilyClient", FakeTavilyClient)
 
-    raw = await search_tool.cached_web_search("Acme")
+    raw = await search_tool.web_search("Acme")
 
     assert calls == [
         {

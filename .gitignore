@@ -70,13 +70,10 @@ Thumbs.db
 !.vscode/settings.json
 .codex
 
-# --- Postgres & databases ---
+# --- DB backups / dumps ---
 *.sql.backup
 *.dump
 /dumps/
-data/postgres/
-postgres-data/
-pgdata/
 
 # --- Misc ---
 *.orig

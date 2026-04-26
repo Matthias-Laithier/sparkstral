@@ -4,7 +4,7 @@ import mistralai.workflows as workflows
 
 from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
-from src.agents.grader import UseCaseGraderAgent
+from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import (
@@ -19,10 +19,11 @@ from src.schemas import (
     GenAIUseCaseCandidateInput,
     GenAIUseCaseGeneration,
     GradedUseCasePool,
-    GradeUseCasesInput,
+    GradeSingleUseCaseInput,
     MarkdownReport,
     MarkdownReportInput,
     ResearchResult,
+    SingleUseCaseGradeResult,
 )
 from src.utils import get_mistral_client, select_top_n
 
@@ -78,15 +79,15 @@ async def generate_genai_use_cases(
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def grade_use_cases(
-    params: GradeUseCasesInput,
-) -> GradedUseCasePool:
+async def grade_single_use_case(
+    params: GradeSingleUseCaseInput,
+) -> SingleUseCaseGradeResult:
     client = get_mistral_client()
-    agent = UseCaseGraderAgent(client=client)
+    agent = SingleUseCaseGraderAgent(client=client)
     try:
         return await agent.run(params)
     except Exception as exc:
-        raise RuntimeError("use-case grading failed") from exc
+        raise RuntimeError(f"use-case grading failed for {params.use_case.id}") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

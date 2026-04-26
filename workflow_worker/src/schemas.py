@@ -92,8 +92,20 @@ class GenAIMechanism(BaseModel):
         ]
     ] = Field(..., min_length=1)
     why_genai_is_needed: str
-    why_classical_software_is_not_enough: str
-    why_classical_ml_or_optimization_is_not_enough: str
+    genai_advantage_over_classical_software: str = Field(
+        ...,
+        description=(
+            "Where GenAI adds value beyond rule-based systems and classical NLP; "
+            "acknowledge what classical systems still do well."
+        ),
+    )
+    genai_advantage_over_classical_ml: str = Field(
+        ...,
+        description=(
+            "Where GenAI adds value beyond classical ML or optimization; "
+            "acknowledge what classical ML handles well."
+        ),
+    )
 
 
 class SourceBackedMetric(BaseModel):
@@ -300,18 +312,18 @@ class UseCaseGrade(BaseModel):
     penalties: list[str]
 
 
-class UseCaseGradePool(BaseModel):
+class SingleUseCaseGradeResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     grader_thinking: str = Field(
         ...,
         min_length=1,
         description=(
-            "Batch-level skepticism and replaceability analysis before per-use-case "
-            "grades. Not for client reports."
+            "Single-use-case skepticism and replaceability analysis before the "
+            "grade. Not for client reports."
         ),
     )
-    grades: list[UseCaseGrade] = Field(..., min_length=1)
+    grade: UseCaseGrade
 
 
 class GradedUseCase(BaseModel):
@@ -338,11 +350,12 @@ class FinalSelectionOutput(BaseModel):
     selected: list[GradedUseCase] = Field(..., min_length=3, max_length=3)
 
 
-class GradeUseCasesInput(BaseModel):
+class GradeSingleUseCaseInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
-    use_cases: list[GenAIUseCaseCandidate] = Field(..., min_length=6, max_length=10)
+    use_case: GenAIUseCaseCandidate
+    peer_summaries: list[str]
 
 
 class GenAIUseCaseCandidateInput(BaseModel):

@@ -61,4 +61,10 @@ Summarize the pilot KPIs, missing internal data, and decision gates that matter 
 State where the report relies on public sources, where evidence is weak, and what internal information is missing.
 
 ## Sources
-List each source URL once.
+List each source URL once, grouped by source quality.
+
+### Primary and high-confidence sources
+List sources classified as company_primary, filing_or_investor, official_press_release, regulator_or_government, or wire_or_business_media.
+
+### Background and lower-confidence sources
+List sources classified as industry_source, background_only, uncertain, or unclassified.

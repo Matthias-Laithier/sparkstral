@@ -1,14 +1,19 @@
+import asyncio
 from collections.abc import Awaitable, Callable
 from functools import partial
 
 from src.activities import (
     generate_genai_use_cases,
-    grade_use_cases,
+    grade_single_use_case,
     research_company,
     research_company_resolution,
     select_final_top_3,
     structure_company_resolution,
     write_markdown_report,
+)
+from src.agents.grader import (
+    build_graded_use_case_pool,
+    build_single_use_case_grade_inputs,
 )
 from src.schemas import (
     CompanyInput,
@@ -17,7 +22,6 @@ from src.schemas import (
     CompanyResolutionStructuringInput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
-    GradeUseCasesInput,
     MarkdownReportInput,
     PipelineOutput,
     SparkstralWorkflowResult,
@@ -74,12 +78,14 @@ async def run_sparkstral_pipeline(
     append_json(generated.model_dump(mode="json"))
 
     await _send_status(status_callback, "Scoring opportunities...\n")
-    graded_use_cases = await grade_use_cases(
-        GradeUseCasesInput(
-            company_profile=company_profile,
-            use_cases=use_cases.use_cases,
-        )
+    grade_inputs = build_single_use_case_grade_inputs(
+        company_profile,
+        use_cases.use_cases,
     )
+    single_grades = await asyncio.gather(
+        *[grade_single_use_case(grade_input) for grade_input in grade_inputs]
+    )
+    graded_use_cases = build_graded_use_case_pool(use_cases.use_cases, single_grades)
     append_json(graded_use_cases.model_dump(mode="json"))
 
     final_selection = await select_final_top_3(graded_use_cases)

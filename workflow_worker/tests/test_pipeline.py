@@ -7,8 +7,9 @@ from src import activities, pipeline
 from src.agents import genai_use_cases, grader, markdown_reporter
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import (
-    UseCaseGraderAgent,
-    build_graded_use_cases,
+    SingleUseCaseGraderAgent,
+    build_graded_use_case_pool,
+    build_single_use_case_grade_inputs,
     compute_weighted_total,
 )
 from src.agents.markdown_reporter import MarkdownReporterAgent
@@ -27,15 +28,15 @@ from src.schemas import (
     GenAIUseCaseGeneration,
     GradedUseCase,
     GradedUseCasePool,
-    GradeUseCasesInput,
+    GradeSingleUseCaseInput,
     MarkdownReport,
     MarkdownReportInput,
     PilotKPI,
     ResearchResult,
+    SingleUseCaseGradeResult,
     SourceBackedMetric,
     SparkstralWorkflowResult,
     UseCaseGrade,
-    UseCaseGradePool,
     UseCaseScore,
 )
 from src.utils import select_top_n
@@ -193,11 +194,13 @@ def _genai_mechanism() -> GenAIMechanism:
     return GenAIMechanism(
         mechanisms=["document_understanding", "structured_generation"],
         why_genai_is_needed="The workflow needs document reasoning and generation.",
-        why_classical_software_is_not_enough=(
-            "Rules alone cannot synthesize messy operational context."
+        genai_advantage_over_classical_software=(
+            "Rule-based systems can cover routing, while GenAI adds document "
+            "reasoning over messy operational context."
         ),
-        why_classical_ml_or_optimization_is_not_enough=(
-            "A predictor or optimizer would not draft grounded recommendations."
+        genai_advantage_over_classical_ml=(
+            "Classical ML can rank known patterns, while GenAI drafts grounded "
+            "recommendations with explanations."
         ),
     )
 
@@ -376,7 +379,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     calls: list[str] = []
     company_research_params: CompanyResolutionOutput | None = None
     generation_inputs: list[GenAIUseCaseCandidateInput] = []
-    grading_use_cases: list[list[GenAIUseCaseCandidate]] = []
+    grading_inputs: list[GradeSingleUseCaseInput] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
     final_selection_candidates: GradedUseCasePool | None = None
     markdown_report_params: MarkdownReportInput | None = None
@@ -412,11 +415,23 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         generation_inputs.append(params)
         return generated
 
-    async def grade_use_cases(params: Any) -> GradedUseCasePool:
-        calls.append("grade_use_cases")
-        grading_use_cases.append(params.use_cases)
+    async def grade_single_use_case(
+        params: GradeSingleUseCaseInput,
+    ) -> SingleUseCaseGradeResult:
+        calls.append(f"grade_single_use_case:{params.use_case.id}")
+        grading_inputs.append(params)
         grading_company_profiles.append(params.company_profile)
-        return graded_candidates
+        score = next(
+            item.score
+            for item in graded_candidates.graded_use_cases
+            if item.use_case.id == params.use_case.id
+        )
+        return SingleUseCaseGradeResult(
+            grader_thinking=f"Standalone thinking for {params.use_case.id}.",
+            grade=UseCaseGrade.model_validate(
+                score.model_dump(exclude={"weighted_total"})
+            ),
+        )
 
     async def select_final_top_3(params: GradedUseCasePool) -> FinalSelectionOutput:
         nonlocal final_selection_candidates
@@ -438,7 +453,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     monkeypatch.setattr(pipeline, "research_company", research_company)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
-    monkeypatch.setattr(pipeline, "grade_use_cases", grade_use_cases)
+    monkeypatch.setattr(pipeline, "grade_single_use_case", grade_single_use_case)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
     monkeypatch.setattr(pipeline, "write_markdown_report", write_markdown_report)
 
@@ -457,7 +472,14 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "structure_company_resolution",
         "research_company",
         "generate_genai_use_cases",
-        "grade_use_cases",
+        "grade_single_use_case:uc_1",
+        "grade_single_use_case:uc_2",
+        "grade_single_use_case:uc_3",
+        "grade_single_use_case:uc_4",
+        "grade_single_use_case:uc_5",
+        "grade_single_use_case:uc_6",
+        "grade_single_use_case:uc_7",
+        "grade_single_use_case:uc_8",
         "select_final_top_3",
         "write_markdown_report",
     ]
@@ -478,7 +500,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
     assert result.outputs[3].data == generated.model_dump(mode="json")
-    assert result.outputs[4].data == graded_candidates.model_dump(mode="json")
+    assert final_selection_candidates is not None
+    assert result.outputs[4].data == final_selection_candidates.model_dump(mode="json")
+    assert [
+        item.score.weighted_total
+        for item in final_selection_candidates.graded_use_cases
+    ] == [item.score.weighted_total for item in graded_candidates.graded_use_cases]
+    assert "Standalone thinking for uc_1" in final_selection_candidates.grader_thinking
     assert result.outputs[5].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
@@ -486,9 +514,12 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert generation_inputs == [
         GenAIUseCaseCandidateInput(company_profile=expected_company_profile)
     ]
-    assert grading_use_cases == [generated.use_cases]
-    assert grading_company_profiles == [expected_company_profile]
-    assert final_selection_candidates == graded_candidates
+    assert [item.use_case for item in grading_inputs] == generated.use_cases
+    assert [
+        summary for summary in grading_inputs[0].peer_summaries if "uc_1:" in summary
+    ] == []
+    assert "uc_2: Use case 2" in grading_inputs[0].peer_summaries[0]
+    assert grading_company_profiles == [expected_company_profile] * 8
     assert markdown_report_params == MarkdownReportInput(
         company_profile=expected_company_profile,
         final_selection=final_selection,
@@ -553,6 +584,67 @@ def test_compute_weighted_total_uses_weighted_formula() -> None:
     )
 
     assert compute_weighted_total(score) == 6.32
+
+
+def test_build_single_use_case_grade_inputs_adds_peer_summaries() -> None:
+    company_profile = _company_profile()
+    use_cases = [_candidate(1), _candidate(2), _candidate(3)]
+
+    grade_inputs = build_single_use_case_grade_inputs(company_profile, use_cases)
+
+    assert [item.use_case for item in grade_inputs] == use_cases
+    assert [item.company_profile for item in grade_inputs] == [company_profile] * 3
+    assert "uc_1:" not in "\n".join(grade_inputs[0].peer_summaries)
+    assert "uc_2: Use case 2" in grade_inputs[0].peer_summaries[0]
+    assert "uc_3: Use case 3" in grade_inputs[0].peer_summaries[1]
+
+
+def test_build_single_use_case_grade_inputs_rejects_duplicate_ids() -> None:
+    use_cases = [_candidate(1), _candidate(1)]
+
+    with pytest.raises(ValueError, match="duplicate IDs"):
+        build_single_use_case_grade_inputs(_company_profile(), use_cases)
+
+
+def test_build_graded_use_case_pool_applies_weighted_scores() -> None:
+    use_cases = [_candidate(1), _candidate(2)]
+    single_grades = [
+        SingleUseCaseGradeResult(
+            grader_thinking="Thinking one.",
+            grade=_grade(
+                "uc_1",
+                company_relevance=5,
+                business_impact=4,
+                iconicness=4,
+                genai_fit=4,
+                feasibility=4,
+                evidence_strength=3,
+            ),
+        ),
+        SingleUseCaseGradeResult(
+            grader_thinking="Thinking two.",
+            grade=_grade("uc_2"),
+        ),
+    ]
+
+    pool = build_graded_use_case_pool(use_cases, single_grades)
+
+    assert pool.grader_thinking == "uc_1: Thinking one.\nuc_2: Thinking two."
+    assert [item.use_case for item in pool.graded_use_cases] == use_cases
+    assert [item.score.weighted_total for item in pool.graded_use_cases] == [4.07, 3.0]
+
+
+def test_build_graded_use_case_pool_rejects_mismatched_grade_ids() -> None:
+    with pytest.raises(ValueError, match="returned use case ID uc_missing for uc_1"):
+        build_graded_use_case_pool(
+            [_candidate(1)],
+            [
+                SingleUseCaseGradeResult(
+                    grader_thinking="Mismatch.",
+                    grade=_grade("uc_missing"),
+                )
+            ],
+        )
 
 
 def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
@@ -718,111 +810,111 @@ async def test_generate_genai_use_cases_activity_returns_agent_result(
 
 
 @pytest.mark.asyncio
-async def test_use_case_grader_agent_maps_grades_to_original_use_cases(
+async def test_single_use_case_grader_agent_returns_single_grade(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    use_cases = [_candidate(index) for index in range(1, 7)]
-    llm_result = UseCaseGradePool(
+    use_case = _candidate(2)
+    llm_result = SingleUseCaseGradeResult(
         grader_thinking="Classical software could address thin chat patterns.",
-        grades=[
-            _grade(
-                "uc_2",
-                company_relevance=5,
-                business_impact=4,
-                iconicness=4,
-                genai_fit=4,
-                feasibility=4,
-                evidence_strength=3,
-            ),
-            _grade(
-                "uc_1",
-                company_relevance=2,
-                business_impact=2,
-                iconicness=2,
-                genai_fit=2,
-                feasibility=2,
-                evidence_strength=2,
-            ),
-            *[_grade(use_case.id) for use_case in use_cases[2:]],
-        ],
+        grade=_grade(
+            "uc_2",
+            company_relevance=5,
+            business_impact=4,
+            iconicness=4,
+            genai_fit=4,
+            feasibility=4,
+            evidence_strength=3,
+        ),
     )
     response_model: type[Any] | None = None
+    messages: list[dict[str, str]] = []
 
-    async def parse_chat_model(*args: Any, **_kwargs: Any) -> UseCaseGradePool:
-        nonlocal response_model
+    async def parse_chat_model(
+        *args: Any,
+        **kwargs: Any,
+    ) -> SingleUseCaseGradeResult:
+        nonlocal response_model, messages
         response_model = args[1]
+        messages = kwargs["messages"]
         return llm_result
 
     monkeypatch.setattr(grader, "parse_chat_model", parse_chat_model)
 
-    result = await UseCaseGraderAgent(client=cast(Any, object())).run(
-        GradeUseCasesInput(
+    result = await SingleUseCaseGraderAgent(client=cast(Any, object())).run(
+        GradeSingleUseCaseInput(
             company_profile=_company_profile(),
-            use_cases=use_cases,
+            use_case=use_case,
+            peer_summaries=["uc_1: Use case 1 — Problem"],
         )
     )
 
-    assert result.grader_thinking == llm_result.grader_thinking
-    assert response_model is UseCaseGradePool
-    assert [item.use_case.id for item in result.graded_use_cases[:2]] == [
-        "uc_2",
-        "uc_1",
-    ]
-    assert [item.score.weighted_total for item in result.graded_use_cases[:2]] == [
-        4.07,
-        2.0,
-    ]
-    assert result.graded_use_cases[0].use_case == use_cases[1]
-    assert result.graded_use_cases[1].use_case == use_cases[0]
+    assert result == llm_result
+    assert response_model is SingleUseCaseGradeResult
+    assert "Generated use case to grade" in messages[1]["content"]
+    assert "uc_1: Use case 1" in messages[1]["content"]
 
 
-def test_build_graded_use_cases_rejects_unknown_grade_id() -> None:
-    with pytest.raises(ValueError, match="unknown use case ID: uc_missing"):
-        build_graded_use_cases(
-            [_grade("uc_1"), _grade("uc_missing")],
-            [_candidate(1), _candidate(2)],
-        )
+@pytest.mark.asyncio
+async def test_single_use_case_grader_agent_rejects_mismatched_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm_result = SingleUseCaseGradeResult(
+        grader_thinking="Mismatch.",
+        grade=_grade("uc_missing"),
+    )
 
+    async def parse_chat_model(
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> SingleUseCaseGradeResult:
+        return llm_result
 
-def test_build_graded_use_cases_rejects_duplicate_grade_id() -> None:
-    with pytest.raises(ValueError, match="duplicate use case ID: uc_1"):
-        build_graded_use_cases(
-            [_grade("uc_1"), _grade("uc_1")],
-            [_candidate(1)],
-        )
+    monkeypatch.setattr(grader, "parse_chat_model", parse_chat_model)
 
-
-def test_build_graded_use_cases_rejects_missing_grade_id() -> None:
-    with pytest.raises(ValueError, match="grades for use case IDs: uc_2"):
-        build_graded_use_cases(
-            [_grade("uc_1")],
-            [_candidate(1), _candidate(2)],
+    with pytest.raises(ValueError, match="grader returned use case ID uc_missing"):
+        await SingleUseCaseGraderAgent(client=cast(Any, object())).run(
+            GradeSingleUseCaseInput(
+                company_profile=_company_profile(),
+                use_case=_candidate(1),
+                peer_summaries=[],
+            )
         )
 
 
 @pytest.mark.asyncio
-async def test_grade_use_cases_activity_returns_agent_result(
+async def test_grade_single_use_case_activity_returns_agent_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    use_cases = [_candidate(index) for index in range(1, 7)]
-    agent_result = _graded_pool(use_cases)
+    use_case = _candidate(1)
+    grading_input = GradeSingleUseCaseInput(
+        company_profile=_company_profile(),
+        use_case=use_case,
+        peer_summaries=["uc_2: Use case 2 — Problem"],
+    )
+    agent_result = SingleUseCaseGradeResult(
+        grader_thinking="Standalone thinking.",
+        grade=_grade(use_case.id),
+    )
 
-    class FakeUseCaseGraderAgent:
+    class FakeSingleUseCaseGraderAgent:
         def __init__(self, client: object) -> None:
             self.client = client
 
-        async def run(self, _params: GradeUseCasesInput) -> GradedUseCasePool:
+        async def run(
+            self,
+            params: GradeSingleUseCaseInput,
+        ) -> SingleUseCaseGradeResult:
+            assert params == grading_input
             return agent_result
 
     monkeypatch.setattr(activities, "get_mistral_client", lambda: object())
-    monkeypatch.setattr(activities, "UseCaseGraderAgent", FakeUseCaseGraderAgent)
-
-    result = await activities.grade_use_cases(
-        GradeUseCasesInput(
-            company_profile=_company_profile(),
-            use_cases=use_cases,
-        )
+    monkeypatch.setattr(
+        activities,
+        "SingleUseCaseGraderAgent",
+        FakeSingleUseCaseGraderAgent,
     )
+
+    result = await activities.grade_single_use_case(grading_input)
 
     assert result == agent_result
 
@@ -1106,9 +1198,9 @@ def test_use_case_grade_forbids_weighted_total() -> None:
         UseCaseGrade.model_validate(data)
 
 
-def test_use_case_grade_pool_requires_at_least_one_item() -> None:
+def test_single_use_case_grade_result_requires_grade() -> None:
     with pytest.raises(ValidationError):
-        UseCaseGradePool(grader_thinking="x", grades=[])
+        SingleUseCaseGradeResult(grader_thinking="x")
 
 
 def test_graded_use_case_pool_allows_generated_pool_grading() -> None:

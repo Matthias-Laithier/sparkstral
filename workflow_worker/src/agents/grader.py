@@ -1,13 +1,13 @@
 from src.agents.base import BaseAgent
 from src.config import settings
-from src.prompts import use_case_grader_system_prompt, use_case_grader_user_prompt
+from src.prompts import grade_single_use_case_user_prompt, use_case_grader_system_prompt
 from src.schemas import (
+    CompanyProfileOutput,
     GenAIUseCaseCandidate,
     GradedUseCase,
     GradedUseCasePool,
-    GradeUseCasesInput,
-    UseCaseGrade,
-    UseCaseGradePool,
+    GradeSingleUseCaseInput,
+    SingleUseCaseGradeResult,
     UseCaseScore,
 )
 from src.utils import parse_chat_model
@@ -25,65 +25,75 @@ def compute_weighted_total(score: UseCaseScore) -> float:
     )
 
 
-def build_graded_use_cases(
-    grades: list[UseCaseGrade],
+def build_single_use_case_grade_inputs(
+    company_profile: CompanyProfileOutput,
     use_cases: list[GenAIUseCaseCandidate],
-) -> list[GradedUseCase]:
-    use_case_by_id: dict[str, GenAIUseCaseCandidate] = {}
-    duplicate_input_ids: set[str] = set()
-    for use_case in use_cases:
-        if use_case.id in use_case_by_id:
-            duplicate_input_ids.add(use_case.id)
-        use_case_by_id[use_case.id] = use_case
+) -> list[GradeSingleUseCaseInput]:
+    peer_map = {
+        use_case.id: f"{use_case.id}: {use_case.title} — {use_case.business_problem}"
+        for use_case in use_cases
+    }
+    if len(peer_map) != len(use_cases):
+        raise ValueError("generated use cases contain duplicate IDs")
 
-    if duplicate_input_ids:
-        raise ValueError(
-            "duplicate input use case IDs: " + ", ".join(sorted(duplicate_input_ids))
+    return [
+        GradeSingleUseCaseInput(
+            company_profile=company_profile,
+            use_case=use_case,
+            peer_summaries=[
+                summary
+                for peer_id, summary in peer_map.items()
+                if peer_id != use_case.id
+            ],
         )
+        for use_case in use_cases
+    ]
 
-    seen_grade_ids: set[str] = set()
-    graded_use_cases: list[GradedUseCase] = []
-    for grade in grades:
-        if grade.use_case_id in seen_grade_ids:
+
+def build_graded_use_case_pool(
+    use_cases: list[GenAIUseCaseCandidate],
+    single_grades: list[SingleUseCaseGradeResult],
+) -> GradedUseCasePool:
+    graded_items: list[GradedUseCase] = []
+    grader_thinking_lines: list[str] = []
+    for use_case, result in zip(use_cases, single_grades, strict=True):
+        if result.grade.use_case_id != use_case.id:
             raise ValueError(
-                f"grader returned duplicate use case ID: {grade.use_case_id}"
-            )
-        seen_grade_ids.add(grade.use_case_id)
-
-        matched_use_case = use_case_by_id.get(grade.use_case_id)
-        if matched_use_case is None:
-            raise ValueError(
-                f"grader returned unknown use case ID: {grade.use_case_id}"
+                "single-use-case grader returned use case ID "
+                f"{result.grade.use_case_id} for {use_case.id}"
             )
 
-        score = UseCaseScore(**grade.model_dump(), weighted_total=1.0)
-        graded_use_cases.append(
+        score = UseCaseScore(
+            **result.grade.model_dump(),
+            weighted_total=1.0,
+        )
+        graded_items.append(
             GradedUseCase(
-                use_case=matched_use_case,
+                use_case=use_case,
                 score=score.model_copy(
                     update={"weighted_total": compute_weighted_total(score)}
                 ),
             )
         )
-
-    missing_ids = [
-        use_case.id for use_case in use_cases if use_case.id not in seen_grade_ids
-    ]
-    if missing_ids:
-        raise ValueError(
-            "grader did not return grades for use case IDs: " + ", ".join(missing_ids)
+        grader_thinking_lines.append(
+            f"{result.grade.use_case_id}: {result.grader_thinking}"
         )
 
-    return graded_use_cases
+    return GradedUseCasePool(
+        grader_thinking="\n".join(grader_thinking_lines),
+        graded_use_cases=graded_items,
+    )
 
 
-class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
-    name = "use-case-grader"
+class SingleUseCaseGraderAgent(
+    BaseAgent[GradeSingleUseCaseInput, SingleUseCaseGradeResult],
+):
+    name = "single-use-case-grader"
 
-    async def run(self, params: GradeUseCasesInput) -> GradedUseCasePool:
+    async def run(self, params: GradeSingleUseCaseInput) -> SingleUseCaseGradeResult:
         result = await parse_chat_model(
             self.client,
-            UseCaseGradePool,
+            SingleUseCaseGradeResult,
             phase="use-case grading",
             model=settings.USE_CASE_GRADER_AGENT_MODEL,
             max_tokens=settings.LLM_MAX_TOKENS,
@@ -92,14 +102,17 @@ class UseCaseGraderAgent(BaseAgent[GradeUseCasesInput, GradedUseCasePool]):
                 {"role": "system", "content": use_case_grader_system_prompt()},
                 {
                     "role": "user",
-                    "content": use_case_grader_user_prompt(
+                    "content": grade_single_use_case_user_prompt(
                         params.company_profile,
-                        params.use_cases,
+                        params.use_case,
+                        params.peer_summaries,
                     ),
                 },
             ],
         )
-        return GradedUseCasePool(
-            grader_thinking=result.grader_thinking,
-            graded_use_cases=build_graded_use_cases(result.grades, params.use_cases),
-        )
+        if result.grade.use_case_id != params.use_case.id:
+            raise ValueError(
+                "grader returned use case ID "
+                f"{result.grade.use_case_id} for {params.use_case.id}"
+            )
+        return result
