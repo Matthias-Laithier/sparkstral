@@ -2,6 +2,7 @@ from datetime import date
 
 from src.prompts import (
     genai_use_cases_system_prompt,
+    genai_use_cases_user_prompt,
     markdown_reporter_system_prompt,
     markdown_reporter_user_prompt,
     use_case_grader_system_prompt,
@@ -11,12 +12,26 @@ from src.schemas import (
     CompanyProfileOutput,
     EvidenceItem,
     FinalSelectionOutput,
+    GenAIMechanism,
     GenAIUseCaseCandidate,
     GradedUseCase,
     PainPointItem,
     PainPointProfilerOutput,
     UseCaseScore,
 )
+
+
+def _genai_mechanism() -> GenAIMechanism:
+    return GenAIMechanism(
+        mechanisms=["document_understanding", "structured_generation"],
+        why_genai_is_needed="The workflow needs document reasoning and generation.",
+        why_classical_software_is_not_enough=(
+            "Rules alone cannot synthesize messy operational context."
+        ),
+        why_classical_ml_or_optimization_is_not_enough=(
+            "A predictor or optimizer would not draft grounded recommendations."
+        ),
+    )
 
 
 def _candidate(index: int) -> GenAIUseCaseCandidate:
@@ -27,6 +42,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         business_problem="Problem",
         why_this_company="Company fit",
         genai_solution="Solution",
+        genai_mechanism=_genai_mechanism(),
         required_data="Data",
         expected_impact="Impact",
         why_iconic="Iconic fit",
@@ -114,6 +130,27 @@ def test_genai_prompt_requires_candidate_pool() -> None:
     assert "candidate pool" in prompt
     assert "grounded consultant" in prompt
     assert "moonshot strategist" in prompt
+    assert "GenAI-native" in prompt
+    assert "predictive maintenance" in prompt
+    assert "numerical forecasting" in prompt
+    assert "process optimization" in prompt
+    assert "control systems" in prompt
+    assert "dashboards" in prompt
+    assert "generic RAG" in prompt
+    assert "generic chatbot" in prompt
+    assert "why classical ML or optimization is not enough" in prompt
+
+
+def test_genai_user_prompt_requires_mechanism_and_workflow() -> None:
+    prompt = genai_use_cases_user_prompt(_company_profile(), _pain_points())
+
+    assert "genai_mechanism" in prompt
+    assert "mechanisms (1+)" in prompt
+    assert "three why_* fields" in prompt
+    assert "who uses it" in prompt
+    assert "what they input" in prompt
+    assert "what the system generates" in prompt
+    assert "human approval step" in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -141,6 +178,8 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "detailed sections for each of the 3 use cases" in prompt
     assert "rank 1, rank 2, and rank 3" in prompt
     assert "score totals" in prompt
+    assert "Why this is GenAI" in prompt
+    assert "genai_mechanism" in prompt
     assert "source URLs" in prompt
     assert "Do not invent" in prompt
 
@@ -157,9 +196,12 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
     assert "Selected top 3 use cases with scores (JSON)" in prompt
     assert '"company_name": "Acme Corporation"' in prompt
     assert '"id": "uc-1"' in prompt
+    assert '"genai_mechanism": {' in prompt
+    assert '"document_understanding"' in prompt
     assert '"score": {' in prompt
     assert "Write the final client-ready markdown report" in prompt
     assert "Use these JSON inputs as the source of truth" in prompt
     assert "ranked recommendations table" in prompt
+    assert "Why this is GenAI" in prompt
     assert "caveats" in prompt
     assert "do not include raw JSON" in prompt

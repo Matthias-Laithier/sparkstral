@@ -13,6 +13,7 @@ from src.schemas import (
     CompanyResolutionOutput,
     EvidenceItem,
     FinalSelectionOutput,
+    GenAIMechanism,
     GenAIUseCaseCandidate,
     GenAIUseCaseCandidatePool,
     GradedUseCase,
@@ -81,6 +82,19 @@ def _pain_point(index: int) -> PainPointItem:
     )
 
 
+def _genai_mechanism() -> GenAIMechanism:
+    return GenAIMechanism(
+        mechanisms=["document_understanding", "structured_generation"],
+        why_genai_is_needed="The workflow needs document reasoning and generation.",
+        why_classical_software_is_not_enough=(
+            "Rules alone cannot synthesize messy operational context."
+        ),
+        why_classical_ml_or_optimization_is_not_enough=(
+            "A predictor or optimizer would not draft grounded recommendations."
+        ),
+    )
+
+
 def _candidate(index: int) -> GenAIUseCaseCandidate:
     pain_point_index = ((index - 1) % 3) + 1
     return GenAIUseCaseCandidate(
@@ -90,6 +104,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         business_problem="Problem",
         why_this_company="Company fit",
         genai_solution="Solution",
+        genai_mechanism=_genai_mechanism(),
         required_data="Data",
         expected_impact="Impact",
         why_iconic="Iconic fit",
@@ -707,6 +722,30 @@ def test_genai_use_case_candidate_pool_requires_eight_to_twelve_items(
         GenAIUseCaseCandidatePool(
             use_cases=[_candidate(index) for index in range(1, count + 1)]
         )
+
+
+def test_genai_use_case_candidate_requires_genai_mechanism() -> None:
+    data = _candidate(1).model_dump()
+    del data["genai_mechanism"]
+
+    with pytest.raises(ValidationError):
+        GenAIUseCaseCandidate.model_validate(data)
+
+
+def test_genai_mechanism_requires_at_least_one_mechanism() -> None:
+    data = _genai_mechanism().model_dump()
+    data["mechanisms"] = []
+
+    with pytest.raises(ValidationError):
+        GenAIMechanism.model_validate(data)
+
+
+def test_genai_mechanism_restricts_mechanism_values() -> None:
+    data = _genai_mechanism().model_dump()
+    data["mechanisms"] = ["predictive_maintenance"]
+
+    with pytest.raises(ValidationError):
+        GenAIMechanism.model_validate(data)
 
 
 @pytest.mark.parametrize(

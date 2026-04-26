@@ -103,6 +103,28 @@ class PainPointStructuringInput(BaseModel):
     research_text: str
 
 
+class GenAIMechanism(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mechanisms: list[
+        Literal[
+            "retrieval_augmented_generation",
+            "document_understanding",
+            "structured_generation",
+            "multi_step_reasoning",
+            "tool_orchestration",
+            "conversational_interface",
+            "summarization",
+            "scenario_generation",
+            "decision_support",
+            "multimodal_understanding",
+        ]
+    ] = Field(..., min_length=1)
+    why_genai_is_needed: str
+    why_classical_software_is_not_enough: str
+    why_classical_ml_or_optimization_is_not_enough: str
+
+
 class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -122,6 +144,7 @@ class GenAIUseCaseCandidate(BaseModel):
         ...,
         description="What the GenAI solution does (concretely, not a product pitch).",
     )
+    genai_mechanism: GenAIMechanism
     required_data: str = Field(
         ...,
         description="Data and systems needed to build and run it.",
