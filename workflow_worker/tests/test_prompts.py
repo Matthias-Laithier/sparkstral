@@ -234,7 +234,7 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "proprietary platforms" in prompt
     assert "COMPANY ANCHORING" in prompt
     assert "company-specific noun" in prompt
-    assert "Competitors cannot replicate" in prompt
+    assert "harder for competitors to replicate" in prompt
     assert "RECENT-NEWS ANCHORING" in prompt
     assert "last 12 months" in prompt
     assert "GENAI MECHANISM DIVERSITY" in prompt
@@ -257,17 +257,12 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "production optimization" in prompt
     assert "'GenAI is needed'" in prompt
     assert "GenAI adds value by" in prompt
-    assert "WORKFLOW ARCHETYPE EXAMPLES" in prompt
-    assert "Multimodal triage" in prompt
-    assert "Regulatory compliance copilot" in prompt
-    assert "Cross-document synthesis" in prompt
-    assert "Agentic inspection loop" in prompt
-    assert "Operator explanation engine" in prompt
-    assert "Proposal/bid drafter" in prompt
-    assert "Multilingual field intelligence" in prompt
-    assert "Training scenario generator" in prompt
-    assert "archetype" in prompt
-    assert "define your own" in prompt
+    assert "WORKFLOW DIVERSITY" in prompt
+    assert "structurally different GenAI workflow" in prompt
+    assert "input modalities" in prompt
+    assert "reasoning patterns" in prompt
+    assert "output types" in prompt
+    assert "workflow shape" in prompt
     assert "data-in-recommendations-out loop" in prompt
     assert "ORIGINALITY TEST" in prompt
     assert "first-order obvious" in prompt
@@ -275,6 +270,7 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "source_backed_metrics" in prompt
     assert "verbatim in the research text" in prompt
     assert "Do not fabricate recent developments" in prompt
+    assert "agreed to acquire" in prompt
     assert "grounded_consultant" not in prompt
     assert "moonshot" not in prompt
 
@@ -286,7 +282,7 @@ def test_genai_use_cases_user_prompt_includes_company_json() -> None:
     assert "ideation_brief" in prompt
     assert "unique company moats" in prompt
     assert "company-specific noun" in prompt
-    assert "Competitors cannot replicate" in prompt
+    assert "harder for competitors to replicate" in prompt
     assert "non-transferability argument" in prompt
     assert "expert judgment" in prompt
     assert '"research_text":' in prompt
@@ -400,6 +396,7 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "Impact To Validate" in prompt
     assert "Cite factual claims and numbers" in prompt
     assert "Do not invent facts" in prompt
+    assert "agreed to acquire" in prompt
     assert "Do not supplement the evidence brief with general knowledge" in prompt
     assert "Every URL in the report must appear in the evidence brief" in prompt
     assert "source URLs" in prompt
