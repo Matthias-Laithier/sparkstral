@@ -27,6 +27,8 @@ def web_search_system_prompt(today: date) -> str:
         "assumptions.\n"
         "Every URL you cite must be a URL returned by the search tool. Never "
         "construct a URL from a domain name and a guessed path.\n"
+        "Every claim must be supported by a source URL, which needs to be next "
+        "to the claim, do not add a url list at the end.\n"
         "If a search does not return the information you expected, report that "
         "the information was not found. Do not guess numbers, dates, names, or "
         "amounts.\n"
