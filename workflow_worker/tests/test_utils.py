@@ -294,13 +294,14 @@ async def test_web_search_agent_uses_custom_tool_loop_for_tavily(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "WEB_SEARCH_PROVIDER", "tavily")
-    response = _CompletionResponse(_CompletionMessage("research"))
-    client = _CompletionClient([response])
+    search_response = _CompletionResponse(_CompletionMessage("raw search"))
+    synthesis_response = _CompletionResponse(_CompletionMessage("research"))
+    client = _CompletionClient([search_response, synthesis_response])
 
     result = await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
 
     assert result.text == "research"
-    assert client.chat.calls == 1
+    assert client.chat.calls == 2
 
 
 @pytest.mark.asyncio
@@ -308,13 +309,16 @@ async def test_web_search_agent_retries_llm_completion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     delays = _skip_retry_delays(monkeypatch)
-    response = _CompletionResponse(_CompletionMessage("research"))
-    client = _CompletionClient([RuntimeError("transient"), response])
+    search_response = _CompletionResponse(_CompletionMessage("raw search"))
+    synthesis_response = _CompletionResponse(_CompletionMessage("research"))
+    client = _CompletionClient(
+        [RuntimeError("transient"), search_response, synthesis_response]
+    )
 
     result = await WebSearchAgent(cast(Any, client)).run(WebSearchInput(prompt="Acme"))
 
     assert result.text == "research"
-    assert client.chat.calls == 2
+    assert client.chat.calls == 3
     assert delays == [1.0]
 
 

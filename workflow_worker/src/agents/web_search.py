@@ -1,6 +1,6 @@
 import json
 from datetime import date
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 from mistralai.client.models import AssistantMessage, ToolMessage
 from pydantic import BaseModel
@@ -36,20 +36,19 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
 
         for round_idx in range(settings.WEB_SEARCH_MAX_ROUNDS):
             snapshot = list(messages)
-            force_tool: Literal["any", "auto"] = "any" if round_idx == 0 else "auto"
 
-            async def _complete() -> Any:
+            async def _search() -> Any:
                 return await self.client.chat.complete_async(
                     model=settings.WEB_SEARCH_MODEL,
                     messages=snapshot,
                     tools=[cast(Any, WEB_SEARCH_TOOL)],
-                    tool_choice=force_tool,
+                    tool_choice="any",
                     max_tokens=settings.LLM_MAX_TOKENS,
                     temperature=settings.LLM_TEMPERATURE,
                 )
 
             response = await with_llm_retries(
-                _complete,
+                _search,
                 phase="web search llm completion",
             )
             if not response.choices:
@@ -62,10 +61,7 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
             messages.append(msg)
 
             if not msg.tool_calls:
-                text = _text(msg).strip()
-                if not text:
-                    raise RuntimeError("web search returned an empty assistant message")
-                return WebSearchOutput(text=text)
+                break
 
             for tc in msg.tool_calls:
                 if tc.function.name == "web_search":
@@ -82,13 +78,39 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
                     )
                 )
 
-        texts: list[str] = [
-            _text(m).strip()
-            for m in messages
-            if isinstance(m, AssistantMessage) and m.content
-        ]
-        if texts:
-            return WebSearchOutput(text="\n".join(texts))
+        messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "Now write the complete research report from the search "
+                    "results above. Format every finding as Claim / Source URL "
+                    "pairs. Do not add any facts beyond what the searches returned."
+                ),
+            }
+        )
+        synthesis_messages = list(messages)
+
+        async def _synthesize() -> Any:
+            return await self.client.chat.complete_async(
+                model=settings.WEB_SEARCH_MODEL,
+                messages=synthesis_messages,
+                max_tokens=settings.LLM_MAX_TOKENS,
+                temperature=settings.LLM_TEMPERATURE,
+            )
+
+        synthesis = await with_llm_retries(
+            _synthesize,
+            phase="web search synthesis",
+        )
+        if (
+            synthesis.choices
+            and synthesis.choices[0].message
+            and synthesis.choices[0].message.content
+        ):
+            text = _text(synthesis.choices[0].message).strip()
+            if text:
+                return WebSearchOutput(text=text)
+
         raise RuntimeError("web search completed without usable research text")
 
     async def _run_mistralai(self, params: WebSearchInput) -> WebSearchOutput:

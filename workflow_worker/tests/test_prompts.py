@@ -197,16 +197,17 @@ def test_web_search_system_prompt_includes_current_date() -> None:
     assert "Do not supplement with prior knowledge" in prompt
     assert "Never construct a URL" in prompt
     assert "report that the information was not found" in prompt
+    assert "Never ask for confirmation" in prompt
 
 
 def test_combined_research_prompt_covers_identity_and_research() -> None:
     prompt = combined_research_prompt("Acme")
 
     assert "Resolve and research this company: Acme" in prompt
-    assert "Identity" in prompt
+    assert "company identity" in prompt
     assert "official company name" in prompt
     assert "ambiguity" in prompt
-    assert "Deep research" in prompt
+    assert "immediately proceed to deep research without stopping" in prompt
     assert "Search for recent developments" in prompt
     assert "acquisitions" in prompt
     assert "earnings results" in prompt
@@ -278,9 +279,20 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "production optimization" in prompt
     assert "'GenAI is needed'" in prompt
     assert "GenAI adds value by" in prompt
+    assert "WORKFLOW ARCHETYPE EXAMPLES" in prompt
+    assert "Multimodal triage" in prompt
+    assert "Regulatory compliance copilot" in prompt
+    assert "Cross-document synthesis" in prompt
+    assert "Agentic inspection loop" in prompt
+    assert "Operator explanation engine" in prompt
+    assert "Proposal/bid drafter" in prompt
+    assert "Multilingual field intelligence" in prompt
+    assert "Training scenario generator" in prompt
+    assert "archetype" in prompt
+    assert "define your own" in prompt
+    assert "data-in-recommendations-out loop" in prompt
     assert "ORIGINALITY TEST" in prompt
     assert "first-order obvious" in prompt
-    assert "structurally different GenAI workflow" in prompt
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
     assert "verbatim in the research text" in prompt
