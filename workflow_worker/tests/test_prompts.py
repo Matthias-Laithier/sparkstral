@@ -15,9 +15,7 @@ from src.prompts import (
 )
 from src.schemas import (
     CompanyProfileOutput,
-    CompanyResolutionOutput,
     DimensionRubricLine,
-    EvidenceItem,
     FinalSelectionOutput,
     GenAIMechanism,
     GenAIUseCaseCandidate,
@@ -26,24 +24,6 @@ from src.schemas import (
     SourceBackedMetric,
     UseCaseScore,
 )
-
-
-def _company_resolution() -> CompanyResolutionOutput:
-    return CompanyResolutionOutput(
-        input_name="Acme",
-        resolved_name="Acme Corporation",
-        website="https://example.com",
-        headquarters_country="United States",
-        primary_industry="Manufacturing",
-        ambiguity_notes="Acme Corporation is the likely match.",
-        confidence=0.9,
-        evidence=[
-            EvidenceItem(
-                claim="Acme Corporation is a manufacturing company",
-                source="https://example.com/company",
-            )
-        ],
-    )
 
 
 def _genai_mechanism() -> GenAIMechanism:
@@ -118,7 +98,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
 
 def _company_profile() -> CompanyProfileOutput:
     return CompanyProfileOutput(
-        company_resolution=_company_resolution(),
+        company_name="Acme",
         research_text=(
             "**Business Lines & Customer Segments**\n"
             "- Claim: Acme makes widgets.\n"
@@ -227,12 +207,10 @@ def test_combined_research_prompt_covers_identity_and_research() -> None:
     assert "Never construct a URL" in prompt
 
 
-def test_company_context_keeps_resolution_and_research_text() -> None:
+def test_company_context_keeps_name_and_research_text() -> None:
     prompt = company_context(_company_profile())
 
-    assert "Resolved company identity (JSON)" in prompt
-    assert '"resolved_name": "Acme Corporation"' in prompt
-    assert '"source": "https://example.com/company"' in prompt
+    assert "Company: Acme" in prompt
     assert "Sourced company research text" in prompt
     assert "Acme makes widgets" in prompt
     assert "Source URL: https://example.com/pain-1" in prompt
@@ -312,7 +290,7 @@ def test_genai_use_cases_user_prompt_includes_company_json() -> None:
     assert "non-transferability argument" in prompt
     assert "expert judgment" in prompt
     assert '"research_text":' in prompt
-    assert "URLs only from those inputs" in prompt
+    assert "URLs only from that input" in prompt
     assert "use_case_archetype" not in prompt
 
 
@@ -446,8 +424,7 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     )
 
     assert "Citation-ready evidence brief" in brief
-    assert "## Resolved company identity" in brief
-    assert "Acme Corporation is a manufacturing company" in brief
+    assert "## Company: Acme" in brief
     assert "## Sourced company research" in brief
     assert "Acme makes widgets" in brief
     assert "Source URL: https://example.com/company" in brief

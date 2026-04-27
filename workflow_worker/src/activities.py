@@ -2,7 +2,6 @@ from datetime import timedelta
 
 import mistralai.workflows as workflows
 
-from src.agents.company_resolver import CompanyResolverAgent
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
@@ -10,8 +9,6 @@ from src.agents.web_search import WebSearchAgent, WebSearchInput
 from src.prompts import combined_research_prompt
 from src.schemas import (
     CompanyResolutionInput,
-    CompanyResolutionOutput,
-    CompanyResolutionStructuringInput,
     FinalSelectionOutput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseGeneration,
@@ -38,18 +35,6 @@ async def research_company_combined(params: CompanyResolutionInput) -> ResearchR
     except Exception as exc:
         raise RuntimeError("combined company research failed") from exc
     return ResearchResult(text=result.text)
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def structure_company_resolution(
-    params: CompanyResolutionStructuringInput,
-) -> CompanyResolutionOutput:
-    client = get_mistral_client()
-    agent = CompanyResolverAgent(client=client)
-    try:
-        return await agent.run(params)
-    except Exception as exc:
-        raise RuntimeError("company resolution structuring failed") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

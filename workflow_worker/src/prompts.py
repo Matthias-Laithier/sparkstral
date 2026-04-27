@@ -97,15 +97,8 @@ def company_resolution_user_prompt(company_query: str, research_text: str) -> st
 
 
 def company_context(profile: CompanyProfileOutput) -> str:
-    resolution_json = json.dumps(
-        profile.company_resolution.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
     return (
-        "Company profile (resolved identity + sourced research):\n\n"
-        "Resolved company identity (JSON):\n"
-        f"{resolution_json}\n\n"
+        f"Company: {profile.company_name}\n\n"
         "Sourced company research text:\n"
         f"{profile.research_text}"
     )
@@ -239,8 +232,8 @@ def genai_use_cases_user_prompt(company_profile: CompanyProfileOutput) -> str:
         "fills the template 'This requires [fact]. Competitors cannot replicate "
         "because [reason].'; `why_iconic` makes a non-transferability argument; "
         "the workflow shows where GenAI changes expert judgment. "
-        "Ground every field in company_resolution and research_text; URLs only from "
-        "those inputs."
+        "Ground every field in the company research text; URLs only from "
+        "that input."
     )
 
 
@@ -288,14 +281,8 @@ def use_case_grader_system_prompt() -> str:
 
 
 def grader_company_brief(profile: CompanyProfileOutput) -> str:
-    r = profile.company_resolution
     return (
-        f"Company: {r.resolved_name}\n"
-        f"Industry: {r.primary_industry}\n"
-        f"HQ: {r.headquarters_country}\n"
-        f"Website: {r.website}\n"
-        f"Ambiguity: {r.ambiguity_notes}\n"
-        f"Confidence: {r.confidence}"
+        f"Company: {profile.company_name}\n\nResearch summary:\n{profile.research_text}"
     )
 
 
@@ -346,17 +333,6 @@ def markdown_report_evidence_brief(
     company_profile: CompanyProfileOutput,
     final_selection: FinalSelectionOutput,
 ) -> str:
-    resolution = company_profile.company_resolution
-    resolution_lines = [
-        f"- Resolved company: {resolution.resolved_name}",
-        f"- Website: {resolution.website}",
-        f"- Headquarters country: {resolution.headquarters_country}",
-        f"- Primary industry: {resolution.primary_industry}",
-        f"- Ambiguity notes: {resolution.ambiguity_notes}",
-    ]
-    resolution_lines.extend(
-        f"- {item.claim} [source]({item.source})" for item in resolution.evidence
-    )
     use_case_sections: list[str] = []
     for rank, item in enumerate(final_selection.selected, start=1):
         use_case = item.use_case
@@ -404,13 +380,11 @@ def markdown_report_evidence_brief(
 
         use_case_sections.append("\n".join(lines))
 
-    resolution_text = "\n".join(resolution_lines)
     use_cases_text = "\n\n".join(use_case_sections)
 
     return (
         "Citation-ready evidence brief:\n\n"
-        "## Resolved company identity\n"
-        f"{resolution_text}\n\n"
+        f"## Company: {company_profile.company_name}\n\n"
         "## Sourced company research\n"
         f"{company_profile.research_text}\n\n"
         "## Selected use cases\n"

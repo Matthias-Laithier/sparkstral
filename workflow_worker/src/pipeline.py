@@ -7,7 +7,6 @@ from src.activities import (
     grade_single_use_case,
     research_company_combined,
     select_final_top_3,
-    structure_company_resolution,
     write_markdown_report,
 )
 from src.agents.grader import (
@@ -18,7 +17,6 @@ from src.schemas import (
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionInput,
-    CompanyResolutionStructuringInput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
     MarkdownReportInput,
@@ -52,16 +50,8 @@ async def run_sparkstral_pipeline(
     )
     append_text(combined_research.text)
 
-    company_resolution = await structure_company_resolution(
-        CompanyResolutionStructuringInput(
-            company_query=params.company_name,
-            research_text=combined_research.text,
-        )
-    )
-    append_json(company_resolution.model_dump(mode="json"))
-
     company_profile = CompanyProfileOutput(
-        company_resolution=company_resolution,
+        company_name=params.company_name,
         research_text=combined_research.text,
     )
 

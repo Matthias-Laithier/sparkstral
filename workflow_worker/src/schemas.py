@@ -52,7 +52,7 @@ class CompanyResolutionStructuringInput(BaseModel):
 class CompanyProfileOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    company_resolution: CompanyResolutionOutput
+    company_name: str
     research_text: str
 
 

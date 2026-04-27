@@ -37,7 +37,7 @@ from src.schemas import (
     SparkstralWorkflowResult,
     UseCaseGrade,
     UseCaseScore,
-)
+)  # CompanyResolutionOutput and EvidenceItem kept for schema validation tests
 from src.utils import select_top_n
 
 
@@ -61,7 +61,7 @@ def _company_resolution() -> CompanyResolutionOutput:
 
 def _company_profile() -> CompanyProfileOutput:
     return CompanyProfileOutput(
-        company_resolution=_company_resolution(),
+        company_name="Acme",
         research_text=(
             "**Business Lines & Customer Segments**\n"
             "- Claim: Acme makes widgets.\n"
@@ -290,17 +290,13 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
     markdown_report_result = _markdown_report()
     expected_company_profile = CompanyProfileOutput(
-        company_resolution=_company_resolution(),
+        company_name="Acme",
         research_text="combined research",
     )
 
     async def research_company_combined(_params: object) -> ResearchResult:
         calls.append("research_company_combined")
         return ResearchResult(text="combined research")
-
-    async def structure_company_resolution(_params: object) -> CompanyResolutionOutput:
-        calls.append("structure_company_resolution")
-        return _company_resolution()
 
     async def generate_genai_use_cases(
         params: GenAIUseCaseCandidateInput,
@@ -342,9 +338,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(
         pipeline, "research_company_combined", research_company_combined
     )
-    monkeypatch.setattr(
-        pipeline, "structure_company_resolution", structure_company_resolution
-    )
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "grade_single_use_case", grade_single_use_case)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
@@ -362,7 +355,6 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert calls == [
         "research_company_combined",
-        "structure_company_resolution",
         "generate_genai_use_cases",
         "grade_single_use_case:uc_1",
         "grade_single_use_case:uc_2",
@@ -383,22 +375,20 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         "json",
         "json",
         "json",
-        "json",
         "text",
     ]
-    assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[2].data == generated.model_dump(mode="json")
+    assert result.outputs[1].data == generated.model_dump(mode="json")
     assert final_selection_candidates is not None
-    assert result.outputs[3].data == final_selection_candidates.model_dump(mode="json")
+    assert result.outputs[2].data == final_selection_candidates.model_dump(mode="json")
     assert [
         item.score.weighted_total
         for item in final_selection_candidates.graded_use_cases
     ] == [item.score.weighted_total for item in graded_candidates.graded_use_cases]
     assert "Standalone thinking for uc_1" in final_selection_candidates.grader_thinking
-    assert result.outputs[4].data == {
+    assert result.outputs[3].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[5].text == markdown_report_result.markdown
+    assert result.outputs[4].text == markdown_report_result.markdown
     assert generation_inputs == [
         GenAIUseCaseCandidateInput(company_profile=expected_company_profile)
     ]
@@ -423,10 +413,6 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         calls.append("research_company_combined")
         return ResearchResult(text="combined research")
 
-    async def structure_company_resolution(_params: object) -> CompanyResolutionOutput:
-        calls.append("structure_company_resolution")
-        return _company_resolution()
-
     async def generate_genai_use_cases(
         _params: object,
     ) -> GenAIUseCaseGeneration:
@@ -436,9 +422,6 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(
         pipeline, "research_company_combined", research_company_combined
     )
-    monkeypatch.setattr(
-        pipeline, "structure_company_resolution", structure_company_resolution
-    )
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
 
     with pytest.raises(RuntimeError, match="model failed"):
@@ -446,7 +429,6 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
 
     assert calls == [
         "research_company_combined",
-        "structure_company_resolution",
         "generate_genai_use_cases",
     ]
 
@@ -947,7 +929,7 @@ def test_company_resolution_output_requires_evidence() -> None:
         CompanyResolutionOutput.model_validate(data)
 
 
-def test_company_profile_output_requires_resolution_and_research_text() -> None:
+def test_company_profile_output_requires_name_and_research_text() -> None:
     with pytest.raises(ValidationError):
         CompanyProfileOutput.model_validate({"company_name": "Acme"})
 
