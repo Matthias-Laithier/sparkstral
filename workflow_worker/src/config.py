@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     GENAI_USE_CASES_LLM_TEMPERATURE: float
     LLM_MAX_TOKENS: int
     LLM_TEMPERATURE: float
+    RESOLVER_LLM_MAX_TOKENS: int = 4096
+    GRADER_LLM_MAX_TOKENS: int = 4096
 
     @model_validator(mode="after")
     def require_search_provider_key(self) -> Self:

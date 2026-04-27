@@ -35,15 +35,20 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
         ]
 
         for _ in range(settings.WEB_SEARCH_MAX_ROUNDS):
-            response = await with_llm_retries(
-                lambda: self.client.chat.complete_async(
+            snapshot = list(messages)
+
+            async def _complete() -> Any:
+                return await self.client.chat.complete_async(
                     model=settings.WEB_SEARCH_MODEL,
-                    messages=messages,
+                    messages=snapshot,
                     tools=[cast(Any, WEB_SEARCH_TOOL)],
                     tool_choice="auto",
                     max_tokens=settings.LLM_MAX_TOKENS,
                     temperature=settings.LLM_TEMPERATURE,
-                ),
+                )
+
+            response = await with_llm_retries(
+                _complete,
                 phase="web search llm completion",
             )
             if not response.choices:

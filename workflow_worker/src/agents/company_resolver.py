@@ -25,7 +25,7 @@ class CompanyResolverAgent(
             CompanyResolutionOutput,
             phase="company resolution structuring",
             model=settings.COMPANY_RESOLVER_AGENT_MODEL,
-            max_tokens=settings.LLM_MAX_TOKENS,
+            max_tokens=settings.RESOLVER_LLM_MAX_TOKENS,
             temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": company_resolution_system_prompt()},

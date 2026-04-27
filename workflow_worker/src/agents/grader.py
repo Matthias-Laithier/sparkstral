@@ -15,12 +15,12 @@ from src.utils import parse_chat_model
 
 def compute_weighted_total(score: UseCaseScore) -> float:
     return round(
-        0.30 * score.iconicness.score
-        + 0.28 * score.genai_fit.score
+        0.25 * score.iconicness.score
+        + 0.25 * score.genai_fit.score
         + 0.20 * score.business_impact.score
-        + 0.12 * score.company_relevance.score
-        + 0.05 * score.feasibility.score
-        + 0.05 * score.evidence_strength.score,
+        + 0.15 * score.company_relevance.score
+        + 0.08 * score.feasibility.score
+        + 0.07 * score.evidence_strength.score,
         2,
     )
 
@@ -63,18 +63,9 @@ def build_graded_use_case_pool(
                 f"{result.grade.use_case_id} for {use_case.id}"
             )
 
-        score = UseCaseScore(
-            **result.grade.model_dump(),
-            weighted_total=1.0,
-        )
-        graded_items.append(
-            GradedUseCase(
-                use_case=use_case,
-                score=score.model_copy(
-                    update={"weighted_total": compute_weighted_total(score)}
-                ),
-            )
-        )
+        score = UseCaseScore(**result.grade.model_dump())
+        score.weighted_total = compute_weighted_total(score)
+        graded_items.append(GradedUseCase(use_case=use_case, score=score))
         grader_thinking_lines.append(
             f"{result.grade.use_case_id}: {result.grader_thinking}"
         )
@@ -96,7 +87,7 @@ class SingleUseCaseGraderAgent(
             SingleUseCaseGradeResult,
             phase="use-case grading",
             model=settings.USE_CASE_GRADER_AGENT_MODEL,
-            max_tokens=settings.LLM_MAX_TOKENS,
+            max_tokens=settings.GRADER_LLM_MAX_TOKENS,
             temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": use_case_grader_system_prompt()},

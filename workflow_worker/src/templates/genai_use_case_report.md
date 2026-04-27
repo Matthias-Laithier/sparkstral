@@ -1,9 +1,10 @@
 # GenAI Opportunity Report — {Company}
 
-## What We Know About the Company
-Use only evidence that matters for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support. Summarize pressures and priorities here (no separate section for them).
+## Company Context
+Lead with the most recent and strategically significant developments (last 12 months). Then summarize the business lines, competitive position, and pressures that matter for the recommended opportunities. Write this as a short client context memo, not a generic company profile. Put source links next to the claims they support.
 
-## Ranked Opportunities
+## Recommended Opportunities
+
 | Rank | Opportunity | Primary users | Fit score (/10) | Decision rationale |
 | --- | --- | --- | --- | --- |
 | 1 |  |  |  |  |
@@ -12,7 +13,7 @@ Use only evidence that matters for the recommended opportunities. Write this as 
 
 ## 1. {Use Case Title}
 ### The Opportunity
-Describe the company-specific problem, the target users, and why this use case fits the company's business lines, priorities, and the research-backed context above.
+Describe the company-specific problem, the target users, and why this use case fits the company. Weave in what makes this use case iconic and non-transferable — do not create a separate Iconicness section.
 
 ### Scoring (1–10)
 | Dimension | Rationale | Score (/10) |
@@ -23,9 +24,6 @@ Describe the company-specific problem, the target users, and why this use case f
 | GenAI fit |  |  |
 | Feasibility |  |  |
 | Evidence strength |  |  |
-
-### Iconicness
-Explain what makes this use case memorable, company-specific, and strategically meaningful.
 
 ### How The Workflow Would Work
 1. User input:
@@ -40,13 +38,10 @@ Use `genai_mechanism` to explain what GenAI adds, what classical systems should 
 Name the internal and external data, systems, and workflow handoffs required.
 
 ### Impact To Validate
-Separate source-backed metrics from pilot KPIs. Write pilot KPIs as human-readable sentences that explain what to measure, why it matters, the baseline needed, and the target direction. Do not invent numeric targets.
+Write pilot KPIs as human-readable sentences that explain what to measure, why it matters, the baseline needed, and the target direction. Do not invent numeric targets.
 
 ### Risks and Mitigations
 Pair each material risk with a practical mitigation.
-
-### Evidence Used
-List the specific claims and URLs used for this opportunity, with markdown links next to the claims.
 
 ## 2. {Use Case Title}
 Use the same natural flow as Use Case 1, including the Scoring table, but avoid repeating the same company context unless it directly changes this recommendation.
@@ -54,17 +49,8 @@ Use the same natural flow as Use Case 1, including the Scoring table, but avoid 
 ## 3. {Use Case Title}
 Use the same natural flow as Use Case 1, but make the distinct workflow, data needs, risks, and validation questions clear.
 
-## What To Validate First
-Summarize the pilot KPIs, missing internal data, and decision gates that matter across the three opportunities. Keep this practical and target-free unless a metric is explicitly source-backed.
-
-## Caveats and Source Limits
-State where the report relies on public sources, where evidence is weak, and what internal information is missing.
+## Limitations
+Name 2-3 specific data gaps or assumptions: what internal data is missing, which claims rest on press releases without detailed breakdowns, and where regulatory or operational details could not be verified from public sources.
 
 ## Sources
-List each source URL once, grouped by source quality.
-
-### Primary and high-confidence sources
-List sources classified as company_primary, filing_or_investor, official_press_release, regulator_or_government, or wire_or_business_media.
-
-### Background and lower-confidence sources
-List sources classified as industry_source, background_only, uncertain, or unclassified.
+List each source URL once as a markdown link with a descriptive title. Do not classify or tier sources.

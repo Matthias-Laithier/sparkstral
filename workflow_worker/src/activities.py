@@ -7,10 +7,7 @@ from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
-from src.prompts import (
-    company_research_prompt,
-    company_resolution_research_prompt,
-)
+from src.prompts import combined_research_prompt
 from src.schemas import (
     CompanyResolutionInput,
     CompanyResolutionOutput,
@@ -29,17 +26,17 @@ from src.utils import get_mistral_client, select_top_n
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def research_company_resolution(params: CompanyResolutionInput) -> ResearchResult:
+async def research_company_combined(params: CompanyResolutionInput) -> ResearchResult:
     client = get_mistral_client()
     agent = WebSearchAgent(client=client)
     try:
         result = await agent.run(
             WebSearchInput(
-                prompt=company_resolution_research_prompt(params.company_query),
+                prompt=combined_research_prompt(params.company_query),
             )
         )
     except Exception as exc:
-        raise RuntimeError("company resolution research failed") from exc
+        raise RuntimeError("combined company research failed") from exc
     return ResearchResult(text=result.text)
 
 
@@ -53,17 +50,6 @@ async def structure_company_resolution(
         return await agent.run(params)
     except Exception as exc:
         raise RuntimeError("company resolution structuring failed") from exc
-
-
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def research_company(params: CompanyResolutionOutput) -> ResearchResult:
-    client = get_mistral_client()
-    agent = WebSearchAgent(client=client)
-    try:
-        result = await agent.run(WebSearchInput(prompt=company_research_prompt(params)))
-    except Exception as exc:
-        raise RuntimeError("company research failed") from exc
-    return ResearchResult(text=result.text)
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

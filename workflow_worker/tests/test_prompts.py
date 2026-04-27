@@ -2,8 +2,8 @@ from datetime import date
 
 from src.prompts import (
     MARKDOWN_REPORT_TEMPLATE,
+    combined_research_prompt,
     company_context,
-    company_research_prompt,
     genai_use_cases_system_prompt,
     genai_use_cases_user_prompt,
     grade_single_use_case_user_prompt,
@@ -112,7 +112,6 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         risks=["Risk"],
         company_signal_labels=["Pain 1", "widget_supply"],
         evidence_sources=[evidence_source],
-        use_case_archetype="grounded_consultant",
     )
 
 
@@ -188,32 +187,6 @@ def _final_selection() -> FinalSelectionOutput:
     return FinalSelectionOutput(selected=_graded_use_cases()[:3])
 
 
-def _assert_high_quality_source_guidance(prompt: str) -> None:
-    assert "Claim:" in prompt
-    assert "Source URL:" in prompt
-    assert "Citation:" in prompt
-    assert "Source role:" in prompt
-    assert "Support directness:" in prompt
-    assert "`company_primary`" in prompt
-    assert "`filing_or_investor`" in prompt
-    assert "`official_press_release`" in prompt
-    assert "`regulator_or_government`" in prompt
-    assert "`wire_or_business_media`" in prompt
-    assert "`background_only`" in prompt
-    assert "`uncertain`" in prompt
-    assert "`direct`" in prompt
-    assert "`partial`" in prompt
-    assert "`background`" in prompt
-    assert "official company website" in prompt
-    assert "annual report" in prompt
-    assert "reputable business or industry publication" in prompt
-    assert "Wikipedia only as fallback" in prompt
-    assert "Do not invent facts" in prompt
-    assert "Do not use hardcoded domain reputation" in prompt
-    assert "allowlists, or blocklists" in prompt
-    assert "prefer Wikipedia" not in prompt
-
-
 def test_web_search_system_prompt_includes_current_date() -> None:
     prompt = web_search_system_prompt(date(2026, 4, 25))
 
@@ -221,31 +194,28 @@ def test_web_search_system_prompt_includes_current_date() -> None:
     assert "web search" in prompt
 
 
-def test_company_research_prompt_prioritizes_high_quality_sources() -> None:
-    prompt = company_research_prompt(_company_resolution())
+def test_combined_research_prompt_covers_identity_and_research() -> None:
+    prompt = combined_research_prompt("Acme")
 
-    assert "Research this resolved company comprehensively: Acme Corporation" in prompt
-    assert "Structured company resolution from the previous step" in prompt
-    assert '"resolved_name": "Acme Corporation"' in prompt
-    assert '"website": "https://example.com"' in prompt
-    assert '"ambiguity_notes": "Acme Corporation is the likely match."' in prompt
-    assert '"source": "https://example.com/company"' in prompt
-    assert "Do not spend the research repeating basic identity discovery" in prompt
-    assert "Preserve and reuse useful URLs" in prompt
+    assert "Resolve and research this company: Acme" in prompt
+    assert "Identity" in prompt
+    assert "official company name" in prompt
+    assert "ambiguity" in prompt
+    assert "Deep research" in prompt
+    assert "MOST RECENT" in prompt
+    assert "acquisitions" in prompt
+    assert "earnings results" in prompt
+    assert "strategic pivots" in prompt
     assert "business lines" in prompt
-    assert "key customers" in prompt
-    assert "customer segments" in prompt
-    assert "strategic priorities" in prompt
-    assert "recent strategic initiatives" in prompt
-    assert "geography/markets" in prompt
+    assert "named products, platforms" in prompt
     assert "operational pain points" in prompt
-    assert "regulatory pressure" in prompt
-    assert "customer/market pressure" in prompt
-    assert "growth opportunities" in prompt
-    assert "technology/digital transformation context" in prompt
-    assert "Omit claims that do not have a full source URL" in prompt
-    assert "Clearly mark uncertainty" in prompt
-    _assert_high_quality_source_guidance(prompt)
+    assert "regulatory" in prompt
+    assert "Claim:" in prompt
+    assert "Source URL:" in prompt
+    assert "official company website" in prompt
+    assert "annual report" in prompt
+    assert "Do not invent facts" in prompt
+    assert "Wikipedia only as fallback" in prompt
 
 
 def test_company_context_keeps_resolution_and_research_text() -> None:
@@ -259,61 +229,50 @@ def test_company_context_keeps_resolution_and_research_text() -> None:
     assert "Source URL: https://example.com/pain-1" in prompt
 
 
-def test_genai_use_cases_system_prompt_requires_diverse_batch() -> None:
+def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     prompt = genai_use_cases_system_prompt()
 
-    assert "6-10" in prompt or "6–10" in prompt
+    assert "5" in prompt
     assert "ideation_brief" in prompt
     assert "client-workshop-worthy" in prompt
-    assert "what you rejected as too generic" in prompt
-    assert "reusable anchor types" in prompt
-    assert "Do not steer toward any preselected idea" in prompt
-    assert "Discard candidates" in prompt
-    assert "below 7/10 on iconicness" in prompt
-    assert "peer-company template" in prompt
-    assert "'digital transformation'" in prompt
+    assert "unique company moats" in prompt
+    assert "recent acquisitions" in prompt
+    assert "proprietary platforms" in prompt
+    assert "COMPANY ANCHORING" in prompt
+    assert "company-specific noun" in prompt
+    assert "Competitors cannot replicate" in prompt
+    assert "RECENT-NEWS ANCHORING" in prompt
+    assert "last 12 months" in prompt
+    assert "GENAI MECHANISM DIVERSITY" in prompt
+    assert "at least 4 distinct" in prompt
+    assert "multimodal" in prompt
+    assert "agentic tool-use" in prompt
+    assert "DOMAIN DIVERSITY" in prompt
+    assert "at least 3 distinct company domains" in prompt
+    assert "QUALITY GATES" in prompt
     assert "broad chatbot" in prompt
     assert "generic RAG" in prompt
     assert "classical optimization with GenAI branding" in prompt
-    assert "agentic tool use" in prompt
-    assert "document or multimodal understanding" in prompt
-    assert "grounded RAG" in prompt
-    assert "long-context or multi-document" in prompt
-    assert "grounded_consultant" in prompt
-    assert "optimistic_stretch" in prompt
-    assert "moonshot" in prompt
-    assert "novel_surprise" in prompt
-    assert "evidence_tight" in prompt
-    assert (
-        "No two use cases may share the same users, problem, and core GenAI "
-        "workflow" in prompt
-    )
     assert "classical software or ML should still handle" in prompt
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
-    assert "why_iconic" in prompt
+    assert "grounded_consultant" not in prompt
+    assert "moonshot" not in prompt
 
 
 def test_genai_use_cases_user_prompt_includes_company_json() -> None:
     prompt = genai_use_cases_user_prompt(_company_profile())
 
-    assert "6-10 `use_cases`" in prompt
+    assert "5 `use_cases`" in prompt
     assert "ideation_brief" in prompt
-    assert "use_cases" in prompt
-    assert "company_signal_labels" in prompt
-    assert "use_case_archetype" in prompt
-    assert "genai_mechanism" in prompt
-    assert "genai_advantage_over_classical_software" in prompt
-    assert "genai_advantage_over_classical_ml" in prompt
-    assert "modalities" in prompt
-    assert "model+tool loop" in prompt
-    assert "human approval" in prompt
-    assert '"research_text":' in prompt
-    assert "Candidate inclusion test" in prompt
-    assert "title names a company anchor" in prompt
+    assert "unique company moats" in prompt
+    assert "company-specific noun" in prompt
+    assert "Competitors cannot replicate" in prompt
     assert "non-transferability argument" in prompt
     assert "expert judgment" in prompt
+    assert '"research_text":' in prompt
     assert "URLs only from those inputs" in prompt
+    assert "use_case_archetype" not in prompt
 
 
 def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
@@ -335,18 +294,18 @@ def test_use_case_grader_prompt_includes_explicit_rubric() -> None:
     assert "Do not output weighted_total" in prompt
     assert "Do not rewrite, merge, skip" in prompt
     assert "DimensionRubricLine" in prompt
-    assert "cap iconicness at 5" in prompt
     assert "Report-worthy test" in prompt
     assert "peer-company template" in prompt
     assert "constrain adjacent scores" in prompt
-    assert "generic value" in prompt
-    assert "classical automation in disguise" in prompt
-    assert "weak anchors" in prompt
-    assert "thin chatbot" in prompt
-    assert "human-reviewable decisions" in prompt
+    assert "NON-TRANSFERABILITY TEST" in prompt
+    assert "cap iconicness at 4" in prompt
+    assert "average iconicness across a batch of 5" in prompt
+    assert "table-stakes GenAI patterns" in prompt
+    assert "cap at 5" in prompt
     assert "Compare peer summaries" in prompt
     assert "name the overlapping use_case_id in penalties" in prompt
     assert "adversarial weaknesses" in prompt
+    assert "human-reviewable decisions" in prompt
 
 
 def test_grade_single_use_case_user_prompt_requests_score_only_output() -> None:
@@ -367,7 +326,6 @@ def test_grade_single_use_case_user_prompt_requests_score_only_output() -> None:
     assert "keep iconicness low" in prompt
     assert "avoid compensating with high adjacent scores" in prompt
     assert "Name overlapping peer use_case_ids in penalties" in prompt
-    assert "Pain point and opportunity analysis" not in prompt
 
 
 def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
@@ -380,10 +338,8 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "practical decision memo" in prompt
     assert "generic consulting template" in prompt
     assert "# GenAI Opportunity Report — {Company}" in prompt
-    assert "## Recommendation in Brief" not in prompt
-    assert "## What We Know About the Company" in prompt
-    assert "## Strategic signals from research" not in prompt
-    assert "## Ranked Opportunities" in prompt
+    assert "## Company Context" in prompt
+    assert "## Recommended Opportunities" in prompt
     assert (
         "| Rank | Opportunity | Primary users | Fit score (/10) | Decision "
         "rationale |" in prompt
@@ -391,28 +347,24 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "## 1. {Use Case Title}" in prompt
     assert "## 2. {Use Case Title}" in prompt
     assert "## 3. {Use Case Title}" in prompt
-    assert "## What To Validate First" in prompt
-    assert "## Caveats and Source Limits" in prompt
+    assert "## Limitations" in prompt
     assert "## Sources" in prompt
     assert "score.weighted_total" in prompt
     assert "one-decimal Fit score" in prompt
     assert "7.4/10" in prompt
     assert "not 7.35/10" in prompt
-    assert "/10" in prompt
     assert "distinctive" in prompt
     assert "weak iconicness" in prompt
     assert "Scoring (1–10)" in prompt
     assert "How The Workflow Would Work" in prompt
     assert "Retrieved or generated context" in prompt
     assert "Human approval or decision point" in prompt
-    assert "Iconicness" in prompt
     assert "why_iconic" in prompt
+    assert "weave" in prompt.lower() or "Weave" in prompt
     assert "Do not upgrade a generic use case" in prompt
     assert "reflect low iconicness honestly" in prompt
     assert "DimensionRubricLine" in prompt
     assert "Why GenAI Fits" in prompt
-    assert "Why Genai ?" not in prompt
-    assert "Why GenAI Is Needed" not in prompt
     assert "what GenAI adds" in prompt
     assert "what classical systems should still handle" in prompt
     assert "Avoid absolute claims" in prompt
@@ -422,15 +374,17 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "Do not invent facts" in prompt
     assert "source URLs" in prompt
     assert "neutral markdown links like [source](URL)" in prompt
-    assert "Caveats and Source Limits" in prompt
     assert "numeric targets" in prompt
     assert "human-readable validation prose" in prompt
     assert "ideation_brief" in prompt
     assert "grader_thinking" in prompt
     assert "raw JSON" in prompt
-    assert "What To Validate First" in prompt
+    assert "specific data gaps" in prompt
+    assert "Do not classify" in prompt
     assert "'classical software cannot handle X'" in prompt
-    assert "domain allowlists, blocklists, regexes" in prompt
+    assert "## What To Validate First" not in prompt
+    assert "## Caveats and Source Limits" not in prompt
+    assert "### Primary and high-confidence sources" not in prompt
 
 
 def test_markdown_report_evidence_brief_includes_inline_links() -> None:
@@ -445,7 +399,6 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     assert "## Sourced company research" in brief
     assert "Acme makes widgets" in brief
     assert "Source URL: https://example.com/company" in brief
-    assert "## Pain points" not in brief
     assert "## Selected use cases" in brief
     assert "### Rank 1: Use case 1" in brief
     assert "Fit score for report display: 3.0/10" in brief
@@ -454,9 +407,7 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
         "Pain prominence: Prominence 8 of 10 "
         "[source](https://example.com/source-1)" in brief
     )
-    assert "Iconicness (narrative for the report's Iconicness section): Iconic fit" in (
-        brief
-    )
+    assert "Iconicness (weave into The Opportunity section): Iconic fit" in brief
     assert "Grader rubric (rationale then score" in brief
     assert "Rationale for iconicness. — 3/10" in brief
     assert "Pilot KPIs to validate" in brief
@@ -468,17 +419,16 @@ def test_markdown_report_evidence_brief_includes_inline_links() -> None:
     assert "target direction is decrease" in brief
     assert "Evidence source [source](https://example.com/source-1)" in brief
     assert "Company signals: Pain 1, widget_supply" in brief
-    assert "Archetype: grounded_consultant" in brief
+    assert "Archetype:" not in brief
 
 
-def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
+def test_markdown_reporter_user_prompt_has_brief_and_selection() -> None:
     prompt = markdown_reporter_user_prompt(
         _company_profile(),
         _final_selection(),
     )
 
-    assert "Company profile (resolved identity + sourced research JSON)" in prompt
-    assert "Selected top 3 use cases with scores (JSON)" in prompt
+    assert "Selected top 3 use cases with scores (JSON" in prompt
     assert "Citation-ready evidence brief" in prompt
     assert "Acme makes widgets" in prompt
     assert "Source URL: https://example.com/company" in prompt
@@ -486,19 +436,16 @@ def test_markdown_reporter_user_prompt_includes_direct_input_json() -> None:
         "Pain prominence: Prominence 8 of 10 "
         "[source](https://example.com/source-1)" in prompt
     )
-    assert '"resolved_name": "Acme Corporation"' in prompt
     assert '"id": "uc_1"' in prompt
     assert '"genai_mechanism": {' in prompt
     assert '"document_understanding"' in prompt
     assert '"qualitative_impact": "Qualitative impact"' in prompt
-    assert '"research_text":' in prompt
     assert '"source_backed_metrics": [' in prompt
     assert '"pilot_kpis": [' in prompt
     assert '"score": {' in prompt
     assert "Write the final markdown report" in prompt
     assert "evidence brief for citation links" in prompt
-    assert "JSON as source of truth" in prompt
+    assert "JSON for exact field values" in prompt
     assert "Do not include raw JSON" in prompt
     assert "ideation_brief" in prompt
     assert "grader_thinking" in prompt
-    assert "Pain point and opportunity analysis" not in prompt

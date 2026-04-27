@@ -5,8 +5,7 @@ from functools import partial
 from src.activities import (
     generate_genai_use_cases,
     grade_single_use_case,
-    research_company,
-    research_company_resolution,
+    research_company_combined,
     select_final_top_3,
     structure_company_resolution,
     write_markdown_report,
@@ -48,25 +47,22 @@ async def run_sparkstral_pipeline(
     append_json = partial(append_json_output, outputs)
 
     await _send_status(status_callback, "Researching company context...\n")
-    resolution_research = await research_company_resolution(
+    combined_research = await research_company_combined(
         CompanyResolutionInput(company_query=params.company_name)
     )
-    append_text(resolution_research.text)
+    append_text(combined_research.text)
 
     company_resolution = await structure_company_resolution(
         CompanyResolutionStructuringInput(
             company_query=params.company_name,
-            research_text=resolution_research.text,
+            research_text=combined_research.text,
         )
     )
     append_json(company_resolution.model_dump(mode="json"))
 
-    company_research = await research_company(company_resolution)
-    append_text(company_research.text)
-
     company_profile = CompanyProfileOutput(
         company_resolution=company_resolution,
-        research_text=company_research.text,
+        research_text=combined_research.text,
     )
 
     await _send_status(status_callback, "Generating candidate use cases...\n")

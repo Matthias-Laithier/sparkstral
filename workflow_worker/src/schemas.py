@@ -1,6 +1,6 @@
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CompanyInput(BaseModel):
@@ -29,24 +29,6 @@ class EvidenceItem(BaseModel):
         ...,
         description="URL string (https recommended) supporting the claim.",
     )
-
-
-class CompanyEvidenceClaim(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    claim: str = Field(..., description="Concise factual claim from company research.")
-    source_url: str = Field(..., description="Full http(s) URL supporting the claim.")
-    citation: str = Field(
-        ...,
-        description="Short quote, citation, or faithful detail from the source.",
-    )
-
-    @field_validator("source_url")
-    @classmethod
-    def source_url_must_be_full_url(cls, value: str) -> str:
-        if not value.startswith(("http://", "https://")):
-            raise ValueError("source_url must start with http:// or https://")
-        return value
 
 
 class CompanyResolutionOutput(BaseModel):
@@ -144,15 +126,6 @@ class PilotKPI(BaseModel):
     baseline_needed: str
 
 
-UseCaseArchetype = Literal[
-    "grounded_consultant",
-    "optimistic_stretch",
-    "moonshot",
-    "novel_surprise",
-    "evidence_tight",
-]
-
-
 class GenAIUseCaseCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -211,10 +184,6 @@ class GenAIUseCaseCandidate(BaseModel):
         ),
     )
     evidence_sources: list[str] = Field(..., min_length=1)
-    use_case_archetype: UseCaseArchetype = Field(
-        ...,
-        description="Ideation style for diversity across the batch.",
-    )
 
     @model_validator(mode="after")
     def source_backed_metrics_use_candidate_evidence(self) -> Self:
@@ -233,9 +202,9 @@ class GenAIUseCaseCandidatePool(BaseModel):
 
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=6,
-        max_length=10,
-        description="Batch of 6-10 GenAI use cases for grading.",
+        min_length=5,
+        max_length=5,
+        description="Batch of 5 GenAI use cases for grading.",
     )
 
 
@@ -254,9 +223,9 @@ class GenAIUseCaseGeneration(BaseModel):
     )
     use_cases: list[GenAIUseCaseCandidate] = Field(
         ...,
-        min_length=6,
-        max_length=10,
-        description="6-10 distinct, company-specific GenAI use cases.",
+        min_length=5,
+        max_length=5,
+        description="5 distinct, company-specific GenAI use cases.",
     )
 
 
@@ -293,7 +262,7 @@ class UseCaseScore(BaseModel):
     feasibility: DimensionRubricLine
     evidence_strength: DimensionRubricLine
     penalties: list[str]
-    weighted_total: float = Field(..., ge=1, le=10)
+    weighted_total: float = Field(default=0.0, ge=0, le=10)
 
 
 class UseCaseGrade(BaseModel):

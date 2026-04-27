@@ -14,7 +14,6 @@ from src.agents.grader import (
 )
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.schemas import (
-    CompanyEvidenceClaim,
     CompanyInput,
     CompanyProfileOutput,
     CompanyResolutionOutput,
@@ -41,14 +40,6 @@ from src.schemas import (
 )
 from src.utils import select_top_n
 
-ARCHETYPES = (
-    "grounded_consultant",
-    "optimistic_stretch",
-    "moonshot",
-    "novel_surprise",
-    "evidence_tight",
-)
-
 
 def _company_resolution() -> CompanyResolutionOutput:
     return CompanyResolutionOutput(
@@ -66,98 +57,6 @@ def _company_resolution() -> CompanyResolutionOutput:
             )
         ],
     )
-
-
-def _company_claim(
-    claim: str,
-    source_url: str,
-    citation: str,
-) -> CompanyEvidenceClaim:
-    return CompanyEvidenceClaim(
-        claim=claim,
-        source_url=source_url,
-        citation=citation,
-    )
-
-
-def _company_claims() -> list[CompanyEvidenceClaim]:
-    return [
-        _company_claim(
-            "Acme Corporation is a manufacturing company",
-            "https://example.com/company",
-            "Company overview identifies Acme as a manufacturer.",
-        ),
-        _company_claim(
-            "Acme makes widgets",
-            "https://example.com/products",
-            "Products page describes Acme's widget business.",
-        ),
-        _company_claim(
-            "Acme serves industrial buyers",
-            "https://example.com/customers",
-            "Customer page names industrial buyers.",
-        ),
-        _company_claim(
-            "Acme prioritizes operational efficiency",
-            "https://example.com/strategy",
-            "Strategy page lists operational efficiency as a priority.",
-        ),
-        _company_claim(
-            "Acme launched a factory modernization initiative",
-            "https://example.com/initiative",
-            "Press release announces factory modernization.",
-        ),
-        _company_claim(
-            "Acme operates in North America",
-            "https://example.com/markets",
-            "Markets page lists North America.",
-        ),
-        _company_claim(
-            "Acme faces supply chain delays",
-            "https://example.com/pain-1",
-            "Annual report notes supply chain delays.",
-        ),
-        _company_claim(
-            "New safety rules affect Acme's plants",
-            "https://example.com/pain-2",
-            "Regulator page describes new safety rules.",
-        ),
-        _company_claim(
-            "Customers expect faster configuration support",
-            "https://example.com/pain-3",
-            "Industry publication reports faster configuration expectations.",
-        ),
-        _company_claim(
-            "Acme has an aftermarket service expansion opportunity",
-            "https://example.com/growth",
-            "Investor presentation highlights aftermarket service expansion.",
-        ),
-        _company_claim(
-            "Acme is modernizing factory systems",
-            "https://example.com/digital",
-            "Digital page describes factory system modernization.",
-        ),
-        _company_claim(
-            "Acme tracks on-time delivery as a customer metric",
-            "https://example.com/metrics",
-            "Annual report references on-time delivery.",
-        ),
-        _company_claim(
-            "Acme sells through distributor partners",
-            "https://example.com/partners",
-            "Partner page describes distributor channels.",
-        ),
-        _company_claim(
-            "Acme focuses on configurable industrial products",
-            "https://example.com/configurable-products",
-            "Products page describes configurable industrial products.",
-        ),
-        _company_claim(
-            "Acme is investing in quality management",
-            "https://example.com/quality",
-            "Strategy update describes quality management investment.",
-        ),
-    ]
 
 
 def _company_profile() -> CompanyProfileOutput:
@@ -257,17 +156,16 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
         risks=["Risk"],
         company_signal_labels=[f"signal_{index}", "supply_chain_pressure"],
         evidence_sources=[evidence_source],
-        use_case_archetype=ARCHETYPES[(index - 1) % len(ARCHETYPES)],
     )
 
 
 def _candidate_pool() -> GenAIUseCaseCandidatePool:
     return GenAIUseCaseCandidatePool(
-        use_cases=[_candidate(index) for index in range(1, 9)]
+        use_cases=[_candidate(index) for index in range(1, 6)]
     )
 
 
-def _genai_use_case_generation(count: int = 8) -> GenAIUseCaseGeneration:
+def _genai_use_case_generation(count: int = 5) -> GenAIUseCaseGeneration:
     return GenAIUseCaseGeneration(
         ideation_brief=(
             "Cover agentic tools, OCR on documents, RAG with citations, and "
@@ -297,12 +195,12 @@ def _score(
     penalties: list[str] | None = None,
 ) -> UseCaseScore:
     computed_weighted_total = round(
-        0.30 * iconicness
-        + 0.28 * genai_fit
+        0.25 * iconicness
+        + 0.25 * genai_fit
         + 0.20 * business_impact
-        + 0.12 * company_relevance
-        + 0.05 * feasibility
-        + 0.05 * evidence_strength,
+        + 0.15 * company_relevance
+        + 0.08 * feasibility
+        + 0.07 * evidence_strength,
         2,
     )
     return UseCaseScore(
@@ -368,7 +266,7 @@ def _markdown_report() -> MarkdownReport:
     return MarkdownReport(
         markdown=(
             "# GenAI Opportunity Report — Acme Corporation\n\n"
-            "## What We Know About the Company\n\n"
+            "## Company Context\n\n"
             "Top three use cases are ready for client discussion."
         )
     )
@@ -377,13 +275,12 @@ def _markdown_report() -> MarkdownReport:
 @pytest.mark.asyncio
 async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    company_research_params: CompanyResolutionOutput | None = None
     generation_inputs: list[GenAIUseCaseCandidateInput] = []
     grading_inputs: list[GradeSingleUseCaseInput] = []
     grading_company_profiles: list[CompanyProfileOutput] = []
     final_selection_candidates: GradedUseCasePool | None = None
     markdown_report_params: MarkdownReportInput | None = None
-    generated = _genai_use_case_generation(8)
+    generated = _genai_use_case_generation(5)
     graded_candidates = _graded_pool(generated.use_cases)
     final_selection = FinalSelectionOutput(
         selected=select_top_n(graded_candidates.graded_use_cases, 3)
@@ -391,22 +288,16 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     markdown_report_result = _markdown_report()
     expected_company_profile = CompanyProfileOutput(
         company_resolution=_company_resolution(),
-        research_text="company research",
+        research_text="combined research",
     )
 
-    async def research_company_resolution(_params: object) -> ResearchResult:
-        calls.append("research_company_resolution")
-        return ResearchResult(text="resolution research")
+    async def research_company_combined(_params: object) -> ResearchResult:
+        calls.append("research_company_combined")
+        return ResearchResult(text="combined research")
 
     async def structure_company_resolution(_params: object) -> CompanyResolutionOutput:
         calls.append("structure_company_resolution")
         return _company_resolution()
-
-    async def research_company(params: Any) -> ResearchResult:
-        nonlocal company_research_params
-        calls.append("research_company")
-        company_research_params = params
-        return ResearchResult(text="company research")
 
     async def generate_genai_use_cases(
         params: GenAIUseCaseCandidateInput,
@@ -446,12 +337,11 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         return markdown_report_result
 
     monkeypatch.setattr(
-        pipeline, "research_company_resolution", research_company_resolution
+        pipeline, "research_company_combined", research_company_combined
     )
     monkeypatch.setattr(
         pipeline, "structure_company_resolution", structure_company_resolution
     )
-    monkeypatch.setattr(pipeline, "research_company", research_company)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "grade_single_use_case", grade_single_use_case)
     monkeypatch.setattr(pipeline, "select_final_top_3", select_final_top_3)
@@ -468,18 +358,14 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
 
     assert calls == [
-        "research_company_resolution",
+        "research_company_combined",
         "structure_company_resolution",
-        "research_company",
         "generate_genai_use_cases",
         "grade_single_use_case:uc_1",
         "grade_single_use_case:uc_2",
         "grade_single_use_case:uc_3",
         "grade_single_use_case:uc_4",
         "grade_single_use_case:uc_5",
-        "grade_single_use_case:uc_6",
-        "grade_single_use_case:uc_7",
-        "grade_single_use_case:uc_8",
         "select_final_top_3",
         "write_markdown_report",
     ]
@@ -492,25 +378,24 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     assert [output.kind for output in result.outputs] == [
         "text",
         "json",
-        "text",
         "json",
         "json",
         "json",
         "text",
     ]
     assert result.outputs[1].data == _company_resolution().model_dump(mode="json")
-    assert result.outputs[3].data == generated.model_dump(mode="json")
+    assert result.outputs[2].data == generated.model_dump(mode="json")
     assert final_selection_candidates is not None
-    assert result.outputs[4].data == final_selection_candidates.model_dump(mode="json")
+    assert result.outputs[3].data == final_selection_candidates.model_dump(mode="json")
     assert [
         item.score.weighted_total
         for item in final_selection_candidates.graded_use_cases
     ] == [item.score.weighted_total for item in graded_candidates.graded_use_cases]
     assert "Standalone thinking for uc_1" in final_selection_candidates.grader_thinking
-    assert result.outputs[5].data == {
+    assert result.outputs[4].data == {
         "final_top_3": final_selection.model_dump(mode="json")
     }
-    assert result.outputs[6].text == markdown_report_result.markdown
+    assert result.outputs[5].text == markdown_report_result.markdown
     assert generation_inputs == [
         GenAIUseCaseCandidateInput(company_profile=expected_company_profile)
     ]
@@ -519,31 +404,25 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         summary for summary in grading_inputs[0].peer_summaries if "uc_1:" in summary
     ] == []
     assert "uc_2: Use case 2" in grading_inputs[0].peer_summaries[0]
-    assert grading_company_profiles == [expected_company_profile] * 8
+    assert grading_company_profiles == [expected_company_profile] * 5
     assert markdown_report_params == MarkdownReportInput(
         company_profile=expected_company_profile,
         final_selection=final_selection,
     )
-    assert company_research_params == _company_resolution()
     assert result.final == markdown_report_result.markdown
-    assert "Recommendation in Brief" not in result.final
 
 
 @pytest.mark.asyncio
 async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
-    async def research_company_resolution(_params: object) -> ResearchResult:
-        calls.append("research_company_resolution")
-        return ResearchResult(text="resolution research")
+    async def research_company_combined(_params: object) -> ResearchResult:
+        calls.append("research_company_combined")
+        return ResearchResult(text="combined research")
 
     async def structure_company_resolution(_params: object) -> CompanyResolutionOutput:
         calls.append("structure_company_resolution")
         return _company_resolution()
-
-    async def research_company(_params: object) -> ResearchResult:
-        calls.append("research_company")
-        return ResearchResult(text="company research")
 
     async def generate_genai_use_cases(
         _params: object,
@@ -552,21 +431,19 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         raise RuntimeError("model failed")
 
     monkeypatch.setattr(
-        pipeline, "research_company_resolution", research_company_resolution
+        pipeline, "research_company_combined", research_company_combined
     )
     monkeypatch.setattr(
         pipeline, "structure_company_resolution", structure_company_resolution
     )
-    monkeypatch.setattr(pipeline, "research_company", research_company)
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
 
     with pytest.raises(RuntimeError, match="model failed"):
         await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
     assert calls == [
-        "research_company_resolution",
+        "research_company_combined",
         "structure_company_resolution",
-        "research_company",
         "generate_genai_use_cases",
     ]
 
@@ -580,10 +457,9 @@ def test_compute_weighted_total_uses_weighted_formula() -> None:
         genai_fit=4,
         feasibility=2,
         evidence_strength=10,
-        weighted_total=1.0,
     )
 
-    assert compute_weighted_total(score) == 6.32
+    assert compute_weighted_total(score) == 6.46
 
 
 def test_build_single_use_case_grade_inputs_adds_peer_summaries() -> None:
@@ -631,7 +507,7 @@ def test_build_graded_use_case_pool_applies_weighted_scores() -> None:
 
     assert pool.grader_thinking == "uc_1: Thinking one.\nuc_2: Thinking two."
     assert [item.use_case for item in pool.graded_use_cases] == use_cases
-    assert [item.score.weighted_total for item in pool.graded_use_cases] == [4.07, 3.0]
+    assert [item.score.weighted_total for item in pool.graded_use_cases] == [4.08, 3.0]
 
 
 def test_build_graded_use_case_pool_rejects_mismatched_grade_ids() -> None:
@@ -714,29 +590,16 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
                 weighted_total=7.0,
             ),
         ),
-        GradedUseCase(
-            use_case=_candidate(6),
-            score=_score(
-                "uc_6",
-                company_relevance=1,
-                business_impact=1,
-                iconicness=1,
-                genai_fit=1,
-                feasibility=1,
-                evidence_strength=1,
-                weighted_total=9.0,
-            ),
-        ),
     ]
 
     selected = select_top_n(graded, 5)
 
     assert [item.use_case.id for item in selected] == [
-        "uc_6",
         "uc_3",
         "uc_4",
         "uc_1",
         "uc_2",
+        "uc_5",
     ]
     assert len(selected) == 5
 
@@ -745,7 +608,7 @@ def test_select_top_n_sorts_by_weighted_total_and_tie_breakers() -> None:
 async def test_genai_use_cases_agent_returns_generation_batch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    agent_result = _genai_use_case_generation(8)
+    agent_result = _genai_use_case_generation(5)
     response_model: type[Any] | None = None
     model_name = ""
     phase = ""
@@ -777,7 +640,7 @@ async def test_genai_use_cases_agent_returns_generation_batch(
     assert response_model is GenAIUseCaseGeneration
     assert model_name == "generation-model"
     assert phase == "GenAI use-case generation"
-    assert "uc_1" in messages[1]["content"] or "6" in messages[1]["content"]
+    assert "uc_1" in messages[1]["content"] or "5" in messages[1]["content"]
 
 
 @pytest.mark.asyncio
@@ -785,7 +648,7 @@ async def test_generate_genai_use_cases_activity_returns_agent_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured_params: list[GenAIUseCaseCandidateInput] = []
-    batch = _genai_use_case_generation(8)
+    batch = _genai_use_case_generation(5)
 
     class FakeGenAIUseCasesAgent:
         def __init__(self, client: object) -> None:
@@ -1081,26 +944,18 @@ def test_company_profile_output_requires_research_text() -> None:
         CompanyProfileOutput.model_validate(data)
 
 
-def test_company_evidence_claim_requires_full_source_url() -> None:
-    data = _company_claims()[0].model_dump()
-    data["source_url"] = "example.com/company"
-
-    with pytest.raises(ValidationError):
-        CompanyEvidenceClaim.model_validate(data)
-
-
-@pytest.mark.parametrize("count", [5, 11])
-def test_genai_use_case_candidate_pool_requires_six_to_ten_items(count: int) -> None:
+@pytest.mark.parametrize("count", [4, 6])
+def test_genai_use_case_candidate_pool_requires_exactly_five(count: int) -> None:
     with pytest.raises(ValidationError):
         GenAIUseCaseCandidatePool(
             use_cases=[_candidate(index) for index in range(1, count + 1)]
         )
 
 
-def test_genai_use_case_generation_accepts_six_to_ten() -> None:
+def test_genai_use_case_generation_accepts_five() -> None:
     GenAIUseCaseGeneration(
-        ideation_brief="Plan pillars then six ideas.",
-        use_cases=[_candidate(index) for index in range(1, 7)],
+        ideation_brief="Plan pillars then five ideas.",
+        use_cases=[_candidate(index) for index in range(1, 6)],
     )
 
 
@@ -1135,6 +990,11 @@ def test_genai_use_case_candidate_requires_metric_source_in_evidence() -> None:
 
     with pytest.raises(ValidationError):
         GenAIUseCaseCandidate.model_validate(data)
+
+
+def test_genai_use_case_candidate_has_no_archetype_field() -> None:
+    data = _candidate(1).model_dump()
+    assert "use_case_archetype" not in data
 
 
 def test_source_backed_metric_forbids_extra_fields() -> None:
@@ -1275,7 +1135,7 @@ def test_genai_use_case_candidates_forbid_empty_required_lists(
     field_name: str,
 ) -> None:
     data = GenAIUseCaseCandidatePool(
-        use_cases=[_candidate(index) for index in range(1, 9)]
+        use_cases=[_candidate(index) for index in range(1, 6)]
     ).model_dump()
     data["use_cases"][0][field_name] = []
 
