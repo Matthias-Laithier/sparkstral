@@ -136,12 +136,15 @@ def _pilot_kpis() -> list[PilotKPI]:
     ]
 
 
-def _candidate(index: int) -> GenAIUseCaseCandidate:
+def _candidate(
+    index: int, *, business_domain: str = "manufacturing"
+) -> GenAIUseCaseCandidate:
     pain_point_index = ((index - 1) % 3) + 1
     evidence_source = f"https://example.com/pain-{pain_point_index}"
     return GenAIUseCaseCandidate(
         id=f"uc_{index}",
         title=f"Use case {index}",
+        business_domain=business_domain,
         target_users=["Ops"],
         business_problem="Problem",
         why_this_company="Company fit",
@@ -861,6 +864,27 @@ def test_select_top_n_returns_top_three_by_score() -> None:
         "uc_3",
     ]
     assert len(selected) == 3
+
+
+def test_select_top_n_skips_same_domain() -> None:
+    domains = ["domain_a", "domain_a", "domain_a", "domain_b", "domain_c"]
+    graded = [
+        GradedUseCase(
+            use_case=_candidate(index, business_domain=domains[index - 1]),
+            score=_score(f"uc_{index}", weighted_total=8.0 - index / 10),
+        )
+        for index in range(1, 6)
+    ]
+
+    selected = select_top_n(graded, 3)
+
+    assert [item.use_case.id for item in selected] == [
+        "uc_1",
+        "uc_4",
+        "uc_5",
+    ]
+    selected_domains = [item.use_case.business_domain for item in selected]
+    assert len(set(selected_domains)) == 3
 
 
 @pytest.mark.asyncio

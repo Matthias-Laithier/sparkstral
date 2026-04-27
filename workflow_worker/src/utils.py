@@ -110,6 +110,13 @@ def _signal_overlap(a: GradedUseCase, b: GradedUseCase) -> float:
     return len(set_a & set_b) / len(set_a | set_b)
 
 
+def _same_domain(a: GradedUseCase, b: GradedUseCase) -> bool:
+    return (
+        a.use_case.business_domain.strip().lower()
+        == b.use_case.business_domain.strip().lower()
+    )
+
+
 def select_top_n(
     graded: list[GradedUseCase],
     n: int,
@@ -122,7 +129,8 @@ def select_top_n(
         if len(selected) >= n:
             break
         if any(
-            _signal_overlap(candidate, picked) >= overlap_threshold
+            _same_domain(candidate, picked)
+            or _signal_overlap(candidate, picked) >= overlap_threshold
             for picked in selected
         ):
             continue

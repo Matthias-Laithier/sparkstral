@@ -98,6 +98,7 @@ def _candidate(index: int) -> GenAIUseCaseCandidate:
     return GenAIUseCaseCandidate(
         id=f"uc_{index}",
         title=f"Use case {index}",
+        business_domain="manufacturing",
         target_users=["Ops"],
         business_problem="Problem",
         why_this_company="Company fit",
@@ -192,6 +193,10 @@ def test_web_search_system_prompt_includes_current_date() -> None:
 
     assert "2026-04-25" in prompt
     assert "web search" in prompt
+    assert "ANTI-HALLUCINATION RULES" in prompt
+    assert "Do not supplement with prior knowledge" in prompt
+    assert "Never construct a URL" in prompt
+    assert "report that the information was not found" in prompt
 
 
 def test_combined_research_prompt_covers_identity_and_research() -> None:
@@ -202,7 +207,7 @@ def test_combined_research_prompt_covers_identity_and_research() -> None:
     assert "official company name" in prompt
     assert "ambiguity" in prompt
     assert "Deep research" in prompt
-    assert "MOST RECENT" in prompt
+    assert "Search for recent developments" in prompt
     assert "acquisitions" in prompt
     assert "earnings results" in prompt
     assert "strategic pivots" in prompt
@@ -216,6 +221,9 @@ def test_combined_research_prompt_covers_identity_and_research() -> None:
     assert "annual report" in prompt
     assert "Do not invent facts" in prompt
     assert "Wikipedia only as fallback" in prompt
+    assert "CRITICAL: only report facts found in search results" in prompt
+    assert "Not found in search results" in prompt
+    assert "Never construct a URL" in prompt
 
 
 def test_company_context_keeps_resolution_and_research_text() -> None:
@@ -235,6 +243,13 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "5" in prompt
     assert "ideation_brief" in prompt
     assert "client-workshop-worthy" in prompt
+    assert "OBVIOUS IDEAS TO REJECT" in prompt
+    assert "first-order" in prompt
+    assert "originality test" in prompt
+    assert "UNIQUE MOATS" in prompt
+    assert "non-obvious" in prompt
+    assert "surprise a domain expert" in prompt
+    assert "None may overlap with the rejected obvious ideas" in prompt
     assert "unique company moats" in prompt
     assert "recent acquisitions" in prompt
     assert "proprietary platforms" in prompt
@@ -248,14 +263,28 @@ def test_genai_use_cases_system_prompt_requires_company_anchoring() -> None:
     assert "multimodal" in prompt
     assert "agentic tool-use" in prompt
     assert "DOMAIN DIVERSITY" in prompt
-    assert "at least 3 distinct company domains" in prompt
+    assert "`business_domain`" in prompt
+    assert "at least 3 distinct `business_domain` values" in prompt
+    assert "same underlying business process must share the same label" in prompt
     assert "QUALITY GATES" in prompt
     assert "broad chatbot" in prompt
     assert "generic RAG" in prompt
     assert "classical optimization with GenAI branding" in prompt
-    assert "classical software or ML should still handle" in prompt
+    assert "'cannot derive'" in prompt
+    assert "'cannot handle'" in prompt
+    assert "recommendations, decision briefs, explanations" in prompt
+    assert "not as optimized parameters" in prompt
+    assert "optimized protocols" in prompt
+    assert "production optimization" in prompt
+    assert "'GenAI is needed'" in prompt
+    assert "GenAI adds value by" in prompt
+    assert "ORIGINALITY TEST" in prompt
+    assert "first-order obvious" in prompt
+    assert "structurally different GenAI workflow" in prompt
     assert "Do not invent numeric impact" in prompt
     assert "source_backed_metrics" in prompt
+    assert "verbatim in the research text" in prompt
+    assert "Do not fabricate recent developments" in prompt
     assert "grounded_consultant" not in prompt
     assert "moonshot" not in prompt
 
@@ -367,11 +396,22 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "Why GenAI Fits" in prompt
     assert "what GenAI adds" in prompt
     assert "what classical systems should still handle" in prompt
-    assert "Avoid absolute claims" in prompt
+    assert "'cannot derive'" in prompt
+    assert "'cannot handle'" in prompt
+    assert "recommendations for human review" in prompt
+    assert "Never frame them as direct control actions" in prompt
+    assert "optimized protocols" in prompt
+    assert "production optimization" in prompt
+    assert "'GenAI is needed'" in prompt
+    assert "GenAI adds value by" in prompt
+    assert "Do not editorialize" in prompt
+    assert "approximate or omit" in prompt
     assert "genai_mechanism" in prompt
     assert "Impact To Validate" in prompt
     assert "Cite factual claims and numbers" in prompt
     assert "Do not invent facts" in prompt
+    assert "Do not supplement the evidence brief with general knowledge" in prompt
+    assert "Every URL in the report must appear in the evidence brief" in prompt
     assert "source URLs" in prompt
     assert "neutral markdown links like [source](URL)" in prompt
     assert "numeric targets" in prompt
@@ -381,7 +421,7 @@ def test_markdown_reporter_prompt_requires_client_ready_markdown() -> None:
     assert "raw JSON" in prompt
     assert "specific data gaps" in prompt
     assert "Do not classify" in prompt
-    assert "'classical software cannot handle X'" in prompt
+    assert "'are incapable of'" in prompt
     assert "## What To Validate First" not in prompt
     assert "## Caveats and Source Limits" not in prompt
     assert "### Primary and high-confidence sources" not in prompt

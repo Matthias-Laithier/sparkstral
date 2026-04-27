@@ -131,6 +131,16 @@ class GenAIUseCaseCandidate(BaseModel):
 
     id: str
     title: str
+    business_domain: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Short snake_case label for the company business division or function "
+            "this use case belongs to. Two use cases that address the same underlying "
+            "business process must share the same label even if they reference "
+            "different products or platforms."
+        ),
+    )
     target_users: list[str] = Field(
         ...,
         min_length=1,

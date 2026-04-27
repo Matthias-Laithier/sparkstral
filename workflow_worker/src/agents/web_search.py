@@ -1,6 +1,6 @@
 import json
 from datetime import date
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from mistralai.client.models import AssistantMessage, ToolMessage
 from pydantic import BaseModel
@@ -34,15 +34,16 @@ class WebSearchAgent(BaseAgent[WebSearchInput, WebSearchOutput]):
             {"role": "user", "content": params.prompt},
         ]
 
-        for _ in range(settings.WEB_SEARCH_MAX_ROUNDS):
+        for round_idx in range(settings.WEB_SEARCH_MAX_ROUNDS):
             snapshot = list(messages)
+            force_tool: Literal["any", "auto"] = "any" if round_idx == 0 else "auto"
 
             async def _complete() -> Any:
                 return await self.client.chat.complete_async(
                     model=settings.WEB_SEARCH_MODEL,
                     messages=snapshot,
                     tools=[cast(Any, WEB_SEARCH_TOOL)],
-                    tool_choice="auto",
+                    tool_choice=force_tool,
                     max_tokens=settings.LLM_MAX_TOKENS,
                     temperature=settings.LLM_TEMPERATURE,
                 )
