@@ -5,12 +5,15 @@ import mistralai.workflows as workflows
 import mistralai.workflows.plugins.mistralai as workflows_mistralai
 from mistralai.client.models import TextChunk, WebSearchTool
 
+from src.agents.fact_checker import FactCheckAgent
 from src.agents.genai_use_cases import SingleUseCaseAgent
 from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.ideation import IdeationAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.core.config import settings
 from src.core.schemas import (
+    FactCheckInput,
+    FactCheckOutput,
     FinalSelectionOutput,
     GradedUseCasePool,
     GradeSingleUseCaseInput,
@@ -92,6 +95,16 @@ async def generate_single_use_case(
         raise RuntimeError(
             f"use-case generation failed for uc_{params.use_case_index}"
         ) from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=2))
+async def fact_check_use_case(params: FactCheckInput) -> FactCheckOutput:
+    client = get_mistral_client()
+    agent = FactCheckAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError(f"fact-check failed for {params.use_case.id}") from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

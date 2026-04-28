@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 from src.activities import (
+    fact_check_use_case,
     generate_ideation_brief,
     generate_single_use_case,
     grade_single_use_case,
@@ -16,6 +17,7 @@ from src.agents.grader import (
 from src.core.schemas import (
     CompanyInput,
     CompanyProfileOutput,
+    FactCheckInput,
     GenAIUseCaseCandidatePool,
     IdeationInput,
     MarkdownReportInput,
@@ -23,6 +25,7 @@ from src.core.schemas import (
     SingleUseCaseInput,
     SparkstralWorkflowResult,
 )
+from src.utils.fact_check import apply_fact_check
 
 PipelineStatusCallback = Callable[[str], Awaitable[None]]
 
@@ -57,9 +60,20 @@ async def run_sparkstral_pipeline(
     generated = await asyncio.gather(
         *[generate_single_use_case(inp) for inp in single_inputs]
     )
-    use_cases = GenAIUseCaseCandidatePool(
-        use_cases=[g.use_case for g in generated],
+    raw_use_cases = [g.use_case for g in generated]
+
+    await status_callback("Fact-checking use cases...\n")
+    fact_check_inputs = [
+        FactCheckInput(company_profile=company_profile, use_case=uc)
+        for uc in raw_use_cases
+    ]
+    fact_checks = await asyncio.gather(
+        *[fact_check_use_case(inp) for inp in fact_check_inputs]
     )
+    checked_use_cases = [
+        apply_fact_check(uc, fc) for uc, fc in zip(raw_use_cases, fact_checks)
+    ]
+    use_cases = GenAIUseCaseCandidatePool(use_cases=checked_use_cases)
 
     await status_callback("Scoring opportunities...\n")
     grade_inputs = build_single_use_case_grade_inputs(

@@ -126,9 +126,10 @@ class GenAIUseCaseCandidate(BaseModel):
         description="What the GenAI solution does (concretely, not a product pitch).",
     )
     genai_mechanism: GenAIMechanism
-    required_data: str = Field(
+    required_data: list[str] = Field(
         ...,
-        description="Data and systems needed to build and run it.",
+        min_length=1,
+        description="Data sources and system integrations needed, one item per entry.",
     )
     source_backed_metrics: list[SourceBackedMetric] = Field(
         ...,
@@ -148,14 +149,6 @@ class GenAIUseCaseCandidate(BaseModel):
         ...,
         min_length=1,
         description="Main risks (technical, compliance, org, model).",
-    )
-    company_signal_labels: list[str] = Field(
-        ...,
-        min_length=1,
-        description=(
-            "Short labels for concrete facts, initiatives, or pressures from the "
-            "company profile or research text that motivate this use case."
-        ),
     )
     evidence_sources: list[str] = Field(..., min_length=1)
 
@@ -277,7 +270,30 @@ class GradeSingleUseCaseInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     use_case: GenAIUseCaseCandidate
-    peer_summaries: list[str]
+
+
+class FactCheckInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    use_case: GenAIUseCaseCandidate
+
+
+class FactCheckOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    business_problem: str
+    genai_solution: str
+    why_this_company: str
+    why_iconic: str
+    feasibility_notes: str
+    required_data: list[str] = Field(
+        ..., min_length=1, description="Corrected data/integration needs."
+    )
+    corrections_made: list[str] = Field(
+        ...,
+        description=("List of corrections applied. Empty list if nothing changed."),
+    )
 
 
 class MoatAssignment(BaseModel):

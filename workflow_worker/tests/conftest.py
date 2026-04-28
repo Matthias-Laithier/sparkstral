@@ -15,5 +15,6 @@ os.environ.setdefault("MARKDOWN_REPORTER_AGENT_MODEL", "mistral-medium-latest")
 os.environ.setdefault("GENAI_USE_CASES_LLM_TEMPERATURE", "1")
 os.environ.setdefault("LLM_MAX_TOKENS", "2048")
 os.environ.setdefault("LLM_TEMPERATURE", "0")
+os.environ.setdefault("FACT_CHECK_MODEL", "mistral-medium-latest")
 
 sys.path.insert(0, str(Path(__file__).parents[1]))

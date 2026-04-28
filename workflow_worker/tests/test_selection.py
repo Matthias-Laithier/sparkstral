@@ -12,7 +12,7 @@ def test_select_top_n_picks_highest_scores() -> None:
     assert [item.use_case.id for item in result] == ["uc_5", "uc_4", "uc_3"]
 
 
-def test_select_top_n_skips_same_domain() -> None:
+def test_select_top_n_takes_highest_regardless_of_domain() -> None:
     graded = [
         make_graded(1, weighted_total=9.0, domain="water"),
         make_graded(2, weighted_total=8.0, domain="water"),
@@ -23,7 +23,7 @@ def test_select_top_n_skips_same_domain() -> None:
 
     result = select_top_n(graded, 3)
 
-    assert [item.use_case.id for item in result] == ["uc_1", "uc_3", "uc_4"]
+    assert [item.use_case.id for item in result] == ["uc_1", "uc_2", "uc_3"]
 
 
 def test_compute_weighted_total_formula() -> None:
@@ -38,5 +38,5 @@ def test_compute_weighted_total_formula() -> None:
     )
 
     assert compute_weighted_total(score) == round(
-        0.25 * 6 + 0.25 * 4 + 0.20 * 8 + 0.15 * 10 + 0.08 * 2 + 0.07 * 10, 2
+        0.25 * 6 + 0.25 * 4 + 0.20 * 8 + 0.15 * 10 + 0.10 * 2 + 0.05 * 10, 2
     )

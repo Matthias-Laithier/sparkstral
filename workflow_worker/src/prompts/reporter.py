@@ -32,6 +32,11 @@ def narrative_system_prompt() -> str:
         "RULES:\n"
         "- Use only facts and URLs from the evidence brief. Do not supplement "
         "with general knowledge. Every URL must appear in the evidence brief.\n"
+        "- Copy financial figures and dates exactly as they appear in the "
+        "research text, including the reporting period and whether the number "
+        "is a reported actual or a target. Do not round, reinterpret, or drop "
+        "qualifiers. When the research gives a specific month and year for an "
+        "event, preserve both — do not generalize to just a year.\n"
         "- Cite factual claims with adjacent markdown links like [source](URL).\n"
         "- Do not invent facts, URLs, ROI, timelines, or numeric targets.\n"
         "- Do not state that a deal or acquisition is completed unless the "
@@ -140,7 +145,8 @@ def _use_case_section(
             f"### Scoring (1–10)\n\n{_scoring_table(score)}",
             "### How The Workflow Would Work\n\n" + uc.genai_solution,
             f"### Why GenAI Fits\n\n{uc.genai_mechanism.genai_vs_classical}",
-            f"### Data and Integration Needs\n\n{uc.required_data}",
+            "### Data and Integration Needs\n\n"
+            + "\n".join(f"- {item}" for item in uc.required_data),
             "### Impact To Validate\n\n" + "\n".join(kpi_lines),
             "### Risks and Mitigations\n\n" + "\n".join(risk_lines),
         ]
@@ -162,6 +168,11 @@ def _summary_table(
         users = ", ".join(uc.target_users)
         fit = f"{item.score.weighted_total:.1f}/10"
         lines.append(f"| {rank} | {uc.title} | {users} | {fit} | {rationale} |")
+    lines.append("")
+    lines.append(
+        "> **Fit score** = 25% iconicness + 25% GenAI fit + 20% business impact"
+        " + 15% company relevance + 10% feasibility + 5% evidence strength"
+    )
     return "\n".join(lines)
 
 

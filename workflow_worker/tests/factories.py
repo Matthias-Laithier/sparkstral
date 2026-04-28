@@ -3,6 +3,7 @@
 from src.core.schemas import (
     CompanyProfileOutput,
     DimensionRubricLine,
+    FactCheckOutput,
     FinalSelectionOutput,
     GenAIMechanism,
     GenAIUseCaseCandidate,
@@ -53,7 +54,6 @@ def make_candidate(
     index: int,
     *,
     domain: str = "default",
-    signals: list[str] | None = None,
 ) -> GenAIUseCaseCandidate:
     return GenAIUseCaseCandidate(
         id=f"uc_{index}",
@@ -70,7 +70,7 @@ def make_candidate(
                 "classical handles structured data well."
             ),
         ),
-        required_data="data",
+        required_data=["Internal operational data"],
         source_backed_metrics=[],
         pilot_kpis=[
             PilotKPI(
@@ -91,7 +91,6 @@ def make_candidate(
         why_iconic="iconic",
         feasibility_notes="feasible",
         risks=["risk"],
-        company_signal_labels=signals or [f"signal_{index}"],
         evidence_sources=["https://example.com"],
     )
 
@@ -101,10 +100,9 @@ def make_graded(
     *,
     weighted_total: float = 5.0,
     domain: str = "default",
-    signals: list[str] | None = None,
 ) -> GradedUseCase:
     return GradedUseCase(
-        use_case=make_candidate(index, domain=domain, signals=signals),
+        use_case=make_candidate(index, domain=domain),
         score=make_score(f"uc_{index}", weighted_total=weighted_total),
     )
 
@@ -174,4 +172,17 @@ def make_ideation_brief() -> IdeationBrief:
             "predictive maintenance",
         ],
         assignments=[make_moat_assignment(i + 1, domain=domains[i]) for i in range(5)],
+    )
+
+
+def make_fact_check_output(candidate: GenAIUseCaseCandidate) -> FactCheckOutput:
+    """Identity fact-check: returns the same text fields unchanged."""
+    return FactCheckOutput(
+        business_problem=candidate.business_problem,
+        genai_solution=candidate.genai_solution,
+        why_this_company=candidate.why_this_company,
+        why_iconic=candidate.why_iconic,
+        feasibility_notes=candidate.feasibility_notes,
+        required_data=list(candidate.required_data),
+        corrections_made=[],
     )

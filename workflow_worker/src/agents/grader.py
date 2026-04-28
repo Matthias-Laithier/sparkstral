@@ -19,8 +19,8 @@ def compute_weighted_total(score: UseCaseScore) -> float:
         + 0.25 * score.genai_fit.score
         + 0.20 * score.business_impact.score
         + 0.15 * score.company_relevance.score
-        + 0.08 * score.feasibility.score
-        + 0.07 * score.evidence_strength.score,
+        + 0.10 * score.feasibility.score
+        + 0.05 * score.evidence_strength.score,
         2,
     )
 
@@ -29,22 +29,14 @@ def build_single_use_case_grade_inputs(
     company_profile: CompanyProfileOutput,
     use_cases: list[GenAIUseCaseCandidate],
 ) -> list[GradeSingleUseCaseInput]:
-    peer_map = {
-        use_case.id: f"{use_case.id}: {use_case.title} — {use_case.business_problem}"
-        for use_case in use_cases
-    }
-    if len(peer_map) != len(use_cases):
+    ids = [uc.id for uc in use_cases]
+    if len(set(ids)) != len(ids):
         raise ValueError("generated use cases contain duplicate IDs")
 
     return [
         GradeSingleUseCaseInput(
             company_profile=company_profile,
             use_case=use_case,
-            peer_summaries=[
-                summary
-                for peer_id, summary in peer_map.items()
-                if peer_id != use_case.id
-            ],
         )
         for use_case in use_cases
     ]
@@ -96,7 +88,6 @@ class SingleUseCaseGraderAgent(
                     "content": grade_single_use_case_user_prompt(
                         params.company_profile,
                         params.use_case,
-                        params.peer_summaries,
                     ),
                 },
             ],

@@ -2,6 +2,8 @@ import pytest
 
 from src.core.schemas import (
     CompanyInput,
+    FactCheckInput,
+    FactCheckOutput,
     FinalSelectionOutput,
     GradedUseCasePool,
     GradeSingleUseCaseInput,
@@ -48,6 +50,10 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
             use_case=f.make_candidate(p.use_case_index),
         )
 
+    async def mock_fact_check(p: FactCheckInput) -> FactCheckOutput:
+        calls.append("fact_check")
+        return f.make_fact_check_output(p.use_case)
+
     async def mock_grade(p: GradeSingleUseCaseInput) -> SingleUseCaseGradeResult:
         calls.append("grade")
         return f.make_grade_result(p.use_case.id)
@@ -65,6 +71,7 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pipeline, "research_company", mock_research)
     monkeypatch.setattr(pipeline, "generate_ideation_brief", mock_ideation)
     monkeypatch.setattr(pipeline, "generate_single_use_case", mock_generate)
+    monkeypatch.setattr(pipeline, "fact_check_use_case", mock_fact_check)
     monkeypatch.setattr(pipeline, "grade_single_use_case", mock_grade)
     monkeypatch.setattr(pipeline, "select_final_top_3", mock_select)
     monkeypatch.setattr(pipeline, "write_markdown_report", mock_report)
@@ -74,6 +81,7 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls[0] == "research"
     assert calls[1] == "ideation"
     assert calls.count("generate") == 5
+    assert calls.count("fact_check") == 5
     assert "grade" in calls
     assert calls[-2] == "select"
     assert calls[-1] == "report"

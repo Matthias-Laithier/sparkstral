@@ -35,11 +35,29 @@ def use_case_grader_system_prompt() -> str:
         "input, retrieval with reasoning, tool use, drafting, explanation, or "
         "human-reviewable decisions are central to the specific workflow. "
         "Separate what GenAI adds from what classical systems should still handle.\n"
-        "Use penalties for peer overlap, vague users or workflows, weak evidence, "
+        "SCORE-RATIONALE CONSISTENCY:\n"
+        "Your rationale commits you to a score range. If the rationale for a "
+        "dimension mentions a limitation, unverified dependency, or caveat "
+        "('but', 'however', 'depends on'), the score for that dimension must "
+        "be lower than a dimension where your rationale is purely positive. "
+        "A rationale that is entirely positive with a named company fact "
+        "justifies 7-8. A rationale with a 'but' clause justifies 5-6. "
+        "A rationale that identifies a fundamental gap or unverified "
+        "assumption justifies 3-4.\n"
+        "CALIBRATION ANCHORS:\n"
+        "Feasibility: 3 = relies on data sources the research does not "
+        "confirm or requires unbuilt integrations; 5 = uses confirmed data "
+        "but needs new partnerships or regulatory approvals; 7 = uses only "
+        "data and systems the research confirms exist; 9 = trivially "
+        "buildable with off-the-shelf components.\n"
+        "Evidence strength: 3 = no source_backed_metrics, claims loosely "
+        "tied to research; 5 = evidence_sources are relevant but no hard "
+        "metrics; 7 = at least one source_backed_metric with medium+ "
+        "confidence; 9 = multiple high-confidence metrics from official "
+        "sources.\n"
+        "Use penalties for vague users or workflows, weak evidence, "
         "generic titles, and `why_iconic` text that only says the idea aligns with "
-        "strategy. Compare peer summaries; if the core problem domain (e.g. "
-        "regulatory compliance, infrastructure inspection) overlaps with a peer, "
-        "cap iconicness at 4 and name the overlapping use_case_id in penalties.\n"
+        "strategy.\n"
         "For each rubric field, output a `DimensionRubricLine` with a specific "
         "one-sentence rationale before the score. Include strengths, adversarial "
         "weaknesses, top-level rationale, penalties, and `use_case_id`. Do not "
@@ -56,15 +74,9 @@ def grader_company_brief(profile: CompanyProfileOutput) -> str:
 def grade_single_use_case_user_prompt(
     company_profile: CompanyProfileOutput,
     use_case: GenAIUseCaseCandidate,
-    peer_summaries: list[str],
 ) -> str:
     use_case_json = json.dumps(
         use_case.model_dump(mode="json"),
-        indent=2,
-        ensure_ascii=False,
-    )
-    peer_summaries_json = json.dumps(
-        peer_summaries,
         indent=2,
         ensure_ascii=False,
     )
@@ -73,14 +85,11 @@ def grade_single_use_case_user_prompt(
         f"{grader_company_brief(company_profile)}\n\n"
         "Generated use case to grade (JSON):\n"
         f"{use_case_json}\n\n"
-        "Peer use-case summaries for overlap checking only (JSON):\n"
-        f"{peer_summaries_json}\n\n"
         "Return exactly one `grade` for the supplied use_case.id. Apply the "
         "report-worthy test before scoring: if the idea would read naturally for a "
         "peer after replacing the company name, say so in weaknesses and penalties, "
         "keep iconicness low, and avoid compensating with high adjacent scores. "
-        "Name overlapping peer use_case_ids in penalties. Do not repeat or rewrite "
-        "the original use_case object."
+        "Do not repeat or rewrite the original use_case object."
     )
 
 

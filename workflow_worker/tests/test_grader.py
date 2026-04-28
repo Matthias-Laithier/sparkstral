@@ -9,19 +9,6 @@ from src.agents.grader import (
 from .factories import make_candidate, make_grade_result, make_profile
 
 
-def test_peer_summaries_exclude_self() -> None:
-    profile = make_profile()
-    use_cases = [make_candidate(i) for i in range(1, 4)]
-
-    inputs = build_single_use_case_grade_inputs(profile, use_cases)
-
-    for grade_input in inputs:
-        own_id = grade_input.use_case.id
-        for summary in grade_input.peer_summaries:
-            assert not summary.startswith(f"{own_id}:")
-        assert len(grade_input.peer_summaries) == len(use_cases) - 1
-
-
 def test_duplicate_ids_rejected() -> None:
     profile = make_profile()
     uc = make_candidate(1)

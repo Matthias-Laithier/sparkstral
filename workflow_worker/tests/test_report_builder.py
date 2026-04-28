@@ -69,6 +69,7 @@ def test_build_report_summary_table_has_scores() -> None:
     assert "6.0/10" in md
     assert "5.0/10" in md
     assert "Leverages unique retail network." in md
+    assert "25% iconicness" in md
 
 
 def test_build_report_sources_deduplicates() -> None:
