@@ -2,6 +2,24 @@
 
 A [Mistral Workflows](https://docs.mistral.ai/workflows/getting-started/introduction) worker that takes a company name and returns a client-ready report with 3 high-impact GenAI use cases tailored to that company.
 
+## Quick start
+
+```bash
+cp .env.example .env          # then fill in your MISTRAL_API_KEY
+make up                        # build & start the worker (Docker)
+make logs                      # follow output
+```
+
+The default config uses Mistral's built-in web search (`WEB_SEARCH_PROVIDER=mistralai`), so the only required key is `MISTRAL_API_KEY`. Serper and Tavily are supported as alternative search providers — see `.env.example`.
+
+Once the worker is running, trigger the workflow from [Le Chat](https://chat.mistral.ai) or the [Mistral AI Studio](https://console.mistral.ai) with:
+
+```json
+{"company_name": "Veolia"}
+```
+
+[Screenshot of a Le Chat integration run](docs/lechat_integration.png)
+
 ## How it works
 
 ```mermaid
@@ -26,24 +44,6 @@ flowchart LR
 5. **Grading** — an independent grader scores each candidate on iconicness, GenAI fit, business impact, company relevance, feasibility, and evidence strength.
 6. **Selection** — the 3 highest-scoring candidates are picked.
 7. **Report** — a structured markdown report is assembled with LLM-written narratives and programmatic tables.
-
-## Quick start
-
-```bash
-cp .env.example .env          # then fill in your MISTRAL_API_KEY
-make up                        # build & start the worker (Docker)
-make logs                      # follow output
-```
-
-The default config uses Mistral's built-in web search (`WEB_SEARCH_PROVIDER=mistralai`), so the only required key is `MISTRAL_API_KEY`. Serper and Tavily are supported as alternative search providers — see `.env.example`.
-
-Once the worker is running, trigger the workflow from [Le Chat](https://chat.mistral.ai) or the Mistral Console with:
-
-```json
-{"company_name": "Veolia"}
-```
-
-[Screenshot of a Le Chat integration run](docs/lechat_integration.png)
 
 ## Local development (without Docker)
 
