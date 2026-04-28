@@ -1,6 +1,6 @@
 # Sparkstral
 
-A [Mistral Workflows](https://docs.mistral.ai/capabilities/workflows/) worker that takes a company name and returns a client-ready report with 3 high-impact GenAI use cases tailored to that company.
+A [Mistral Workflows](https://docs.mistral.ai/workflows/getting-started/introduction) worker that takes a company name and returns a client-ready report with 3 high-impact GenAI use cases tailored to that company.
 
 ## How it works
 
@@ -43,7 +43,7 @@ Once the worker is running, trigger the workflow from [Le Chat](https://chat.mis
 {"company_name": "Veolia"}
 ```
 
-[See it in action in Le Chat](docs/lechat_integration.png)
+[Screenshot of a Le Chat integration run](docs/lechat_integration.png)
 
 ## Local development (without Docker)
 
