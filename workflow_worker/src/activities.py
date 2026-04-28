@@ -23,7 +23,7 @@ from src.utils import get_mistral_client, select_top_n
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def research_company_combined(params: CompanyResolutionInput) -> ResearchResult:
+async def research_company(params: CompanyResolutionInput) -> ResearchResult:
     client = get_mistral_client()
     agent = WebSearchAgent(client=client)
     try:

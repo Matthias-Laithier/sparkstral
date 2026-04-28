@@ -5,7 +5,7 @@ from functools import partial
 from src.activities import (
     generate_genai_use_cases,
     grade_single_use_case,
-    research_company_combined,
+    research_company,
     select_final_top_3,
     write_markdown_report,
 )
@@ -45,7 +45,7 @@ async def run_sparkstral_pipeline(
     append_json = partial(append_json_output, outputs)
 
     await _send_status(status_callback, "Researching company context...\n")
-    combined_research = await research_company_combined(
+    combined_research = await research_company(
         CompanyResolutionInput(company_query=params.company_name)
     )
     append_text(combined_research.text)

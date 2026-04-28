@@ -294,8 +294,8 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         research_text="combined research",
     )
 
-    async def research_company_combined(_params: object) -> ResearchResult:
-        calls.append("research_company_combined")
+    async def research_company(_params: object) -> ResearchResult:
+        calls.append("research_company")
         return ResearchResult(text="combined research")
 
     async def generate_genai_use_cases(
@@ -336,7 +336,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
         return markdown_report_result
 
     monkeypatch.setattr(
-        pipeline, "research_company_combined", research_company_combined
+        pipeline, "research_company", research_company
     )
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
     monkeypatch.setattr(pipeline, "grade_single_use_case", grade_single_use_case)
@@ -354,7 +354,7 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
     )
 
     assert calls == [
-        "research_company_combined",
+        "research_company",
         "generate_genai_use_cases",
         "grade_single_use_case:uc_1",
         "grade_single_use_case:uc_2",
@@ -409,8 +409,8 @@ async def test_pipeline_runs_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> 
 async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
-    async def research_company_combined(_params: object) -> ResearchResult:
-        calls.append("research_company_combined")
+    async def research_company(_params: object) -> ResearchResult:
+        calls.append("research_company")
         return ResearchResult(text="combined research")
 
     async def generate_genai_use_cases(
@@ -420,7 +420,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         raise RuntimeError("model failed")
 
     monkeypatch.setattr(
-        pipeline, "research_company_combined", research_company_combined
+        pipeline, "research_company", research_company
     )
     monkeypatch.setattr(pipeline, "generate_genai_use_cases", generate_genai_use_cases)
 
@@ -428,7 +428,7 @@ async def test_pipeline_stops_on_first_error(monkeypatch: pytest.MonkeyPatch) ->
         await pipeline.run_sparkstral_pipeline(CompanyInput(company_name="Acme"))
 
     assert calls == [
-        "research_company_combined",
+        "research_company",
         "generate_genai_use_cases",
     ]
 
