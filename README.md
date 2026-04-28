@@ -10,8 +10,6 @@ make up                        # build & start the worker (Docker)
 make logs                      # follow output
 ```
 
-The default config uses Mistral's built-in web search (`WEB_SEARCH_PROVIDER=mistralai`), so the only required key is `MISTRAL_API_KEY`. Serper and Tavily are supported as alternative search providers — see `.env.example`.
-
 Once the worker is running, trigger the workflow from [Le Chat](https://chat.mistral.ai) or the [Mistral AI Studio](https://console.mistral.ai) with:
 
 ```json

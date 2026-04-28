@@ -4,9 +4,6 @@ from pathlib import Path
 
 os.environ.setdefault("MISTRAL_API_KEY", "test-mistral-api-key")
 os.environ.setdefault("DEPLOYMENT_NAME", "test-deployment")
-os.environ.setdefault("SERPER_API_KEY", "test-serper-api-key")
-os.environ.setdefault("TAVILY_API_KEY", "test-tavily-api-key")
-os.environ.setdefault("WEB_SEARCH_PROVIDER", "serper")
 os.environ.setdefault("WEB_SEARCH_MODEL", "mistral-small-latest")
 os.environ.setdefault("WEB_SEARCH_MAX_ROUNDS", "2")
 os.environ.setdefault("GENAI_USE_CASES_MODEL", "mistral-medium-latest")

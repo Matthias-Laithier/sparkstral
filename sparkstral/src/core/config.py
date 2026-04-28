@@ -1,6 +1,3 @@
-from typing import Literal, Self
-
-from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,9 +9,6 @@ class Settings(BaseSettings):
 
     MISTRAL_API_KEY: str
     DEPLOYMENT_NAME: str
-    SERPER_API_KEY: str | None = None
-    TAVILY_API_KEY: str | None = None
-    WEB_SEARCH_PROVIDER: Literal["mistralai", "serper", "tavily"] = "mistralai"
     WEB_SEARCH_MODEL: str
     WEB_SEARCH_MAX_ROUNDS: int
     GENAI_USE_CASES_MODEL: str
@@ -24,18 +18,6 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int
     LLM_TEMPERATURE: float
     FACT_CHECK_MODEL: str
-
-    @model_validator(mode="after")
-    def require_search_provider_key(self) -> Self:
-        if self.WEB_SEARCH_PROVIDER == "serper" and not self.SERPER_API_KEY:
-            raise ValueError(
-                "SERPER_API_KEY is required when WEB_SEARCH_PROVIDER=serper"
-            )
-        if self.WEB_SEARCH_PROVIDER == "tavily" and not self.TAVILY_API_KEY:
-            raise ValueError(
-                "TAVILY_API_KEY is required when WEB_SEARCH_PROVIDER=tavily"
-            )
-        return self
 
 
 settings = Settings()  # type: ignore[call-arg]
