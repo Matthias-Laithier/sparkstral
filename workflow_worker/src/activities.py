@@ -6,9 +6,7 @@ from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.agents.web_search import WebSearchAgent, WebSearchInput
-from src.prompts import combined_research_prompt
-from src.schemas import (
-    CompanyResolutionInput,
+from src.core.schemas import (
     FinalSelectionOutput,
     GenAIUseCaseCandidateInput,
     GenAIUseCaseGeneration,
@@ -16,20 +14,23 @@ from src.schemas import (
     GradeSingleUseCaseInput,
     MarkdownReport,
     MarkdownReportInput,
+    ResearchInput,
     ResearchResult,
     SingleUseCaseGradeResult,
 )
-from src.utils import get_mistral_client, select_top_n
+from src.llm import get_mistral_client
+from src.prompts import research_prompt
+from src.utils.selection import select_top_n
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def research_company(params: CompanyResolutionInput) -> ResearchResult:
+async def research_company(params: ResearchInput) -> ResearchResult:
     client = get_mistral_client()
     agent = WebSearchAgent(client=client)
     try:
         result = await agent.run(
             WebSearchInput(
-                prompt=combined_research_prompt(params.company_query),
+                prompt=research_prompt(params.company_query),
             )
         )
     except Exception as exc:

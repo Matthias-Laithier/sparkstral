@@ -1,8 +1,8 @@
 from src.agents.base import BaseAgent
-from src.config import settings
+from src.core.config import settings
+from src.core.schemas import MarkdownReport, MarkdownReportInput
+from src.llm import parse_chat_model
 from src.prompts import markdown_reporter_system_prompt, markdown_reporter_user_prompt
-from src.schemas import MarkdownReport, MarkdownReportInput
-from src.utils import parse_chat_model
 
 
 class MarkdownReporterAgent(BaseAgent[MarkdownReportInput, MarkdownReport]):

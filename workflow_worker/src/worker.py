@@ -9,9 +9,9 @@ from mistralai.workflows import workflow
 # pydantic-settings/dotenv (pathlib), which the workflow sandbox rejects unless the
 # import is marked pass-through.
 with workflow.unsafe.imports_passed_through():
-    from src.config import settings
+    from src.core.config import settings
+    from src.core.schemas import CompanyInput
     from src.pipeline import run_sparkstral_pipeline
-    from src.schemas import CompanyInput
 
 
 @workflows.workflow.define(

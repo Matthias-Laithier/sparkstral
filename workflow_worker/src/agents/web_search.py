@@ -6,10 +6,10 @@ from mistralai.client.models import AssistantMessage, ToolMessage
 from pydantic import BaseModel
 
 from src.agents.base import BaseAgent
-from src.config import settings
+from src.core.config import settings
+from src.llm import with_llm_retries
 from src.prompts import web_search_system_prompt
 from src.tools.provider_web_search import WEB_SEARCH_TOOL, web_search
-from src.utils import with_llm_retries
 
 
 class WebSearchInput(BaseModel):

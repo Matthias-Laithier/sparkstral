@@ -1,7 +1,6 @@
 from src.agents.base import BaseAgent
-from src.config import settings
-from src.prompts import grade_single_use_case_user_prompt, use_case_grader_system_prompt
-from src.schemas import (
+from src.core.config import settings
+from src.core.schemas import (
     CompanyProfileOutput,
     GenAIUseCaseCandidate,
     GradedUseCase,
@@ -10,7 +9,8 @@ from src.schemas import (
     SingleUseCaseGradeResult,
     UseCaseScore,
 )
-from src.utils import parse_chat_model
+from src.llm import parse_chat_model
+from src.prompts import grade_single_use_case_user_prompt, use_case_grader_system_prompt
 
 
 def compute_weighted_total(score: UseCaseScore) -> float:

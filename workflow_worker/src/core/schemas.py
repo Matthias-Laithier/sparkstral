@@ -1,4 +1,4 @@
-from typing import Any, Literal, Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -9,7 +9,7 @@ class CompanyInput(BaseModel):
     company_name: str = Field(..., description="Raw company name entered by the user.")
 
 
-class CompanyResolutionInput(BaseModel):
+class ResearchInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_query: str
@@ -17,36 +17,6 @@ class CompanyResolutionInput(BaseModel):
 
 class ResearchResult(BaseModel):
     text: str
-
-
-class EvidenceItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    claim: str = Field(
-        ..., description="Short factual claim used to build the profile."
-    )
-    source: str = Field(
-        ...,
-        description="URL string (https recommended) supporting the claim.",
-    )
-
-
-class CompanyResolutionOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    input_name: str
-    resolved_name: str
-    website: str
-    headquarters_country: str
-    primary_industry: str
-    ambiguity_notes: str
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    evidence: list[EvidenceItem] = Field(..., min_length=1)
-
-
-class CompanyResolutionStructuringInput(BaseModel):
-    company_query: str
-    research_text: str
 
 
 class CompanyProfileOutput(BaseModel):
@@ -343,13 +313,6 @@ class GenAIUseCaseCandidateInput(BaseModel):
     company_profile: CompanyProfileOutput
 
 
-class PipelineOutput(BaseModel):
-    id: int
-    kind: Literal["text", "json"]
-    text: str | None = None
-    data: dict[str, Any] | None = None
-
-
 class MarkdownReportInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -364,5 +327,4 @@ class MarkdownReport(BaseModel):
 
 
 class SparkstralWorkflowResult(BaseModel):
-    outputs: list[PipelineOutput]
     final: str

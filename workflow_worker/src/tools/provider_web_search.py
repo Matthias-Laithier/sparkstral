@@ -8,7 +8,7 @@ import httpx
 from mistralai.client.models import Function, Tool
 from tavily import TavilyClient
 
-from src.config import settings
+from src.core.config import settings
 
 WEB_SEARCH_TOOL = Tool(
     type="function",

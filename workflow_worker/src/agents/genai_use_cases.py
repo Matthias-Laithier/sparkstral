@@ -1,8 +1,8 @@
 from src.agents.base import BaseAgent
-from src.config import settings
+from src.core.config import settings
+from src.core.schemas import GenAIUseCaseCandidateInput, GenAIUseCaseGeneration
+from src.llm import parse_chat_model
 from src.prompts import genai_use_cases_system_prompt, genai_use_cases_user_prompt
-from src.schemas import GenAIUseCaseCandidateInput, GenAIUseCaseGeneration
-from src.utils import parse_chat_model
 
 
 class GenAIUseCasesAgent(
