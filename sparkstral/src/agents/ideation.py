@@ -14,7 +14,7 @@ class IdeationAgent(BaseAgent[IdeationInput, IdeationBrief]):
             IdeationBrief,
             phase="ideation brief",
             model=settings.GENAI_USE_CASES_MODEL,
-            max_tokens=2048,
+            max_tokens=settings.LLM_MAX_TOKENS,
             temperature=settings.GENAI_USE_CASES_LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": ideation_system_prompt()},

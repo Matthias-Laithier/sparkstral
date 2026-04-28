@@ -36,4 +36,4 @@ async def with_llm_retries(
             )
             await asyncio.sleep(delay_seconds)
 
-    raise RuntimeError(f"{phase} failed after {attempts} attempts")
+    raise AssertionError("unreachable: loop always returns or raises")

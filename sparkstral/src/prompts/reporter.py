@@ -114,8 +114,7 @@ def _scoring_table(score: UseCaseScore) -> str:
     return "\n".join(lines)
 
 
-def _kpi_paragraph(kpi_obj: object) -> str:
-    kpi = kpi_obj if isinstance(kpi_obj, PilotKPI) else PilotKPI.model_validate(kpi_obj)
+def _kpi_paragraph(kpi: PilotKPI) -> str:
     direction = kpi.target_direction.replace("_", " ")
     return (
         f"- **{kpi.kpi}** matters because {kpi.why_it_matters} "

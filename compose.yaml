@@ -1,4 +1,4 @@
 services:
-  workflow-worker:
-    build: ./workflow_worker
+  sparkstral:
+    build: ./sparkstral
     env_file: .env

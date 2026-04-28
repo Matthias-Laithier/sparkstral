@@ -18,7 +18,7 @@ class MarkdownReporterAgent(BaseAgent[MarkdownReportInput, MarkdownReport]):
             ReportNarratives,
             phase="report narratives",
             model=settings.MARKDOWN_REPORTER_AGENT_MODEL,
-            max_tokens=4096,
+            max_tokens=settings.LLM_MAX_TOKENS,
             temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": narrative_system_prompt()},

@@ -17,7 +17,7 @@ flowchart LR
 
 *Actual execution trace (~2 min end-to-end):*
 
-![Pipeline timeline](docs/pipeline_timeline.png)
+[See the pipeline timeline](docs/pipeline_timeline.png)
 
 1. **Research** — a web-search agent collects sourced facts about the company (identity, business lines, recent developments, scale figures).
 2. **Ideation** — an LLM identifies 5 unique company moats and assigns diverse GenAI angles, rejecting generic ideas upfront.
@@ -43,10 +43,12 @@ Once the worker is running, trigger the workflow from [Le Chat](https://chat.mis
 {"company_name": "Veolia"}
 ```
 
+[See it in action in Le Chat](docs/lechat_integration.png)
+
 ## Local development (without Docker)
 
 ```bash
-cd workflow_worker
+cd sparkstral
 uv sync
 uv run python -m src.worker
 ```

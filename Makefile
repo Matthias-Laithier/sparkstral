@@ -22,15 +22,15 @@ clean:
 	docker compose down -v --remove-orphans
 
 format:
-	cd workflow_worker && uv run ruff format . && uv run ruff check --select I --fix
+	cd sparkstral && uv run ruff format . && uv run ruff check --select I --fix
 
 lint:
-	cd workflow_worker && uv run ruff check .
+	cd sparkstral && uv run ruff check .
 
 typecheck:
-	cd workflow_worker && uv run mypy src
+	cd sparkstral && uv run mypy src
 
 test:
-	cd workflow_worker && uv run pytest
+	cd sparkstral && uv run pytest
 
 check: format lint typecheck test
