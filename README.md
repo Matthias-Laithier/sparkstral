@@ -8,12 +8,16 @@ A [Mistral Workflows](https://docs.mistral.ai/capabilities/workflows/) worker th
 flowchart LR
     A[Company name] --> B[Web research]
     B --> C[Ideation]
-    C --> D["Generate 5 candidates (parallel)"]
-    D --> E["Fact-check (parallel)"]
-    E --> F["Grade (parallel)"]
+    C --> D[Generate 5 candidates]
+    D --> E[Fact-check]
+    E --> F[Grade]
     F --> G[Select top 3]
     G --> H[Markdown report]
 ```
+
+*Actual execution trace (~2 min end-to-end):*
+
+![Pipeline timeline](docs/pipeline_timeline.png)
 
 1. **Research** — a web-search agent collects sourced facts about the company (identity, business lines, recent developments, scale figures).
 2. **Ideation** — an LLM identifies 5 unique company moats and assigns diverse GenAI angles, rejecting generic ideas upfront.
