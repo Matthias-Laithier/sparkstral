@@ -5,21 +5,24 @@ import mistralai.workflows as workflows
 import mistralai.workflows.plugins.mistralai as workflows_mistralai
 from mistralai.client.models import TextChunk, WebSearchTool
 
-from src.agents.genai_use_cases import GenAIUseCasesAgent
+from src.agents.genai_use_cases import SingleUseCaseAgent
 from src.agents.grader import SingleUseCaseGraderAgent
+from src.agents.ideation import IdeationAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
 from src.core.config import settings
 from src.core.schemas import (
     FinalSelectionOutput,
-    GenAIUseCaseCandidateInput,
-    GenAIUseCaseGeneration,
     GradedUseCasePool,
     GradeSingleUseCaseInput,
+    IdeationBrief,
+    IdeationInput,
     MarkdownReport,
     MarkdownReportInput,
     ResearchInput,
     ResearchResult,
+    SingleUseCaseGeneration,
     SingleUseCaseGradeResult,
+    SingleUseCaseInput,
 )
 from src.llm import get_mistral_client
 from src.prompts import research_prompt, web_search_system_prompt
@@ -67,16 +70,28 @@ async def research_company(params: ResearchInput) -> ResearchResult:
     return ResearchResult(text=text)
 
 
-@workflows.activity(start_to_close_timeout=timedelta(minutes=5))
-async def generate_genai_use_cases(
-    params: GenAIUseCaseCandidateInput,
-) -> GenAIUseCaseGeneration:
+@workflows.activity(start_to_close_timeout=timedelta(minutes=2))
+async def generate_ideation_brief(params: IdeationInput) -> IdeationBrief:
     client = get_mistral_client()
-    agent = GenAIUseCasesAgent(client=client)
+    agent = IdeationAgent(client=client)
     try:
         return await agent.run(params)
     except Exception as exc:
-        raise RuntimeError("GenAI use-case generation failed") from exc
+        raise RuntimeError("ideation brief generation failed") from exc
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=3))
+async def generate_single_use_case(
+    params: SingleUseCaseInput,
+) -> SingleUseCaseGeneration:
+    client = get_mistral_client()
+    agent = SingleUseCaseAgent(client=client)
+    try:
+        return await agent.run(params)
+    except Exception as exc:
+        raise RuntimeError(
+            f"use-case generation failed for uc_{params.use_case_index}"
+        ) from exc
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

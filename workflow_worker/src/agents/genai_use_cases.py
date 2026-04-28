@@ -1,34 +1,31 @@
 from src.agents.base import BaseAgent
 from src.core.config import settings
-from src.core.schemas import GenAIUseCaseCandidateInput, GenAIUseCaseGeneration
+from src.core.schemas import SingleUseCaseGeneration, SingleUseCaseInput
 from src.llm import parse_chat_model
-from src.prompts import genai_use_cases_system_prompt, genai_use_cases_user_prompt
+from src.prompts.generation import (
+    single_use_case_system_prompt,
+    single_use_case_user_prompt,
+)
 
 
-class GenAIUseCasesAgent(
-    BaseAgent[GenAIUseCaseCandidateInput, GenAIUseCaseGeneration],
+class SingleUseCaseAgent(
+    BaseAgent[SingleUseCaseInput, SingleUseCaseGeneration],
 ):
-    name = "genai-use-cases"
+    name = "single-use-case-generator"
 
-    async def run(
-        self,
-        params: GenAIUseCaseCandidateInput,
-    ) -> GenAIUseCaseGeneration:
+    async def run(self, params: SingleUseCaseInput) -> SingleUseCaseGeneration:
         return await parse_chat_model(
             self.client,
-            GenAIUseCaseGeneration,
-            phase="GenAI use-case generation",
+            SingleUseCaseGeneration,
+            phase=f"use-case generation (uc_{params.use_case_index})",
             model=settings.GENAI_USE_CASES_MODEL,
             max_tokens=settings.LLM_MAX_TOKENS,
             temperature=settings.GENAI_USE_CASES_LLM_TEMPERATURE,
             messages=[
-                {
-                    "role": "system",
-                    "content": genai_use_cases_system_prompt(),
-                },
+                {"role": "system", "content": single_use_case_system_prompt()},
                 {
                     "role": "user",
-                    "content": genai_use_cases_user_prompt(params.company_profile),
+                    "content": single_use_case_user_prompt(params),
                 },
             ],
         )

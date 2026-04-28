@@ -43,19 +43,12 @@ class GenAIMechanism(BaseModel):
             "multimodal_understanding",
         ]
     ] = Field(..., min_length=1)
-    why_genai_is_needed: str
-    genai_advantage_over_classical_software: str = Field(
+    genai_vs_classical: str = Field(
         ...,
         description=(
-            "Where GenAI adds value beyond rule-based systems and classical NLP; "
-            "acknowledge what classical systems still do well."
-        ),
-    )
-    genai_advantage_over_classical_ml: str = Field(
-        ...,
-        description=(
-            "Where GenAI adds value beyond classical ML or optimization; "
-            "acknowledge what classical ML handles well."
+            "One paragraph: what GenAI adds beyond classical software and ML, "
+            "what classical systems still handle well, and where the human "
+            "decision point remains."
         ),
     )
 
@@ -93,7 +86,14 @@ class PilotKPI(BaseModel):
     why_it_matters: str
     measurement_method: str
     target_direction: Literal["increase", "decrease", "maintain"]
-    baseline_needed: str
+    baseline_source: str = Field(
+        ...,
+        description=(
+            "What baseline measurement is needed before the pilot. Do not state "
+            "a current value unless it comes from evidence_sources; write "
+            "'not yet measured' otherwise."
+        ),
+    )
 
 
 class GenAIUseCaseCandidate(BaseModel):
@@ -129,12 +129,6 @@ class GenAIUseCaseCandidate(BaseModel):
     required_data: str = Field(
         ...,
         description="Data and systems needed to build and run it.",
-    )
-    qualitative_impact: str = Field(
-        ...,
-        description=(
-            "Qualitative business or operational impact, without invented numbers."
-        ),
     )
     source_backed_metrics: list[SourceBackedMetric] = Field(
         ...,
@@ -185,27 +179,6 @@ class GenAIUseCaseCandidatePool(BaseModel):
         min_length=5,
         max_length=5,
         description="Batch of 5 GenAI use cases for grading.",
-    )
-
-
-class GenAIUseCaseGeneration(BaseModel):
-    """Structured parse output from the GenAI use-case generator."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    ideation_brief: str = Field(
-        ...,
-        min_length=1,
-        description=(
-            "Internal batch plan: coverage across GenAI pillars and anti-generic "
-            "guardrails, before the use case list. Not for client reports."
-        ),
-    )
-    use_cases: list[GenAIUseCaseCandidate] = Field(
-        ...,
-        min_length=5,
-        max_length=5,
-        description="5 distinct, company-specific GenAI use cases.",
     )
 
 
@@ -307,10 +280,73 @@ class GradeSingleUseCaseInput(BaseModel):
     peer_summaries: list[str]
 
 
-class GenAIUseCaseCandidateInput(BaseModel):
+class MoatAssignment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    moat_name: str = Field(
+        ..., description="Named company asset, acquisition, platform, or initiative."
+    )
+    source_url: str = Field(..., description="URL from the research backing this moat.")
+    genai_angle: str = Field(
+        ...,
+        description="One sentence: non-obvious way GenAI could exploit this moat.",
+    )
+    assigned_domain: str = Field(
+        ...,
+        min_length=1,
+        description="Snake_case business domain this moat targets.",
+    )
+    suggested_approach: str = Field(
+        ...,
+        description=(
+            "Free-text description of the GenAI workflow direction — input "
+            "modalities, reasoning pattern, and output type."
+        ),
+    )
+
+
+class IdeationBrief(BaseModel):
+    """Output of the ideation agent: 5 moat assignments for parallel generation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rejected_obvious_ideas: list[str] = Field(
+        ...,
+        min_length=3,
+        max_length=5,
+        description="3-5 first-order GenAI ideas rejected for being industry-generic.",
+    )
+    assignments: list[MoatAssignment] = Field(
+        ...,
+        min_length=5,
+        max_length=5,
+        description="Exactly 5 moat assignments with diverse domains and approaches.",
+    )
+
+
+class IdeationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     company_profile: CompanyProfileOutput
+
+
+class SingleUseCaseInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    assignment: MoatAssignment
+    peer_assignments: list[MoatAssignment]
+    use_case_index: int = Field(
+        ..., ge=1, le=5, description="1-based index for use case ID (uc_1..uc_5)."
+    )
+
+
+class SingleUseCaseGeneration(BaseModel):
+    """Output of one parallel use-case generator."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use_case: GenAIUseCaseCandidate
 
 
 class MarkdownReportInput(BaseModel):
@@ -318,6 +354,47 @@ class MarkdownReportInput(BaseModel):
 
     company_profile: CompanyProfileOutput
     final_selection: FinalSelectionOutput
+
+
+class ReportNarratives(BaseModel):
+    """LLM-generated prose sections that cannot be programmatically templated."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    company_context: str = Field(
+        ...,
+        description=(
+            "2 paragraphs: lead with the most recent and strategically significant "
+            "developments, then summarize business lines and competitive position."
+        ),
+    )
+    opportunity_blurbs: list[str] = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        description=(
+            "One paragraph per selected use case (in rank order): weave together "
+            "the business problem, company fit, and what makes it iconic."
+        ),
+    )
+    decision_rationales: list[str] = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        description=(
+            "One sentence per selected use case (in rank order) for the summary "
+            "table: what is distinctive about this opportunity."
+        ),
+    )
+    limitations: list[str] = Field(
+        ...,
+        min_length=2,
+        max_length=3,
+        description=(
+            "2-3 specific data gaps or assumptions: missing internal data, "
+            "unverified timelines, press-release-only figures."
+        ),
+    )
 
 
 class MarkdownReport(BaseModel):

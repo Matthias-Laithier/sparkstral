@@ -56,5 +56,10 @@ def research_prompt(company_query: str) -> str:
         "not return recent acquisitions, revenue, or leadership changes, do not "
         "guess — write 'Not found in search results' for topics with no results. "
         "Never construct a URL; every Source URL must be copied verbatim from a "
-        "search result."
+        "search result.\n"
+        "M&A PRECISION: for M&A events, distinguish between 'entered exclusive "
+        "negotiations', 'agreed to acquire', 'completed acquisition', and 'is a "
+        "financial participant in'. Report the exact stage described in the "
+        "source. Do not upgrade 'entered negotiations' to 'acquired' or "
+        "'financing participant' to 'acquirer'."
     )

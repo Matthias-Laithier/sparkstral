@@ -3,12 +3,15 @@ import pytest
 from src.core.schemas import (
     CompanyInput,
     FinalSelectionOutput,
-    GenAIUseCaseGeneration,
     GradedUseCasePool,
     GradeSingleUseCaseInput,
+    IdeationBrief,
+    IdeationInput,
     MarkdownReport,
     ResearchResult,
+    SingleUseCaseGeneration,
     SingleUseCaseGradeResult,
+    SingleUseCaseInput,
 )
 from src.pipeline import run_sparkstral_pipeline
 from src.utils.selection import select_top_n
@@ -20,17 +23,10 @@ async def _noop(_msg: str) -> None:
     pass
 
 
-def _generation(n: int = 5) -> GenAIUseCaseGeneration:
-    return GenAIUseCaseGeneration(
-        ideation_brief="brief",
-        use_cases=[f.make_candidate(i) for i in range(1, n + 1)],
-    )
-
-
 @pytest.mark.asyncio
 async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    gen = _generation()
+    ideation = f.make_ideation_brief()
     graded_pool = GradedUseCasePool(
         grader_thinking="thinking",
         graded_use_cases=[f.make_graded(i) for i in range(1, 6)],
@@ -42,9 +38,15 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
         calls.append("research")
         return ResearchResult(text="research")
 
-    async def mock_generate(_p: object) -> GenAIUseCaseGeneration:
+    async def mock_ideation(_p: IdeationInput) -> IdeationBrief:
+        calls.append("ideation")
+        return ideation
+
+    async def mock_generate(p: SingleUseCaseInput) -> SingleUseCaseGeneration:
         calls.append("generate")
-        return gen
+        return SingleUseCaseGeneration(
+            use_case=f.make_candidate(p.use_case_index),
+        )
 
     async def mock_grade(p: GradeSingleUseCaseInput) -> SingleUseCaseGradeResult:
         calls.append("grade")
@@ -61,7 +63,8 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
     import src.pipeline as pipeline
 
     monkeypatch.setattr(pipeline, "research_company", mock_research)
-    monkeypatch.setattr(pipeline, "generate_genai_use_cases", mock_generate)
+    monkeypatch.setattr(pipeline, "generate_ideation_brief", mock_ideation)
+    monkeypatch.setattr(pipeline, "generate_single_use_case", mock_generate)
     monkeypatch.setattr(pipeline, "grade_single_use_case", mock_grade)
     monkeypatch.setattr(pipeline, "select_final_top_3", mock_select)
     monkeypatch.setattr(pipeline, "write_markdown_report", mock_report)
@@ -69,7 +72,8 @@ async def test_pipeline_runs_all_steps(monkeypatch: pytest.MonkeyPatch) -> None:
     result = await run_sparkstral_pipeline(CompanyInput(company_name="Acme"), _noop)
 
     assert calls[0] == "research"
-    assert calls[1] == "generate"
+    assert calls[1] == "ideation"
+    assert calls.count("generate") == 5
     assert "grade" in calls
     assert calls[-2] == "select"
     assert calls[-1] == "report"
@@ -84,15 +88,15 @@ async def test_pipeline_stops_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
         calls.append("research")
         return ResearchResult(text="research")
 
-    async def mock_generate(_p: object) -> GenAIUseCaseGeneration:
-        raise RuntimeError("generation failed")
+    async def mock_ideation(_p: object) -> IdeationBrief:
+        raise RuntimeError("ideation failed")
 
     import src.pipeline as pipeline
 
     monkeypatch.setattr(pipeline, "research_company", mock_research)
-    monkeypatch.setattr(pipeline, "generate_genai_use_cases", mock_generate)
+    monkeypatch.setattr(pipeline, "generate_ideation_brief", mock_ideation)
 
-    with pytest.raises(RuntimeError, match="generation failed"):
+    with pytest.raises(RuntimeError, match="ideation failed"):
         await run_sparkstral_pipeline(CompanyInput(company_name="Acme"), _noop)
 
     assert calls == ["research"]

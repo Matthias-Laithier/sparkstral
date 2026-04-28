@@ -2,7 +2,8 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 from src.activities import (
-    generate_genai_use_cases,
+    generate_ideation_brief,
+    generate_single_use_case,
     grade_single_use_case,
     research_company,
     select_final_top_3,
@@ -15,10 +16,11 @@ from src.agents.grader import (
 from src.core.schemas import (
     CompanyInput,
     CompanyProfileOutput,
-    GenAIUseCaseCandidateInput,
     GenAIUseCaseCandidatePool,
+    IdeationInput,
     MarkdownReportInput,
     ResearchInput,
+    SingleUseCaseInput,
     SparkstralWorkflowResult,
 )
 
@@ -37,11 +39,27 @@ async def run_sparkstral_pipeline(
         research_text=research.text,
     )
 
-    await status_callback("Generating candidate use cases...\n")
-    generated = await generate_genai_use_cases(
-        GenAIUseCaseCandidateInput(company_profile=company_profile)
+    await status_callback("Planning use-case angles...\n")
+    ideation = await generate_ideation_brief(
+        IdeationInput(company_profile=company_profile)
     )
-    use_cases = GenAIUseCaseCandidatePool(use_cases=generated.use_cases)
+
+    await status_callback("Generating candidate use cases...\n")
+    single_inputs = [
+        SingleUseCaseInput(
+            company_profile=company_profile,
+            assignment=ideation.assignments[i],
+            peer_assignments=[a for j, a in enumerate(ideation.assignments) if j != i],
+            use_case_index=i + 1,
+        )
+        for i in range(5)
+    ]
+    generated = await asyncio.gather(
+        *[generate_single_use_case(inp) for inp in single_inputs]
+    )
+    use_cases = GenAIUseCaseCandidatePool(
+        use_cases=[g.use_case for g in generated],
+    )
 
     await status_callback("Scoring opportunities...\n")
     grade_inputs = build_single_use_case_grade_inputs(

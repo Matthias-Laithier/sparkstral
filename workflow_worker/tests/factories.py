@@ -7,6 +7,8 @@ from src.core.schemas import (
     GenAIMechanism,
     GenAIUseCaseCandidate,
     GradedUseCase,
+    IdeationBrief,
+    MoatAssignment,
     PilotKPI,
     SingleUseCaseGradeResult,
     UseCaseGrade,
@@ -63,12 +65,12 @@ def make_candidate(
         genai_solution="Solution.",
         genai_mechanism=GenAIMechanism(
             mechanisms=["retrieval_augmented_generation"],
-            why_genai_is_needed="needed",
-            genai_advantage_over_classical_software="advantage sw",
-            genai_advantage_over_classical_ml="advantage ml",
+            genai_vs_classical=(
+                "GenAI adds value via retrieval; "
+                "classical handles structured data well."
+            ),
         ),
         required_data="data",
-        qualitative_impact="impact",
         source_backed_metrics=[],
         pilot_kpis=[
             PilotKPI(
@@ -76,14 +78,14 @@ def make_candidate(
                 why_it_matters="matters",
                 measurement_method="method",
                 target_direction="increase",
-                baseline_needed="baseline",
+                baseline_source="not yet measured",
             ),
             PilotKPI(
                 kpi="KPI B",
                 why_it_matters="matters",
                 measurement_method="method",
                 target_direction="decrease",
-                baseline_needed="baseline",
+                baseline_source="not yet measured",
             ),
         ],
         why_iconic="iconic",
@@ -146,4 +148,30 @@ def make_profile() -> CompanyProfileOutput:
 def make_final_selection(count: int = 3) -> FinalSelectionOutput:
     return FinalSelectionOutput(
         selected=[make_graded(i, weighted_total=8.0 - i) for i in range(1, count + 1)]
+    )
+
+
+def make_moat_assignment(
+    index: int,
+    *,
+    domain: str = "default",
+) -> MoatAssignment:
+    return MoatAssignment(
+        moat_name=f"Moat {index}",
+        source_url="https://example.com",
+        genai_angle=f"GenAI angle {index}",
+        assigned_domain=domain or f"domain_{index}",
+        suggested_approach=f"Approach direction {index}",
+    )
+
+
+def make_ideation_brief() -> IdeationBrief:
+    domains = ["retail", "corporate", "insurance", "wealth", "operations"]
+    return IdeationBrief(
+        rejected_obvious_ideas=[
+            "chatbot",
+            "doc summarization",
+            "predictive maintenance",
+        ],
+        assignments=[make_moat_assignment(i + 1, domain=domains[i]) for i in range(5)],
     )
