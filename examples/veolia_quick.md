@@ -2,206 +2,198 @@
 
 ## Company Context
 
-Veolia has executed a bold portfolio transformation (GreenUp) to focus on high-growth, tech-driven activities, marked by record 2025 results and major acquisitions. The company reported €44.4B in revenue for 2025, up 2.8% like-for-like, with €8.0B in EBITDA, up 6.3%, and net income of €1.67B, up ~9% [source](https://www.veolia.com/en/our-media/press-releases/full-year-2025-results). Key developments include the $3.04B acquisition of Clean Earth, doubling its US hazardous waste footprint, and the acquisition of the remaining 30% stake in Water Technologies for €1.75B, gaining full ownership of a €5B revenue segment [source](https://www.reuters.com/business/energy/veolia-take-full-ownership-water-management-unit-175-billion-deal-gets-750-2025-05-07/). Additionally, Veolia secured over £1B in new and extended contracts in the UK and $750M in new water technology contracts for energy and semiconductors [source](https://www.veoliawatertechnologies.com/about-us/newsroom/750m-new-flagship-contracts-veolia-water-technologies-energy-and-semiconductors).
+Veolia reported record results in 2025, describing it as a 'pivotal year' with revenue exceeding all guidance targets and reaching €44.4 billion [source](https://www.businesswire.com/news/home/20260225241172/en/Veolia-Environnement-2025-a-Pivotal-Year-Record-Results-Above-Guidance). The company made two major acquisitions: full ownership of Water Technologies & Solutions (€1.5bn) and Clean Earth ($3bn) in US hazardous waste [source](https://www.veolia.com/en/our-media/press-releases/full-year-2025-results). Estelle Brachlianoff succeeded Antoine Frérot as CEO, who remains as chairman [source](https://en.wikipedia.org/wiki/Veolia).
 
-Veolia's strategic priorities include digital and AI initiatives, with 23% of efficiency gains attributed to digital/AI, and a focus on circular economy and decarbonization solutions. The company faces regulatory compliance costs and complexity across jurisdictions, with PFAS treatment being a major focus [source](https://info.veolianorthamerica.com/hubfs/offers/publications/ess/regulatory-updates/2025/veolia-regulatory-update-april-2025.pdf). Public contract exposure, integration and synergy extraction post-Suez acquisition, and labor and supply chain challenges are also key operational pain points.
+Veolia operates through three main business segments: Water, Waste, and Energy, serving public authorities, municipalities, industrial, and commercial customers across five continents [source](https://www.forbes.com/companies/veolia-environnement/). The company is the largest water company globally and a leading player in waste management and energy services [source](https://pitchbook.com/profiles/company/12326-77). Veolia’s strategic priorities include accelerating ecological transformation, international growth, and technology leadership, with a focus on hazardous waste treatment, advanced water technologies, and local energy/bioenergy solutions [source](https://www.veolia.com/en).
 
 ## Recommended Opportunities
 
 
-| Rank | Opportunity                                             | Primary users                                                      | Fit score (/10) | Decision rationale                                                                                                                                                                                                                 |
-| ---- | ------------------------------------------------------- | ------------------------------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Clean Earth Hazardous Waste Treatment Optimization      | Hazardous waste treatment plant operators, Environmental engineers | 8.3/10          | This use case leverages Veolia's unique acquisition of Clean Earth and its proprietary hazardous waste treatment processes, making it difficult for competitors to replicate due to the unique data and operational insights.      |
-| 2    | Veolia Waterforce Emergency Response Scenario Generator | Emergency response coordinators, Water treatment specialists       | 7.6/10          | This use case leverages Veolia's unique Waterforce emergency response platform and proprietary emergency response data, making it difficult for competitors to replicate due to the unique operational insights and scenario data. |
-| 3    | Water Technologies AI-Driven Membrane Optimization      | Water treatment engineers, Process optimization specialists        | 6.8/10          | This use case leverages Veolia's unique water treatment technologies and proprietary membrane systems, making it difficult for competitors to replicate due to the unique technological expertise and operational data.            |
+| Rank | Opportunity                                                    | Primary users                                                                                       | Fit score (/10) | Decision rationale                                                                                                                                                                                                                                            |
+| ---- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Hubgrade PFAS Treatment Advisor for US Municipalities          | US municipal water operators, Veolia Water Technologies sales teams, state environmental regulators | 7.0/10          | This use case leverages Veolia’s proprietary PFAS membranes and Mistral AI partnership, addressing a critical regulatory challenge in the US market. It is specific to Veolia’s assets and market position, making it difficult for competitors to replicate. |
+| 2    | Mistral-Powered Data Centre Cooling Tower Optimization Advisor | Veolia data centre energy teams, hyperscaler facility managers, ASHRAE compliance auditors          | 6.2/10          | This use case aligns with Veolia’s strategic focus on data centre clean tech and utilizes the Mistral AI partnership effectively. However, it lacks a unique differentiator that would make it stand out in a leadership report.                              |
+| 3    | Clean Earth RCRA Manifest Deviation Detector                   | Veolia Clean Earth logistics teams, US hazardous waste generators, state environmental inspectors   | 5.8/10          | This use case is relevant to Veolia’s operations and leverages its unique assets, but it lacks the specificity and differentiation needed for higher scores in iconicness and business impact.                                                                |
 
 
-## 1. Clean Earth Hazardous Waste Treatment Optimization
+## 1. Hubgrade PFAS Treatment Advisor for US Municipalities
 
 ### The Opportunity
 
-Optimizing hazardous waste treatment processes to ensure compliance and efficiency is complex and resource-intensive. This use case targets hazardous waste treatment plant operators and environmental engineers, leveraging Veolia's recent acquisition of Clean Earth and its proprietary hazardous waste treatment processes. The acquisition of Clean Earth for $3.04B doubles Veolia's US hazardous waste footprint, providing unique data and operational insights that are difficult for competitors to replicate [source](https://www.veolianorthamerica.com/media/press-releases/veolia-acquisition-clean-earth-build-major-hazardous-waste-us-player).
+US municipalities face urgent PFAS remediation deadlines but lack expertise to reconcile conflicting EPA guidance, site-specific lab reports, and Veolia’s proprietary treatment membranes. Classical rule engines cannot interpret unstructured lab scans or adapt to real-time sensor drift. This requires Veolia’s full ownership of Water Technologies & Solutions (2025, €1.5bn) and exclusive PFAS remediation membranes, which competitors cannot replicate without both the proprietary treatment assets and the scale of US municipal relationships. The workflow combines Veolia’s proprietary PFAS membranes with multi-modal understanding of messy lab scans, ensuring recommendations are grounded in proprietary science.
 
 ### Scoring (1–10)
 
 
-| Dimension         | Rationale                                                                                                                                                                                                                                                               | Score (/10) |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Company relevance | The idea directly exploits Veolia’s $3.04B Clean Earth acquisition, a concrete and defensible asset doubling its US hazardous waste footprint.                                                                                                                          | 9           |
-| Business impact   | Improved treatment efficiency and reduced compliance violations translate to cost savings and risk mitigation in a $35B hazardous waste segment.                                                                                                                        | 8           |
-| Iconicness        | This idea requires Veolia's $3.04B Clean Earth acquisition. A competitor would struggle to replicate it because duplicating the scale, regulatory footprint, and integrated sensor/process data of Clean Earth’s operations is infeasible without the same acquisition. | 9           |
-| GenAI fit         | GenAI’s multimodal understanding and multi-step reasoning are central to interpreting unstructured logs and regulatory guidelines to generate actionable optimization recommendations.                                                                                  | 8           |
-| Feasibility       | Feasible with access to Clean Earth’s sensor data and process logs; requires integration with existing systems and validation by environmental engineers.                                                                                                               | 7           |
-| Evidence strength | High-confidence evidence from Veolia’s press release and company sources anchors the acquisition and its scale.                                                                                                                                                         | 8           |
+| Dimension         | Rationale                                                                                                                                                                     | Score (/10) |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Company relevance | The use case aligns with Veolia’s strategic focus on water management and leverages its proprietary PFAS membranes and Mistral AI partnership.                                | 8           |
+| Business impact   | The solution addresses a critical regulatory challenge and can significantly reduce compliance risk for US municipalities.                                                    | 7           |
+| Iconicness        | The workflow combines Veolia’s proprietary PFAS membranes with multi-modal understanding of messy lab scans, a pairing that competitors cannot replicate without both assets. | 7           |
+| GenAI fit         | GenAI adds value by interpreting unstructured lab scans and conflicting EPA guidance that classical rule engines cannot reconcile.                                            | 7           |
+| Feasibility       | The solution requires integration with Hubgrade sensor logs and Water Technologies membrane specifications, which is feasible but complex.                                    | 6           |
+| Evidence strength | The use case is supported by Veolia’s proprietary assets and strategic initiatives, but lacks specific pilot metrics or customer validation.                                  | 6           |
 
 
 ### How The Workflow Would Work
 
-1. **User input:** Sensor data, treatment process logs, regulatory guidelines.
-2. **Retrieved or generated context:** Multimodal understanding and multi-step reasoning to analyze inputs.
-3. **Generated output:** Treatment process adjustments, compliance status, and efficiency reports.
-4. **Human approval or decision point:** Environmental engineers review and approve the recommendations before implementation.
+1. User input: Scanned lab reports (PDF images) from US municipal sites and real-time sensor logs (CSV) from Veolia’s Hubgrade platform.
+2. Retrieved or generated context: EPA PFAS guidance documents (text) and Veolia Water Technologies membrane specifications (structured JSON).
+3. Generated output: A human-reviewable treatment brief that lists recommended membrane trains, chemical dosages, and compliance risks.
+4. Human approval or decision point: Municipal operators review and approve the treatment brief.
 
 ### Why GenAI Fits
 
-GenAI adds value by interpreting complex sensor data and regulatory guidelines to provide actionable optimization recommendations. Classical software handles structured sensor data and rule-based process control well. GenAI adds value by interpreting unstructured logs and providing contextual optimization recommendations. Classical ML handles predictive modeling and anomaly detection well. GenAI adds value by generating human-readable optimization reports and action plans.
+GenAI adds value by interpreting unstructured lab scans and conflicting EPA guidance that classical rule engines cannot reconcile. Classical systems handle deterministic membrane selection but fail when lab reports contain handwritten notes or sensor logs show drift. GenAI adds value by explaining anomalies in messy lab scans, retrieving relevant EPA guidance, and drafting treatment briefs that adapt to real-time sensor drift.
 
 ### Data and Integration Needs
 
-Sensor data, treatment process logs, regulatory guidelines.
+1. Scanned lab reports (PDF images) from US municipal sites
+2. Real-time sensor logs (CSV) from Veolia’s Hubgrade platform
+3. EPA PFAS guidance documents (text)
+4. Veolia Water Technologies membrane specifications (structured JSON)
+5. Historical treatment outcomes from Veolia’s proprietary water chemistry models
 
 ### Impact To Validate
 
-- **Treatment process efficiency** matters because improved efficiency reduces operational costs and environmental impact. Measure it with a comparison of AI-generated process adjustments with current efficiency metrics. Compare against current treatment process efficiency; target direction is increase.
-- **Compliance violation reduction** matters because reducing compliance violations minimizes regulatory penalties and operational disruptions. Measure it with tracking compliance violations before and after AI implementation. Compare against the current compliance violation rate; target direction is decrease.
+- Treatment brief generation time matters because faster briefs reduce municipal compliance risk and accelerate sales cycles. Measure it with time from lab report upload to human-approved brief delivery, measured via system logs. Compare against current manual brief generation time (estimated 5–7 days). Target direction is decrease.
+- Operator confidence in treatment recommendations matters because higher confidence reduces rework and accelerates approvals. Measure it with a post-brief survey with Likert scale (1–5). Compare against current operator confidence in manual briefs (survey baseline). Target direction is increase.
+- Compliance risk flag accuracy matters because accurate risk flags reduce regulatory penalties and improve trust. Measure it with a comparison of system-flagged risks vs. expert-validated risks in a controlled sample. Compare against current manual risk flag accuracy (expert-validated baseline). Target direction is increase.
 
 ### Risks and Mitigations
 
-- **Data integration challenges:** Mitigation through phased integration and validation by environmental engineers.
-- **Regulatory compliance risks:** Mitigation through continuous monitoring and updates to regulatory guidelines.
+- Regulatory changes in PFAS guidance may require model retraining. Mitigation: Regularly update the model with the latest EPA guidelines and conduct periodic retraining.
+- Lab report scans may contain unreadable handwriting. Mitigation: Implement a manual review process for unclear handwriting and improve scanning technology.
+- Municipal operators may distrust AI-generated recommendations without human review. Mitigation: Ensure transparency in AI recommendations and provide training for municipal operators on the system's benefits and limitations.
 
-## 2. Veolia Waterforce Emergency Response Scenario Generator
+## 2. Mistral-Powered Data Centre Cooling Tower Optimization Advisor
 
 ### The Opportunity
 
-Generating realistic emergency response scenarios for training and preparedness is resource-intensive and requires expert knowledge. This use case targets emergency response coordinators and water treatment specialists, leveraging Veolia's Waterforce emergency response platform and its proprietary emergency response data. The Waterforce platform provides unique operational insights and scenario data tied to Veolia’s real-world deployments, making it difficult for competitors to replicate [source](https://www.veoliawatertechnologies.com/en/group-overview).
+Data centre cooling towers require real-time optimization to balance ASHRAE guidelines, sensor logs, and Veolia’s proprietary water chemistry models. Classical control systems cannot reconcile conflicting inputs or draft human-readable optimization briefs. This requires Veolia’s data centre clean tech target (€1bn revenue by 2030) and exclusive Mistral AI partnership, which competitors cannot replicate without both the hyperscaler partnerships and the sovereign LLM access. The workflow combines Veolia’s proprietary water chemistry models with Mistral AI’s reasoning, ensuring recommendations are grounded in proprietary science.
 
 ### Scoring (1–10)
 
 
-| Dimension         | Rationale                                                                                                                                                                                                                                                                      | Score (/10) |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Company relevance | This idea directly leverages Veolia’s proprietary Waterforce emergency response platform and its emergency response data, which are company-specific assets.                                                                                                                   | 9           |
-| Business impact   | Improved emergency preparedness and reduced response time would tangibly lower operational risks and environmental impact, aligning with Veolia’s public-sector and industrial customer commitments.                                                                           | 8           |
-| Iconicness        | This idea requires Veolia's Waterforce emergency response platform and its proprietary emergency response data. A competitor would struggle to replicate it because Waterforce provides unique operational insights and scenario data tied to Veolia’s real-world deployments. | 7           |
-| GenAI fit         | GenAI is central to interpreting unstructured historical logs and regulatory guidelines to generate realistic, contextual emergency scenarios and protocols.                                                                                                                   | 8           |
-| Feasibility       | Feasible with access to Waterforce’s historical emergency logs and water quality reports; requires integration with existing systems and validation by emergency response coordinators.                                                                                        | 8           |
-| Evidence strength | No source-backed metrics or pilot results; evidence is limited to aspirational pilot KPIs and company documentation.                                                                                                                                                           | 4           |
+| Dimension         | Rationale                                                                                                                                                 | Score (/10) |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Company relevance | The use case aligns well with Veolia’s strategic focus on data centre clean tech and its partnership with Mistral AI.                                     | 7           |
+| Business impact   | The potential energy cost savings and improved efficiency are significant, but the impact is somewhat constrained by the lack of a unique differentiator. | 6           |
+| Iconicness        | While the use case leverages specific Veolia assets, it does not stand out as uniquely iconic due to its similarity to industry-wide trends.              | 5           |
+| GenAI fit         | The use of GenAI to interpret conflicting sensor logs and guidelines is well-justified and adds clear value over classical systems.                       | 7           |
+| Feasibility       | The feasibility is high given the existing partnerships and data sources, but integration challenges with sensor logs and guidelines could pose risks.    | 7           |
+| Evidence strength | The evidence is strong with clear KPIs and source-backed metrics, but the lack of a unique differentiator slightly weakens the overall strength.          | 6           |
 
 
 ### How The Workflow Would Work
 
-1. **User input:** Historical emergency logs, water quality reports, regulatory guidelines.
-2. **Retrieved or generated context:** Scenario generation and structured generation to analyze inputs.
-3. **Generated output:** Detailed emergency scenarios, response protocols, and training materials.
-4. **Human approval or decision point:** Emergency response coordinators review and approve the scenarios before implementation.
+1. User input: Real-time sensor logs (CSV) from data centre cooling towers and ASHRAE guidelines (text) for cooling tower operation.
+2. Retrieved or generated context: Veolia’s proprietary water chemistry models (structured JSON) and weather forecasts (CSV) for data centre locations.
+3. Generated output: A human-reviewable optimization brief that lists recommended parameter adjustments, compliance risks, and contact details for Veolia support teams.
+4. Human approval or decision point: Facility managers review and approve the optimization brief.
 
 ### Why GenAI Fits
 
-GenAI adds value by interpreting complex historical logs and regulatory guidelines to provide realistic and actionable emergency scenarios. Classical software handles structured emergency logs and rule-based response protocols well. GenAI adds value by interpreting unstructured historical data and providing contextual emergency scenarios. Classical ML handles predictive modeling and anomaly detection well. GenAI adds value by generating human-readable emergency scenarios and response protocols.
+GenAI adds value by interpreting conflicting sensor logs and ASHRAE guidelines that classical control systems cannot reconcile. Classical systems optimize parameters but fail to explain trade-offs or draft actionable briefs. GenAI adds value by explaining trade-offs in plain language, retrieving relevant ASHRAE guidelines, and drafting optimization briefs that adapt to real-time sensor drift.
 
 ### Data and Integration Needs
 
-Historical emergency logs, water quality reports, regulatory guidelines.
+1. Real-time sensor logs (CSV) from data centre cooling towers
+2. ASHRAE guidelines (text) for cooling tower operation
+3. Veolia’s proprietary water chemistry models (structured JSON)
+4. Weather forecasts (CSV) for data centre locations
+5. Historical optimization outcomes from Veolia’s proprietary models
 
 ### Impact To Validate
 
-- **Emergency response training effectiveness** matters because effective training enhances preparedness and reduces response time during actual emergencies. Measure it with a comparison of AI-generated emergency scenarios with current training effectiveness metrics. Compare against current emergency response training effectiveness; target direction is increase.
-- **Response time reduction** matters because reduced response time minimizes operational disruptions and environmental impact. Measure it with tracking response time before and after AI implementation. Compare against the current average response time; target direction is decrease.
+- Optimization brief generation time matters because faster briefs reduce energy costs and accelerate approvals. Measure it with time from inefficiency flag to human-approved optimization brief delivery, measured via system logs. Compare against current manual brief generation time (estimated 3–5 hours). Target direction is decrease.
+- Facility manager confidence in parameter adjustments matters because higher confidence reduces rework and accelerates approvals. Measure it with a post-brief survey with Likert scale (1–5). Compare against current manager confidence in manual adjustments (survey baseline). Target direction is increase.
+- Energy cost savings from optimized parameters matters because it directly impacts hyperscaler ROI and Veolia contract renewals. Measure it with a comparison of pre- and post-optimization energy consumption in a controlled sample. Compare against current energy consumption baseline (metered data). Target direction is decrease.
 
 ### Risks and Mitigations
 
-- **Data privacy concerns with emergency logs:** Mitigation through anonymization and secure data handling protocols.
-- **Scenario realism and validation:** Mitigation through continuous review and updates by emergency response coordinators.
+- Sensor logs may contain gaps or drift. Mitigation: Implement data validation checks and use interpolation techniques to fill gaps.
+- ASHRAE guidelines may change mid-project. Mitigation: Regularly update the system with the latest guidelines and conduct periodic reviews.
+- Facility managers may distrust AI-generated adjustments without human review. Mitigation: Ensure transparency in AI recommendations and provide training for facility managers on the system's benefits and limitations.
 
-## 3. Water Technologies AI-Driven Membrane Optimization
+## 3. Clean Earth RCRA Manifest Deviation Detector
 
 ### The Opportunity
 
-Optimizing membrane systems for water treatment to ensure efficiency and longevity is complex and requires expert knowledge. This use case targets water treatment engineers and process optimization specialists, leveraging Veolia's advanced water treatment technologies and proprietary membrane systems. Veolia's unique technological expertise and operational data make it difficult for competitors to replicate [source](https://www.veoliawatertechnologies.com/en/group-overview).
+US hazardous waste shipments require Resource Conservation and Recovery Act (RCRA) manifests that are often handwritten or contain conflicting GPS breadcrumbs. Classical OCR cannot reconcile messy documents with real-time GPS logs, leading to compliance violations and fines. This requires Veolia’s Clean Earth acquisition (2025, $3bn) and exclusive US hazardous waste treatment footprint, which competitors cannot replicate without both the scale of Clean Earth’s operations and the proprietary manifest data. The workflow combines Clean Earth’s proprietary manifest data with multi-modal understanding of messy handwritten documents, ensuring recommendations are grounded in proprietary logistics science.
 
 ### Scoring (1–10)
 
 
-| Dimension         | Rationale                                                                                                                                                                                                                                                                | Score (/10) |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Company relevance | The idea directly targets Veolia’s €5B Water Technologies segment and proprietary membrane systems, which are specific company assets.                                                                                                                                   | 8           |
-| Business impact   | Optimizing membrane efficiency and lifespan delivers clear operational cost savings and performance gains, but the generic framing dilutes the perceived impact for Veolia specifically.                                                                                 | 6           |
-| Iconicness        | This idea requires Veolia’s proprietary membrane systems and operational data from its €5B Water Technologies segment. A competitor would struggle to replicate it because Veolia’s unique technological expertise and operational datasets are not publicly replicable. | 6           |
-| GenAI fit         | GenAI is central to interpreting unstructured logs and generating contextual optimization recommendations, not just processing structured sensor data.                                                                                                                   | 8           |
-| Feasibility       | Feasible with access to sensor data and membrane logs, but integration with existing systems and engineer validation introduce operational risks.                                                                                                                        | 7           |
-| Evidence strength | Evidence is limited to a single revenue figure; lacks pilot results, customer testimonials, or technical validation to substantiate claims.                                                                                                                              | 5           |
+| Dimension         | Rationale                                                                                                                                                                          | Score (/10) |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Company relevance | The use case is directly relevant to Veolia’s operations in hazardous waste management and leverages its acquisition of Clean Earth.                                               | 7           |
+| Business impact   | The business impact is moderate as it addresses a specific compliance issue but does not significantly transform the business model.                                               | 6           |
+| Iconicness        | The use case is somewhat specific to Veolia but could be adapted by peers with similar assets, capping the iconicness score.                                                       | 5           |
+| GenAI fit         | GenAI is appropriately used to interpret unstructured data and provide actionable insights, but the core workflow involves document understanding which is a common GenAI pattern. | 6           |
+| Feasibility       | The feasibility is reasonable given Veolia’s existing partnerships and acquisitions, but there are significant risks associated with the data quality.                             | 7           |
+| Evidence strength | The evidence provided is weak as it lacks specific metrics or strong differentiation from potential peer applications.                                                             | 4           |
 
 
 ### How The Workflow Would Work
 
-1. **User input:** Sensor data, water quality reports, membrane performance logs.
-2. **Retrieved or generated context:** Multimodal understanding and structured generation to analyze inputs.
-3. **Generated output:** Membrane adjustment protocols, efficiency reports, and maintenance schedules.
-4. **Human approval or decision point:** Water treatment engineers review and approve the recommendations before implementation.
+1. User input: Scanned RCRA manifests (PDF images) from US hazardous waste shipments and GPS breadcrumbs (CSV) from Veolia’s logistics fleet.
+2. Retrieved or generated context: EPA RCRA guidance documents (text) and historical Veolia shipment routes (structured JSON).
+3. Generated output: A human-reviewable deviation brief that lists compliance risks and recommended corrective actions.
+4. Human approval or decision point: Inspectors review and approve the deviation brief.
 
 ### Why GenAI Fits
 
-GenAI adds value by interpreting complex sensor data and water quality reports to provide actionable membrane optimization recommendations. Classical software handles structured sensor data and rule-based process control well. GenAI adds value by interpreting unstructured logs and providing contextual optimization recommendations. Classical ML handles predictive modeling and anomaly detection well. GenAI adds value by generating human-readable optimization reports and action plans.
+GenAI adds value by interpreting unstructured handwritten manifests and conflicting GPS logs that classical OCR cannot reconcile. Classical systems handle deterministic routing but fail when manifests contain scribbles or GPS logs show detours. GenAI adds value by explaining deviations in messy manifests, retrieving relevant EPA guidance, and drafting corrective action briefs that adapt to real-time GPS drift.
 
 ### Data and Integration Needs
 
-Sensor data, water quality reports, membrane performance logs.
+1. Scanned RCRA manifests (PDF images) from US hazardous waste shipments
+2. GPS breadcrumbs (CSV) from Veolia’s logistics fleet
+3. EPA RCRA guidance documents (text)
+4. Historical Veolia shipment routes (structured JSON)
+5. Veolia’s proprietary waste routing models
 
 ### Impact To Validate
 
-- **Membrane efficiency improvement** matters because improved efficiency reduces operational costs and enhances water treatment performance. Measure it with a comparison of AI-generated membrane adjustments with current efficiency metrics. Compare against current membrane efficiency; target direction is increase.
-- **Membrane lifespan extension** matters because extended membrane lifespan reduces replacement costs and operational disruptions. Measure it with tracking membrane lifespan before and after AI implementation. Compare against the current average membrane lifespan; target direction is increase.
+- Deviation detection time matters because faster detection reduces compliance violations and fines. Measure it with time from manifest upload to human-approved deviation brief delivery, measured via system logs. Compare against current manual detection time (estimated 2–3 days). Target direction is decrease.
+- Inspector confidence in deviation flags matters because higher confidence reduces rework and accelerates approvals. Measure it with a post-brief survey with Likert scale (1–5). Compare against current inspector confidence in manual flags (survey baseline). Target direction is increase.
+- False positive rate for deviation flags matters because lower false positives reduce unnecessary corrective actions. Measure it with a comparison of system-flagged deviations vs. expert-validated deviations in a controlled sample. Compare against current manual false positive rate (expert-validated baseline). Target direction is decrease.
 
 ### Risks and Mitigations
 
-- **Data integration challenges:** Mitigation through phased integration and validation by water treatment engineers.
-- **Operational risks with membrane adjustments:** Mitigation through continuous monitoring and validation by process optimization specialists.
+- Handwritten manifests may contain unreadable scribbles. Mitigation: Implement a manual review process for unclear handwriting and improve scanning technology.
+- GPS logs may show gaps in rural areas. Mitigation: Use interpolation techniques to fill gaps and validate data quality.
+- Inspectors may distrust AI-generated flags without human review. Mitigation: Ensure transparency in AI recommendations and provide training for inspectors on the system's benefits and limitations.
 
 ## Limitations
 
-- Missing internal cost data and detailed breakdowns of revenue figures from press releases.
-- Unverified regulatory timelines and operational details from public sources.
+- The report lacks specific pilot metrics or customer validation for the Hubgrade PFAS Treatment Advisor use case.
+- The evidence provided for the Clean Earth RCRA Manifest Deviation Detector is weak, lacking specific metrics or strong differentiation from potential peer applications.
+- The business impact and iconicness of the Mistral-Powered Data Centre Cooling Tower Optimization Advisor are constrained by the lack of a unique differentiator.
 
 ## Sources
 
-- [Veolia - Wikipedia](https://en.wikipedia.org/wiki/Veolia)
-- [Veolia: water, energy and waste recycling management services](https://www.veolia.com/en)
-- [Veolia Environnement SA Company Profile - Overview - GlobalData](https://www.globaldata.com/company-profile/veolia-environnement-sa/)
-- [Veolia Environnement 2026 Company Profile: Stock Performance & Earnings | PitchBook](https://pitchbook.com/profiles/company/12326-77)
-- [Veolia - Overview, News & Similar companies | ZoomInfo.com](https://www.zoominfo.com/c/veolia-environnement-sa/288522305)
-- [Veolia Environmental Services - Wikipedia](https://en.wikipedia.org/wiki/Veolia_Environmental_Services)
-- [Veolia Water - Wikipedia](https://en.wikipedia.org/wiki/Veolia_Water)
-- [Enviri Corporation Announces Sale of Clean Earth to Veolia for $3.04 Billion and Taxable Spin-Off of Harsco Environmental and Rail Businesses (“New Enviri”) to Shareholders | Enviri Corporation](https://investors.enviri.com/news-releases/news-release-details/enviri-corporation-announces-sale-clean-earth-veolia-304-billion/)
-- [Global Giant Veolia Aims $3B Deal to Buy US Waste Firm Clean Earth | Engineering News-Record](https://www.enr.com/articles/62068-global-giant-veolia-aims-3b-deal-to-buy-us-waste-firm-clean-earth)
-- [Veolia to Build a Major Hazardous Waste U.S. Player With the Acquisition of Clean Earth and Unlock Further International Growth](https://www.veolianorthamerica.com/media/press-releases/veolia-acquisition-clean-earth-build-major-hazardous-waste-us-player)
-- [Veolia to acquire Enviri’s Clean Earth for $3B | Waste Dive](https://www.wastedive.com/news/veolia-to-acquire-enviri-clean-earth-for-3-billion/806140/)
-- [Veolia to take full ownership of water management unit in $1.75 billion deal, gets $750 million in new contracts | Reuters](https://www.reuters.com/business/energy/veolia-take-full-ownership-water-management-unit-175-billion-deal-gets-750-2025-05-07/)
-- [Veolia reports record 2025 results, exceeding guidance and accelerating portfolio transformation](https://smartwatermagazine.com/news/smart-water-magazine/veolia-reports-record-2025-results-exceeding-guidance-and-accelerating)
-- [Veolia Environnement: 2025, a Pivotal Year: Record Results Above Guidance | Morningstar](https://www.morningstar.com/news/business-wire/20260225241172/veolia-environnement-2025-a-pivotal-year-record-results-above-guidance)
-- [Infrastructure and Project Finance CREDIT OPINION 2 December 2025 Update](https://www.veolia.com/sites/g/files/dvc4206/files/document/2025/12/Credit_Opinion_Veolia-Environnement-2Dec2025.pdf)
-- [Veolia Environnement: 2025, a Pivotal Year: Record Results Above Guidance](https://www.businesswire.com/news/home/20260225241172/en/Veolia-Environnement-2025-a-Pivotal-Year-Record-Results-Above-Guidance)
-- [List of 33 Acquisitions by Veolia (Apr 2026) - Tracxn](https://tracxn.com/d/acquisitions/acquisitions-by-veolia/__0xA5IzMAsqo5Xi4UUfVfUKFWC0zd-_meDGNRLVgd8Eo)
-- [Veolia expands U.S. hazardous waste treatment leadership through strategic acquisitions and organic growth](https://www.veolianorthamerica.com/media/press-releases/veolia-expands-us-hazardous-waste-treatment-leadership-through-strategic)
-- [Veolia closes $350M in acquisitions as North America CEO departs | Waste Dive](https://www.wastedive.com/news/veolia-north-america-ceo-boston-acquire-ingenium-medical-waste/751810/)
-- [Veolia Environnement SA Reports Earnings Results for the Full Year Ended December 31, 2025 | MarketScreener](https://www.marketscreener.com/news/veolia-environnement-sa-reports-earnings-results-for-the-full-year-ended-december-31-2025-ce7e5cd9d180f224)
-- [Veolia Posts Strong Yearly Results, Advancing Environmental Security in the U.S.](https://finance.yahoo.com/news/veolia-posts-strong-yearly-results-182000605.html)
-- [Veolia reports solid 9M 2025 results with 3.2% revenue growth By Investing.com](https://www.investing.com/news/earnings/veolia-reports-solid-9m-2025-results-with-32-revenue-growth-93CH-4336478)
-- [Q1 2025 KEY FIGURES | Veolia](https://www.veolia.com/en/our-media/press-releases/q1-2025-key-figures)
-- [Veolia PR 9M 2025](https://www.veolia.com/sites/g/files/dvc4206/files/document/2025/11/Veolia_PR_9M_2025.pdf)
-- [Strong Growth in First Half Results](https://www.veolianorthamerica.com/media/press-releases/strong-growth-first-half-results)
-- [Full year 2025 results of the Group | Veolia](https://www.veolia.com/en/our-media/press-releases/full-year-2025-results)
-- [Veolia Full Year 2025 Results](https://www.nuclearsolutions.veolia.com/en/media/news/veolia-full-year-2025-results)
-- [2025 ANNUAL RESULTS](https://www.veolia.tw/en/news/2025-annual-results)
-- [Veolia won over £1 billion of new and extended contracts in the UK in 2025](https://interplasinsights.com/api/amp/plastics-industry-news/Plastic-industry-collaborative-projects-news/veolia-1-billion-new-extended-contracts-uk-2025/)
-- [Veolia secured £1bn in UK council contracts in 2025 - letsrecycle.com](https://www.letsrecycle.com/news/veolia-secured-1bn-in-uk-council-contracts-in-2025/)
-- [$750M of new flagship contracts for Veolia in water technologies for energy and semiconductors, reflecting the success of its strategic positioning | Veolia](https://www.watertechnologies.com/about-us/newsroom/750m-new-flagship-contracts-veolia-water-technologies-energy-and-semiconductors)
-- [Veolia secures $750 million in water technology contracts across energy and semiconductor sectors](https://smartwatermagazine.com/news/smart-water-magazine/veolia-secures-750-million-water-technology-contracts-across-energy-and)
-- [Veolia Appoints Nadège Petit as CEO of the North America Zone to Drive Profitable and Innovative Growth](https://www.veolia.com/en/our-media/press-releases/veolia-appoints-nadege-petit-ceo-north-america-zone)
-- [Veolia North America names new CEO | Waste Dive](https://www.wastedive.com/news/veolia-north-america-names-new-ceo/802206/)
-- [How Nadège Petit will Boost Growth for Veolia North America | Sustainability Magazine](https://sustainabilitymag.com/news/how-nadege-petit-will-boost-growth-for-veolia-north-america)
-- [Our Leadership](https://www.veolianorthamerica.com/about/our-leadership)
-- [Veolia Canada Leadership](https://www.veolia.ca/en/about/our-leadership)
-- [New Veolia CEO: Eco-Security is Essential for Growth | Business Chief](https://businesschief.com/news/new-veolia-ceo-eco-security-is-essential-for-growth)
-- [Richard Kirkman appointed new Veolia CEO for Northern Europe and Group Head of Growth and Innovation](https://www.veolia.co.uk/press-releases/richard-kirkman-appointed-new-veolia-ceo)
-- [Veolia Regulatory Update - April 2025](https://info.veolianorthamerica.com/hubfs/offers/publications/ess/regulatory-updates/2025/veolia-regulatory-update-april-2025.pdf)
-- [Veolia Regulatory Update - May 2025](https://info.veolianorthamerica.com/hubfs/offers/publications/ess/regulatory-updates/2025/veolia-regulatory-update-may-2025.pdf)
-- [Regulatory Updates](https://www.veolianorthamerica.com/media/regulatory-updates)
-- [Veolia Environnement (VIEPA) SWOT Analysis – DCFmodeling.com](https://dcfmodeling.com/products/viepa-swot-analysis)
-- [Veolia, the global champion of sustainable desalination, set to double its operated capacity by 2030](https://www.veoliawatertechnologies.com/en/press/veolia-global-champion-sustainable-desalination-set-double-its-operated-capacity-2030)
-- [Group Overview | Veolia Water Technologies](https://www.veoliawatertechnologies.com/en/group-overview)
-- [Press Releases | Veolia North America](https://www.veolianorthamerica.com/media/press-releases?page=6)
-- ['Be autonomous, earn your living, be free:' Veolia’s CEO on the family legacy that shaped her decisive leadership](https://www.cnbc.com/video/2025/12/02/veolia-ceo-estelle-brachlianoff-executive-decisions-with-steve-sedgwick.html)
-- [Press Releases | Veolia](https://www.veolia.com/en/newsroom/press-releases?page=23)
-- [Earnings call transcript: Veolia Environnement Q2 2025 sees steady growth By Investing.com](https://www.investing.com/news/transcripts/earnings-call-transcript-veolia-environnement-q2-2025-sees-steady-growth-93CH-4325675)
-- [Veolia wins new UK smart city contracts - IoT M2M Council](https://iotm2mcouncil.org/iot-library/news/smart-cities-news/veolia-wins-new-uk-smart-city-contracts/)
+- [Veolia 2025 Full Year Results](https://www.veolia.com/en/our-media/press-releases/full-year-2025-results)
+- [Veolia Sets Bold Growth Goals in the United States](https://www.veolia.com/en/our-media/press-releases/veolia-sets-bold-growth-goals-united-states-boosting-its-ecological)
+- [Veolia and Mistral AI Partnership](https://www.dataiq.global/award-winner/breakthrough-with-data-or-ai-veolia/)
+- [Veolia Targets Data Centre Clean Technology](https://www.capacityglobal.com/news/veolia-targets-data-centre-clean-technology/)
+- [Veolia on Wikipedia](https://en.wikipedia.org/wiki/Veolia)
+- [Veolia Company Profile on GlobalData](https://www.globaldata.com/company-profile/veolia-environnement-sa/)
+- [Veolia Official Website](https://www.veolia.com/en)
+- [Veolia on Forbes](https://www.forbes.com/companies/veolia-environnement/)
+- [Veolia Target Market Analysis](https://pestel-analysis.com/blogs/target-market/veolia)
+- [Veolia on PitchBook](https://pitchbook.com/profiles/company/12326-77)
+- [Veolia Leading Ecological Transformation](https://www.supplychaindigital.com/company-reports/veolia-leading-ecological-transformation-through-innovation)
+- [Veolia Water Technologies Overview](https://www.veoliawatertechnologies.com/en/group-overview)
+- [Veolia Breakthrough with Data or AI](https://www.dataiq.global/award-winner/breakthrough-with-data-or-ai-veolia/)
+- [Veolia PFAS Filtration Market](https://www.marketsandmarkets.com/ResearchInsight/pfas-filtration-market.asp)
+- [Veolia Competitors Analysis](https://pestel-analysis.com/blogs/competitors/veolia)
+- [Veolia Company Index on BCC Research](https://www.bccresearch.com/company-index/profile/veolia)
+- [Veolia Investing News](https://www.investing.com/news/transcripts/earnings-call-transcript-veolia-q1-2025-revenue-growth-and-strategic-moves-93CH-4027231)
+- [Veolia Vision and Mission](https://dcfmodeling.com/blogs/vision/viepa-mission-vision)
+- [Veolia Smart Water Magazine](https://smartwatermagazine.com/news/smart-water-magazine/veolia-reports-record-2025-results-exceeding-guidance-and-accelerating)
+- [Veolia Brand Icon Image](https://www.brandiconimage.com/2026/04/veolia-targets-near-doubling-of-digital.html)
+- [Veolia Finance Supplement](https://www.veolia.com/sites/g/files/dvc4206/files/document/2025/05/Finance_VE_1st_Supplement_to_the_2025_Base%20Prospectus.pdf)
+- [Veolia Morningstar News](https://www.morningstar.com/news/business-wire/20260423658030/veolia-launches-two-new-and-unique-dialogue-initiatives-with-stakeholders-at-the-heart-of-environmental-security)
+- [Veolia Capacity Global News](https://www.capacityglobal.com/news/veolia-targets-data-centre-clean-technology/)

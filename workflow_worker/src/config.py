@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     WEB_SEARCH_PROVIDER: Literal["serper", "mistralai", "tavily"] = "serper"
     WEB_SEARCH_MODEL: str
     WEB_SEARCH_MAX_ROUNDS: int
-    COMPANY_RESOLVER_AGENT_MODEL: str
+    COMPANY_RESOLVER_AGENT_MODEL: str = "mistral-small-latest"
     GENAI_USE_CASES_MODEL: str
     USE_CASE_GRADER_AGENT_MODEL: str
     MARKDOWN_REPORTER_AGENT_MODEL: str

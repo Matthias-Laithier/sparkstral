@@ -56,6 +56,7 @@ def combined_research_prompt(company_query: str) -> str:
         "context.\n"
         "Format every finding as: Claim: one concise factual claim; "
         "Source URL: one full http(s) URL. Omit claims without a URL. "
+        "Claim and Source URL must be next to each other.\n"
         "Do not invent facts when sources are missing.\n"
         "Prefer sources in this order: official company website; annual report / "
         "universal registration document; investor presentation; official press "
