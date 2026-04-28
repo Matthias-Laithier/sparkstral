@@ -28,8 +28,8 @@ from src.core.schemas import (
     SingleUseCaseInput,
 )
 from src.llm import get_mistral_client
-from src.prompts import research_prompt, web_search_system_prompt
-from src.tools.provider_web_search import web_search
+from src.prompts.web_search import research_prompt, web_search_system_prompt
+from src.tools.web_search import web_search
 from src.utils.selection import select_top_n
 
 

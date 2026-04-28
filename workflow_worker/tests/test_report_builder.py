@@ -1,5 +1,5 @@
 from src.core.schemas import ReportNarratives
-from src.prompts.reporter import build_report_markdown
+from src.prompts.reporter import build_report_markdown, narrative_user_prompt
 
 from .factories import make_final_selection, make_profile
 
@@ -81,3 +81,21 @@ def test_build_report_sources_deduplicates() -> None:
 
     sources_section = md.split("## Sources")[-1]
     assert sources_section.count("[https://example.com](https://example.com)") == 1
+
+
+def test_narrative_prompt_renders_key_sections() -> None:
+    profile = make_profile()
+    selection = make_final_selection()
+
+    prompt = narrative_user_prompt(profile, selection)
+
+    assert "## Company: Acme" in prompt
+    assert "Acme is a manufacturing company." in prompt
+
+    for rank in range(1, 4):
+        assert f"### Rank {rank}:" in prompt
+
+    assert "7.0/10" in prompt
+    assert "6.0/10" in prompt
+
+    assert "[source](https://example.com)" in prompt

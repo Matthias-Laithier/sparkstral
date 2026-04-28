@@ -1,6 +1,6 @@
 import json
 
-from src.core.schemas import CompanyProfileOutput, GenAIUseCaseCandidate, UseCaseScore
+from src.core.schemas import CompanyProfileOutput, GenAIUseCaseCandidate
 
 
 def use_case_grader_system_prompt() -> str:
@@ -91,15 +91,3 @@ def grade_single_use_case_user_prompt(
         "keep iconicness low, and avoid compensating with high adjacent scores. "
         "Do not repeat or rewrite the original use_case object."
     )
-
-
-def _grader_rubric_brief_lines(score: UseCaseScore) -> list[str]:
-    rows = [
-        (score.company_relevance, "Company relevance"),
-        (score.business_impact, "Business impact"),
-        (score.iconicness, "Iconicness"),
-        (score.genai_fit, "GenAI fit"),
-        (score.feasibility, "Feasibility"),
-        (score.evidence_strength, "Evidence strength"),
-    ]
-    return [f"  - {label}: {line.rationale} — {line.score}/10" for line, label in rows]

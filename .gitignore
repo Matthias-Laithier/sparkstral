@@ -44,21 +44,6 @@ instance/
 .pytype/
 cython_debug/
 
-# --- Node / TypeScript / React / Vite ---
-node_modules/
-dist/
-dist-ssr/
-*.local
-.npm
-.eslintcache
-.prettiercache
-.vite/
-.cache/
-tsconfig.tsbuildinfo
-*.tsbuildinfo
-coverage/
-out/
-
 # --- OS & editors ---
 .DS_Store
 Thumbs.db

@@ -416,31 +416,6 @@ class ReportNarratives(BaseModel):
     )
 
 
-class NarrativeFactCheckInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_profile: CompanyProfileOutput
-    narratives: ReportNarratives
-
-
-class NarrativeFactCheckOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_context: str
-    opportunity_blurbs: list[str] = Field(
-        ...,
-        min_length=3,
-        max_length=3,
-    )
-    corrections_planned: list[str] = Field(
-        ...,
-        description=(
-            "List each factual error found and how you will fix it. "
-            "Empty list if nothing to fix."
-        ),
-    )
-
-
 class MarkdownReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

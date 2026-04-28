@@ -3,19 +3,6 @@ import json
 from src.core.schemas import CompanyProfileOutput, SingleUseCaseInput
 
 
-def company_context(profile: CompanyProfileOutput) -> str:
-    return (
-        f"Company: {profile.company_name}\n\n"
-        "Sourced company research text:\n"
-        f"{profile.research_text}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Ideation brief prompts
-# ---------------------------------------------------------------------------
-
-
 def ideation_system_prompt() -> str:
     return (
         "You are a senior GenAI opportunity designer. Your job is to identify "
@@ -71,11 +58,6 @@ def ideation_user_prompt(company_profile: CompanyProfileOutput) -> str:
         "Return `rejected_obvious_ideas` (3-5 short phrases) and exactly 5 "
         "`assignments` with diverse domains and approaches."
     )
-
-
-# ---------------------------------------------------------------------------
-# Single use-case generator prompts
-# ---------------------------------------------------------------------------
 
 
 def single_use_case_system_prompt() -> str:

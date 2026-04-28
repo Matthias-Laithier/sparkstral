@@ -10,7 +10,10 @@ from src.core.schemas import (
     UseCaseScore,
 )
 from src.llm import parse_chat_model
-from src.prompts import grade_single_use_case_user_prompt, use_case_grader_system_prompt
+from src.prompts.grading import (
+    grade_single_use_case_user_prompt,
+    use_case_grader_system_prompt,
+)
 
 
 def compute_weighted_total(score: UseCaseScore) -> float:
@@ -79,7 +82,7 @@ class SingleUseCaseGraderAgent(
             SingleUseCaseGradeResult,
             phase="use-case grading",
             model=settings.USE_CASE_GRADER_AGENT_MODEL,
-            max_tokens=settings.GRADER_LLM_MAX_TOKENS,
+            max_tokens=settings.LLM_MAX_TOKENS,
             temperature=settings.LLM_TEMPERATURE,
             messages=[
                 {"role": "system", "content": use_case_grader_system_prompt()},

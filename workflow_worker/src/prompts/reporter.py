@@ -2,6 +2,7 @@ from src.core.schemas import (
     CompanyProfileOutput,
     FinalSelectionOutput,
     GradedUseCase,
+    PilotKPI,
     ReportNarratives,
     UseCaseScore,
 )
@@ -114,8 +115,6 @@ def _scoring_table(score: UseCaseScore) -> str:
 
 
 def _kpi_paragraph(kpi_obj: object) -> str:
-    from src.core.schemas import PilotKPI
-
     kpi = kpi_obj if isinstance(kpi_obj, PilotKPI) else PilotKPI.model_validate(kpi_obj)
     direction = kpi.target_direction.replace("_", " ")
     return (

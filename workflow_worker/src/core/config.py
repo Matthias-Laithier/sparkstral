@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     DEPLOYMENT_NAME: str
     SERPER_API_KEY: str | None = None
     TAVILY_API_KEY: str | None = None
-    WEB_SEARCH_PROVIDER: Literal["serper", "mistralai", "tavily"] = "serper"
+    WEB_SEARCH_PROVIDER: Literal["mistralai", "serper", "tavily"] = "mistralai"
     WEB_SEARCH_MODEL: str
     WEB_SEARCH_MAX_ROUNDS: int
     GENAI_USE_CASES_MODEL: str
@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int
     LLM_TEMPERATURE: float
     FACT_CHECK_MODEL: str
-    GRADER_LLM_MAX_TOKENS: int = 4096
 
     @model_validator(mode="after")
     def require_search_provider_key(self) -> Self:

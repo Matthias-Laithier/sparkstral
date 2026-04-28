@@ -11,7 +11,6 @@ from src.core.schemas import (
     IdeationBrief,
     MoatAssignment,
     PilotKPI,
-    ReportNarratives,
     SingleUseCaseGradeResult,
     UseCaseGrade,
     UseCaseScore,
@@ -186,24 +185,4 @@ def make_fact_check_output(candidate: GenAIUseCaseCandidate) -> FactCheckOutput:
         feasibility_notes=candidate.feasibility_notes,
         required_data=list(candidate.required_data),
         corrections_planned=[],
-    )
-
-
-def make_narratives() -> ReportNarratives:
-    return ReportNarratives(
-        company_context="Acme is a leading manufacturer founded in 1990.",
-        opportunity_blurbs=[
-            "First opportunity blurb.",
-            "Second opportunity blurb.",
-            "Third opportunity blurb.",
-        ],
-        decision_rationales=[
-            "Rationale 1",
-            "Rationale 2",
-            "Rationale 3",
-        ],
-        limitations=[
-            "Missing internal sales data.",
-            "Unverified revenue figures from press releases.",
-        ],
     )
