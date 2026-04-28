@@ -1,11 +1,14 @@
-from datetime import timedelta
+from datetime import date, timedelta
+from typing import Any
 
 import mistralai.workflows as workflows
+import mistralai.workflows.plugins.mistralai as workflows_mistralai
+from mistralai.client.models import TextChunk, WebSearchTool
 
 from src.agents.genai_use_cases import GenAIUseCasesAgent
 from src.agents.grader import SingleUseCaseGraderAgent
 from src.agents.markdown_reporter import MarkdownReporterAgent
-from src.agents.web_search import WebSearchAgent, WebSearchInput
+from src.core.config import settings
 from src.core.schemas import (
     FinalSelectionOutput,
     GenAIUseCaseCandidateInput,
@@ -19,23 +22,49 @@ from src.core.schemas import (
     SingleUseCaseGradeResult,
 )
 from src.llm import get_mistral_client
-from src.prompts import research_prompt
+from src.prompts import research_prompt, web_search_system_prompt
+from src.tools.provider_web_search import web_search
 from src.utils.selection import select_top_n
+
+
+@workflows.activity(start_to_close_timeout=timedelta(minutes=2))
+async def search_web(query: str) -> str:
+    """Search the web for current information about the given query.
+
+    Args:
+        query: The search query to look up.
+    """
+    return await web_search(query)
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))
 async def research_company(params: ResearchInput) -> ResearchResult:
-    client = get_mistral_client()
-    agent = WebSearchAgent(client=client)
-    try:
-        result = await agent.run(
-            WebSearchInput(
-                prompt=research_prompt(params.company_query),
-            )
-        )
-    except Exception as exc:
-        raise RuntimeError("combined company research failed") from exc
-    return ResearchResult(text=result.text)
+    tools: list[Any] = (
+        [WebSearchTool()]
+        if settings.WEB_SEARCH_PROVIDER == "mistralai"
+        else [search_web]
+    )
+
+    session = workflows_mistralai.RemoteSession()
+    agent = workflows_mistralai.Agent(
+        model=settings.WEB_SEARCH_MODEL,
+        name="research-agent",
+        description="Researches companies via web search",
+        instructions=web_search_system_prompt(date.today()),
+        tools=tools,
+    )
+
+    outputs = await workflows_mistralai.Runner.run(
+        agent=agent,
+        inputs=research_prompt(params.company_query),
+        session=session,
+        max_turns=settings.WEB_SEARCH_MAX_ROUNDS,
+    )
+
+    text = "\n".join(output.text for output in outputs if isinstance(output, TextChunk))
+    if not text.strip():
+        raise RuntimeError("research produced no usable text")
+    return ResearchResult(text=text)
 
 
 @workflows.activity(start_to_close_timeout=timedelta(minutes=5))

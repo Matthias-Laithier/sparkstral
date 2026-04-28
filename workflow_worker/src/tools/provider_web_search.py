@@ -1,35 +1,13 @@
-"""Mistral `web_search` tool: Serper or Tavily, no backend cache."""
+"""Web search providers: Serper or Tavily."""
 
 import asyncio
 import json
 from typing import Any, cast
 
 import httpx
-from mistralai.client.models import Function, Tool
 from tavily import TavilyClient
 
 from src.core.config import settings
-
-WEB_SEARCH_TOOL = Tool(
-    type="function",
-    function=Function(
-        name="web_search",
-        description=(
-            "Search the web for current information. Returns a JSON snippet with"
-            " organic results (titles, snippets, and links)."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The search query.",
-                }
-            },
-            "required": ["query"],
-        },
-    ),
-)
 
 
 async def _serper_search(client: httpx.AsyncClient, query: str) -> str:
