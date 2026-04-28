@@ -1,4 +1,9 @@
-from src.prompts.fact_check import fact_check_system_prompt, fact_check_user_prompt
+from src.prompts.fact_check import (
+    fact_check_narratives_system_prompt,
+    fact_check_narratives_user_prompt,
+    fact_check_system_prompt,
+    fact_check_user_prompt,
+)
 from src.prompts.generation import (
     company_context,
     ideation_system_prompt,
@@ -23,6 +28,8 @@ __all__ = [
     "_grader_rubric_brief_lines",
     "build_report_markdown",
     "company_context",
+    "fact_check_narratives_system_prompt",
+    "fact_check_narratives_user_prompt",
     "fact_check_system_prompt",
     "fact_check_user_prompt",
     "grade_single_use_case_user_prompt",

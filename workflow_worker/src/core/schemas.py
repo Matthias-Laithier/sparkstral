@@ -282,6 +282,13 @@ class FactCheckInput(BaseModel):
 class FactCheckOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    corrections_planned: list[str] = Field(
+        ...,
+        description=(
+            "List each factual error found and how you will fix it, "
+            "before writing the corrected fields. Empty list if nothing to fix."
+        ),
+    )
     business_problem: str
     genai_solution: str
     why_this_company: str
@@ -289,10 +296,6 @@ class FactCheckOutput(BaseModel):
     feasibility_notes: str
     required_data: list[str] = Field(
         ..., min_length=1, description="Corrected data/integration needs."
-    )
-    corrections_made: list[str] = Field(
-        ...,
-        description=("List of corrections applied. Empty list if nothing changed."),
     )
 
 
@@ -409,6 +412,31 @@ class ReportNarratives(BaseModel):
         description=(
             "2-3 specific data gaps or assumptions: missing internal data, "
             "unverified timelines, press-release-only figures."
+        ),
+    )
+
+
+class NarrativeFactCheckInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_profile: CompanyProfileOutput
+    narratives: ReportNarratives
+
+
+class NarrativeFactCheckOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_context: str
+    opportunity_blurbs: list[str] = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+    )
+    corrections_planned: list[str] = Field(
+        ...,
+        description=(
+            "List each factual error found and how you will fix it. "
+            "Empty list if nothing to fix."
         ),
     )
 

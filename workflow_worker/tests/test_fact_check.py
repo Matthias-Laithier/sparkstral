@@ -1,8 +1,17 @@
-from src.core.schemas import FactCheckOutput
-from src.prompts.fact_check import fact_check_system_prompt, fact_check_user_prompt
+from src.core.schemas import (
+    FactCheckOutput,
+    NarrativeFactCheckInput,
+    NarrativeFactCheckOutput,
+)
+from src.prompts.fact_check import (
+    fact_check_narratives_system_prompt,
+    fact_check_narratives_user_prompt,
+    fact_check_system_prompt,
+    fact_check_user_prompt,
+)
 from src.utils.fact_check import apply_fact_check
 
-from .factories import make_candidate, make_profile
+from .factories import make_candidate, make_narratives, make_profile
 
 
 def test_apply_fact_check_patches_text_fields() -> None:
@@ -14,7 +23,7 @@ def test_apply_fact_check_patches_text_fields() -> None:
         why_iconic="Corrected iconic",
         feasibility_notes="Corrected feasibility",
         required_data=["New data source"],
-        corrections_made=["Removed invented statistic"],
+        corrections_planned=["Removed invented statistic"],
     )
 
     result = apply_fact_check(original, corrected)
@@ -36,7 +45,7 @@ def test_apply_fact_check_preserves_structured_fields() -> None:
         why_iconic="Changed",
         feasibility_notes="Changed",
         required_data=["Changed"],
-        corrections_made=["something"],
+        corrections_planned=["something"],
     )
 
     result = apply_fact_check(original, corrected)
@@ -62,7 +71,7 @@ def test_apply_fact_check_identity() -> None:
         why_iconic=original.why_iconic,
         feasibility_notes=original.feasibility_notes,
         required_data=list(original.required_data),
-        corrections_made=[],
+        corrections_planned=[],
     )
 
     result = apply_fact_check(original, identity)
@@ -76,6 +85,11 @@ def test_fact_check_system_prompt_mentions_grounding() -> None:
     assert "research" in prompt.lower()
 
 
+def test_fact_check_system_prompt_mentions_product_names() -> None:
+    prompt = fact_check_system_prompt()
+    assert "product name" in prompt.lower()
+
+
 def test_fact_check_user_prompt_includes_research_and_use_case() -> None:
     profile = make_profile()
     candidate = make_candidate(1)
@@ -83,3 +97,52 @@ def test_fact_check_user_prompt_includes_research_and_use_case() -> None:
 
     assert profile.research_text in prompt
     assert candidate.id in prompt
+
+
+# ---------------------------------------------------------------------------
+# Narrative fact-check tests
+# ---------------------------------------------------------------------------
+
+
+def test_narrative_fact_check_input_accepts_valid_data() -> None:
+    profile = make_profile()
+    narratives = make_narratives()
+    inp = NarrativeFactCheckInput(company_profile=profile, narratives=narratives)
+    assert inp.company_profile.company_name == "Acme"
+    assert len(inp.narratives.opportunity_blurbs) == 3
+
+
+def test_narrative_fact_check_output_schema() -> None:
+    out = NarrativeFactCheckOutput(
+        company_context="Fixed context.",
+        opportunity_blurbs=["a", "b", "c"],
+        corrections_planned=["Fixed date"],
+    )
+    assert out.corrections_planned == ["Fixed date"]
+
+
+def test_narrative_fact_check_output_empty_corrections() -> None:
+    out = NarrativeFactCheckOutput(
+        company_context="Same.",
+        opportunity_blurbs=["a", "b", "c"],
+        corrections_planned=[],
+    )
+    assert out.corrections_planned == []
+
+
+def test_fact_check_narratives_system_prompt_content() -> None:
+    prompt = fact_check_narratives_system_prompt()
+    assert "fact-checker" in prompt.lower()
+    assert "research" in prompt.lower()
+    assert "discontinued" in prompt.lower()
+
+
+def test_fact_check_narratives_user_prompt_includes_research_and_narratives() -> None:
+    profile = make_profile()
+    narratives = make_narratives()
+    prompt = fact_check_narratives_user_prompt(profile, narratives)
+
+    assert profile.research_text in prompt
+    assert narratives.company_context in prompt
+    for blurb in narratives.opportunity_blurbs:
+        assert blurb in prompt
